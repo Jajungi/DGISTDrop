@@ -175,7 +175,16 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
     onToast(r.success ? type : 'warning', r.message);
   };
 
+  /** 웹에서는 Alert.alert 버튼이 동작하지 않는 경우가 많아 confirm 사용 */
   const confirmRoleChange = (message: string, action: () => void) => {
+    if (Platform.OS === 'web') {
+      const ok =
+        typeof window !== 'undefined' &&
+        typeof window.confirm === 'function' &&
+        window.confirm(`역할 변경 확인\n\n${message}`);
+      if (ok) action();
+      return;
+    }
     Alert.alert('역할 변경 확인', message, [
       { text: '취소', style: 'cancel' },
       { text: '확인', style: 'destructive', onPress: action },
@@ -278,7 +287,10 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
           </Card>
 
           <Section title="역할 · 등급">
-            <Text style={styles.sectionHint}>Discord 역할처럼 회원 등급을 부여합니다.</Text>
+            <Text style={styles.sectionHint}>
+              회원을 누른 뒤 아래에서 등급을 고르세요. 준회원↔정회원은 운영자도 가능하고, 관리자
+              승격은 관리자만 가능합니다.
+            </Text>
             <View style={styles.chipRow}>
               {(['associate', 'full'] as MembershipTier[]).map((tier) => (
                 <Chip
@@ -288,22 +300,28 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
                   onPress={() =>
                     confirmRoleChange(
                       `${selected.name}님을 ${TIER_LABEL[tier]}(으)로 변경할까요?`,
-                      () => notify(adminSetMembershipTier(selected.id, tier))
+                      () => {
+                        void adminSetMembershipTier(selected.id, tier).then((r) => notify(r));
+                      }
                     )
                   }
                 />
               ))}
-              {canManageAdminTier && (
+              {canManageAdminTier ? (
                 <Chip
                   label={TIER_LABEL.admin}
                   active={selected.membershipTier === 'admin'}
                   onPress={() =>
                     confirmRoleChange(
                       `${selected.name}님을 관리자로 변경할까요?`,
-                      () => notify(adminSetMembershipTier(selected.id, 'admin'))
+                      () => {
+                        void adminSetMembershipTier(selected.id, 'admin').then((r) => notify(r));
+                      }
                     )
                   }
                 />
+              ) : (
+                <Text style={styles.sectionHint}>관리자 부여는 관리자 계정으로만 할 수 있어요.</Text>
               )}
             </View>
           </Section>

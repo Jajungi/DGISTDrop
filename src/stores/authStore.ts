@@ -29,12 +29,18 @@ function pickAvatarColor(index: number): string {
   return AVATAR_COLORS[index % AVATAR_COLORS.length];
 }
 
-/** 관리자 회원 관리 변경분을 Supabase 프로필에 반영 (fire-and-forget) */
-function syncAdminProfileRemote(user: User | undefined) {
-  if (!user || !isSupabaseEnabled()) return;
-  import('@/src/services/supabase/profiles')
-    .then(({ adminUpdateProfileRemote }) => adminUpdateProfileRemote(user))
-    .catch((err) => console.warn('[profile] admin sync failed', err));
+/** 관리자 회원 관리 변경분을 Supabase 프로필에 반영 */
+async function syncAdminProfileRemote(user: User | undefined): Promise<{ ok: boolean; message?: string }> {
+  if (!user || !isSupabaseEnabled()) return { ok: true };
+  try {
+    const { adminUpdateProfileRemote } = await import('@/src/services/supabase/profiles');
+    await adminUpdateProfileRemote(user);
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '프로필 동기화에 실패했어요.';
+    console.warn('[profile] admin sync failed', message);
+    return { ok: false, message };
+  }
 }
 
 function todayKey() {
@@ -118,7 +124,7 @@ interface AuthState {
   adminSetMembershipTier: (
     userId: string,
     tier: MembershipTier
-  ) => { success: boolean; message: string };
+  ) => Promise<{ success: boolean; message: string }>;
   adminSetMemberStatus: (
     userId: string,
     status: MemberStatus,
@@ -1045,7 +1051,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setLastCleaningBonusMonth: (month) => set({ lastCleaningBonusMonth: month }),
 
-  adminSetMembershipTier: (userId, tier) => {
+  adminSetMembershipTier: async (userId, tier) => {
     const actor = get().currentUser;
     const user = get().users.find((u) => u.id === userId);
     if (!user) return { success: false, message: '회원을 찾을 수 없어요.' };
@@ -1061,12 +1067,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     }
 
+    const prevTier = user.membershipTier;
     set((state) => {
       const users = state.users.map((u) => (u.id === userId ? { ...u, membershipTier: tier } : u));
       const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
       return { users, currentUser };
     });
-    syncAdminProfileRemote(get().users.find((u) => u.id === userId));
+
+    const sync = await syncAdminProfileRemote(get().users.find((u) => u.id === userId));
+    if (!sync.ok) {
+      set((state) => {
+        const users = state.users.map((u) =>
+          u.id === userId ? { ...u, membershipTier: prevTier } : u
+        );
+        const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
+        return { users, currentUser };
+      });
+      return {
+        success: false,
+        message: sync.message ?? '등급 변경을 서버에 저장하지 못했어요.',
+      };
+    }
 
     const tierLabel =
       tier === 'admin' ? '관리자' : tier === 'full' ? '정회원' : tier === 'associate' ? '준회원' : '비회원';
