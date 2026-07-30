@@ -96,16 +96,13 @@ export default function TabLayout() {
             tabBarIcon: ({ focused }) => <TabIcon name={item.icon} focused={focused} size={tabIconSize} />,
             tabBarAccessibilityLabel: item.label,
           }}
-          listeners={
-            name === 'index'
-              ? {
-                  tabPress: () => {
-                    const { selectedCourtId, selectCourt } = useCourtStore.getState();
-                    if (selectedCourtId != null) selectCourt(null);
-                  },
-                }
-              : undefined
-          }
+          listeners={{
+            tabPress: () => {
+              // 코트 탭 재탭 또는 다른 탭으로 이동 시 확대 해제
+              const { selectedCourtId, selectCourt } = useCourtStore.getState();
+              if (selectedCourtId != null) selectCourt(null);
+            },
+          }}
         />
       ))}
       <Tabs.Screen

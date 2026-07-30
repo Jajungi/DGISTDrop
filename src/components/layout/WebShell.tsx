@@ -96,6 +96,10 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
       selectCourt(null);
       return;
     }
+    // 다른 페이지로 나갈 때 확대 상태 해제 → 돌아오면 코트 목록
+    if (selectedCourtId != null) {
+      selectCourt(null);
+    }
     router.push(href as '/');
   };
 

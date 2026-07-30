@@ -6,6 +6,7 @@ import {
   buildSlotMarks,
   rangeToSelectedIndices,
   rangeIndicesToTimes,
+  selectedIndicesToTimes,
   formatSelectionSummary,
 } from '@/src/utils/timeSlots';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
@@ -26,9 +27,9 @@ export interface TimeRangeSliderProps {
 }
 
 /**
- * 연속 구간만 지원 (도착 일정 start~end).
+ * 연속 구간 위주 (도착 일정 start~end).
  * 드래그: 시작 칸~현재 칸으로 선택 범위를 통째로 교체.
- * 탭(드래그 없음): 미선택 칸 → 그 칸만 선택 / 선택 칸 → 전체 해제.
+ * 탭: 칸 단위 토글 — 미선택 칸은 추가(기존과 사이 채움), 선택 칸은 해당 칸만 해제.
  */
 export function TimeRangeSlider({
   startHour,
@@ -69,10 +70,34 @@ export function TimeRangeSlider({
     [marks, onChange]
   );
 
-  const clearSelection = useCallback(() => {
-    setSelectedIndices(new Set());
-    onChange('', '');
-  }, [onChange]);
+  const emitFromIndices = useCallback(
+    (next: Set<number>) => {
+      setSelectedIndices(next);
+      const times = selectedIndicesToTimes(marks, next);
+      if (times) onChange(times.start, times.end);
+      else onChange('', '');
+    },
+    [marks, onChange]
+  );
+
+  /** 탭: 칸 단위 토글 — 추가 시 기존~새 칸 사이를 채움, 해제는 해당 칸만 */
+  const toggleIndex = useCallback(
+    (index: number) => {
+      const next = new Set(selectedIndices);
+      if (next.has(index)) {
+        next.delete(index);
+      } else if (next.size === 0) {
+        next.add(index);
+      } else {
+        const lo = Math.min(...next, index);
+        const hi = Math.max(...next, index);
+        next.clear();
+        for (let i = lo; i <= hi; i++) next.add(i);
+      }
+      emitFromIndices(next);
+    },
+    [emitFromIndices, selectedIndices]
+  );
 
   const trackWidthRef = useRef(0);
   const anchorRef = useRef(-1);
@@ -134,16 +159,12 @@ export function TimeRangeSlider({
       return;
     }
     if (!hasDraggedRef.current) {
-      if (startedSelectedRef.current) {
-        clearSelection();
-      } else {
-        applyRange(anchor, anchor);
-      }
+      toggleIndex(anchor);
     }
     anchorRef.current = -1;
     hasDraggedRef.current = false;
     startedSelectedRef.current = false;
-  }, [applyRange, clearSelection]);
+  }, [toggleIndex]);
 
   const isSelected = (index: number) => selectedIndices.has(index);
   const rangeSummary = formatSelectionSummary(marks, selectedIndices);
@@ -235,8 +256,8 @@ export function TimeRangeSlider({
               <Text style={styles.rangeSummary}>{rangeSummary}</Text>
             ) : (
               <Text style={styles.rangeHint}>
-                칸을 탭하거나, 누른 채 좌우로 드래그해 연속 구간을 선택하세요. 선택된 칸을 탭하면
-                해제됩니다.
+                칸을 탭해 추가·해제하거나, 누른 채 드래그해 구간을 바꿀 수 있어요. 전체를 지울 필요
+                없이 다시 선택·부분 취소가 됩니다.
               </Text>
             )}
           </View>

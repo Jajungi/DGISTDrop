@@ -299,7 +299,12 @@ export function CourtExpandView({
             </View>
 
             <View style={[styles.splitBody, narrowSplit && styles.splitBodyStack]}>
-              <View style={[styles.splitCourtCol, narrowSplit && styles.splitCourtColStack]}>
+              <Pressable
+                style={[styles.splitCourtCol, narrowSplit && styles.splitCourtColStack]}
+                onPress={requestClose}
+                accessibilityRole="button"
+                accessibilityLabel="코트 목록으로 돌아가기"
+              >
                 <View style={[styles.courtVisual, { width: splitCourtSize.width, height: splitCourtSize.height }]}>
                   <CourtIllustration
                     court={selectedCourt}
@@ -314,14 +319,13 @@ export function CourtExpandView({
                     compact={splitCourtSize.width < 220}
                   />
                 </View>
-              </View>
+              </Pressable>
               <View style={[styles.splitDetailCol, narrowSplit && styles.splitDetailColStack]}>
                 <CourtDetailContent
                   court={selectedCourt}
                   hideCourtPreview
                   showInlineCourt={false}
                   embedded
-                  onDismiss={requestClose}
                   {...detailProps}
                 />
               </View>

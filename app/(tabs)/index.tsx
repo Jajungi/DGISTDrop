@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, RefreshControl, ScrollView, Text } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useCourtStore } from '@/src/stores/courtStore';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useAppStore } from '@/src/stores/authStore';
@@ -50,6 +51,16 @@ export default function CourtsScreen() {
   const remeasureExpandRef = useRef<() => void>(() => {});
 
   const selectedCourt = courts.find((c) => c.id === selectedCourtId) ?? null;
+
+  // 친구·프로필 등 다른 화면으로 나가면 확대 해제 → 돌아오면 코트 목록
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        const { selectedCourtId: id, selectCourt: clear } = useCourtStore.getState();
+        if (id != null) clear(null);
+      };
+    }, [])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
