@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, StyleSheet, Platform, Text, Pressable } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,7 @@ const SIDEBAR_EXPANDED = 196;
 const MAIN_GAP_COLLAPSED = 8;
 const MAIN_GAP_EXPANDED = 20;
 const ANIM_MS = 150;
+const HOVER_CLOSE_MS = 160;
 
 const sidebarTransition = Platform.select({
   web: {
@@ -51,7 +52,7 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
   const { width } = useWindowDimensions();
   const pathname = usePathname();
   const router = useRouter();
-  const sidebarExpanded = useShellStore((s) => s.sidebarExpanded);
+  const sidebarPinned = useShellStore((s) => s.sidebarExpanded);
   const isDesktop = Platform.OS === 'web' && width >= WEB_BREAKPOINT;
   const currentUser = useAuthStore((s) => s.currentUser);
   const isStaff = isStaffUser(currentUser);
@@ -59,10 +60,29 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
   const selectedCourtId = useCourtStore((s) => s.selectedCourtId);
   const selectCourt = useCourtStore((s) => s.selectCourt);
   const adminAlerts = useAdminAlertCount();
-  const [hoveredHref, setHoveredHref] = useState<string | null>(null);
+  const [hoverExpanded, setHoverExpanded] = useState(false);
+  const hoverCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const sidebarExpanded = sidebarPinned || hoverExpanded;
   const navItems = (isStaff ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS).filter(
     (item) => !isGuest || item.href !== '/friends'
   );
+
+  const openHover = () => {
+    if (hoverCloseTimer.current) {
+      clearTimeout(hoverCloseTimer.current);
+      hoverCloseTimer.current = null;
+    }
+    setHoverExpanded(true);
+  };
+
+  const scheduleCloseHover = () => {
+    if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current);
+    hoverCloseTimer.current = setTimeout(() => {
+      setHoverExpanded(false);
+      hoverCloseTimer.current = null;
+    }, HOVER_CLOSE_MS);
+  };
 
   if (!isDesktop) {
     return <>{children}</>;
@@ -90,6 +110,12 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
             sidebarTransition,
             { width: sidebarExpanded ? SIDEBAR_EXPANDED : SIDEBAR_COLLAPSED },
           ]}
+          {...(Platform.OS === 'web'
+            ? {
+                onMouseEnter: openHover,
+                onMouseLeave: scheduleCloseHover,
+              }
+            : {})}
         >
           {navItems.map((item) => {
             const active =
@@ -97,13 +123,10 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
                 ? pathname === '/' || pathname === '/(tabs)' || pathname === '/(tabs)/'
                 : pathname.includes(item.href.replace('/', ''));
             const alerting = item.href === '/admin' && adminAlerts > 0;
-            const showHoverLabel = !sidebarExpanded && hoveredHref === item.href;
             return (
               <Pressable
                 key={item.href}
                 onPress={() => handleNavPress(item.href)}
-                onHoverIn={() => setHoveredHref(item.href)}
-                onHoverOut={() => setHoveredHref((h) => (h === item.href ? null : h))}
                 style={[styles.navRow, active && styles.navRowActive]}
                 accessibilityRole="button"
                 accessibilityLabel={
@@ -136,11 +159,6 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
                 >
                   {item.label}
                 </Text>
-                {showHoverLabel ? (
-                  <View style={styles.hoverTip} pointerEvents="none">
-                    <Text style={styles.hoverTipText}>{item.label}</Text>
-                  </View>
-                ) : null}
               </Pressable>
             );
           })}
@@ -176,7 +194,7 @@ const styles = StyleSheet.create({
   sidebar: {
     paddingVertical: 28,
     paddingHorizontal: spacing.sm,
-    overflow: 'visible',
+    overflow: 'hidden',
     flexShrink: 0,
     zIndex: 20,
   },
@@ -218,7 +236,7 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     fontSize: 9,
     fontWeight: '700',
-    lineHeight: 12,
+    lineHeight: 11,
   },
   navIconActive: {
     backgroundColor: colors.navActive,
@@ -227,31 +245,16 @@ const styles = StyleSheet.create({
     ...typography.bodyBold,
     color: colors.text,
     fontSize: 14,
-    flex: 1,
+    flexShrink: 1,
   },
   navLabelActive: {
-    color: colors.primary,
-  },
-  hoverTip: {
-    position: 'absolute',
-    left: 52,
-    top: 8,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    zIndex: 30,
-  },
-  hoverTipText: {
-    ...typography.caption,
     color: colors.text,
-    fontWeight: '600',
-    fontSize: 13,
   },
   main: {
     flex: 1,
+    minWidth: 0,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
   },
 });

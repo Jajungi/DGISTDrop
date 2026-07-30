@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -36,32 +36,29 @@ interface CourtExpandViewProps {
   onCourtPress: (court: Court) => void;
   onDeselect: () => void;
   onRegisterClose: (close: () => void) => void;
+  /** 페이지 스크롤 시 패널 높이 재측정 */
+  onRegisterRemeasure?: (remeasure: () => void) => void;
   filter?: 'all' | 'empty' | 'mine';
   myUserId?: string;
   detailProps: Omit<
     CourtDetailContentProps,
-    'court' | 'courtPreviewWidth' | 'hideCourtPreview' | 'embedded' | 'onDismiss'
+    | 'court'
+    | 'courtPreviewWidth'
+    | 'hideCourtPreview'
+    | 'showInlineCourt'
+    | 'embedded'
+    | 'onDismiss'
   >;
 }
 
-const EXPAND_MS = 360;
-const COLLAPSE_MS = 300;
+const EXPAND_MS = 320;
+const COLLAPSE_MS = 280;
 const EXPAND_EASING = Easing.bezier(0.22, 1, 0.36, 1);
 const COLLAPSE_EASING = Easing.bezier(0.4, 0, 0.2, 1);
 const EXPAND_TIMING = { duration: EXPAND_MS, easing: EXPAND_EASING };
 const COLLAPSE_TIMING = { duration: COLLAPSE_MS, easing: COLLAPSE_EASING };
-const DETAIL_GAP = 8;
+const CLUSTER_PAD = 8;
 const DETAIL_HEADER_H = 48;
-const CLUSTER_PAD = 12;
-
-type ExpandedLayout = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  detailTop: number;
-  detailHeight: number;
-};
 
 export function CourtExpandView({
   courts,
@@ -70,116 +67,71 @@ export function CourtExpandView({
   onCourtPress,
   onDeselect,
   onRegisterClose,
+  onRegisterRemeasure,
   filter,
   myUserId,
   detailProps,
 }: CourtExpandViewProps) {
-  const { gridPadding, contentWidth, isDesktop, headerHeight, tabBarHeight, needsHorizontalScroll } =
-    useLayoutMode();
-  const { height: windowHeight } = useWindowDimensions();
+  const { headerHeight, tabBarHeight, needsHorizontalScroll, isDesktop } = useLayoutMode();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const containerRef = useRef<RNView>(null);
   const cardRefs = useRef<Map<number, RNView>>(new Map());
   const pendingCourtRef = useRef<Court | null>(null);
-  const [containerSize, setContainerSize] = useState({ width: contentWidth, height: 400 });
+  const [containerSize, setContainerSize] = useState({ width: 400, height: 400 });
   const [containerScreenY, setContainerScreenY] = useState(0);
 
   const progress = useSharedValue(0);
-  const originX = useSharedValue(0);
-  const originY = useSharedValue(0);
-  const originW = useSharedValue(80);
-  const originH = useSharedValue(40);
-  const targetX = useSharedValue(0);
-  const targetY = useSharedValue(8);
-  const targetW = useSharedValue(contentWidth - gridPadding * 2);
-  const targetH = useSharedValue(getCourtHeight(contentWidth - gridPadding * 2));
   const detailTopY = useSharedValue(0);
   const detailPanelH = useSharedValue(280);
 
-  const computeTarget = useCallback(
-    (containerW: number, containerH: number, screenY?: number): ExpandedLayout => {
-      const pad = gridPadding;
-      const visibleTop = insets.top + headerHeight;
+  const computePanel = useCallback(
+    (containerH: number, screenY?: number) => {
+      const cy = screenY ?? containerScreenY;
       const visibleBottom = windowHeight - tabBarHeight;
-      const visibleHeight = visibleBottom - visibleTop;
-
-      const maxWidth = isDesktop ? Math.min(containerW - pad * 2, 480) : containerW - pad * 2;
-      const detailBodyH = Math.min(340, Math.max(180, visibleHeight * 0.4));
-      const detailHeight = DETAIL_HEADER_H + detailBodyH;
-      const clusterGap = DETAIL_GAP;
-
-      let width = maxWidth;
-      let height = getCourtHeight(width);
-      const maxCourtH = visibleHeight - detailHeight - clusterGap - CLUSTER_PAD * 2;
-      if (height > maxCourtH) {
-        height = Math.max(72, maxCourtH);
-        width = height * COURT_ASPECT;
-      }
-
-      const clusterHeight = height + clusterGap + detailHeight;
-      const visibleCenter = (visibleTop + visibleBottom) / 2;
-      const clusterTopInViewport = visibleCenter - clusterHeight / 2;
-
-      let y = clusterTopInViewport - (screenY ?? 0);
-      y = Math.max(CLUSTER_PAD, Math.min(y, containerH - clusterHeight - CLUSTER_PAD));
-
-      const detailTop = y + height + clusterGap;
-
-      return {
-        x: (containerW - width) / 2,
-        y,
-        width,
-        height,
-        detailTop,
-        detailHeight,
-      };
+      // 앱 헤더 아래·컨테이너 실제 위치 기준으로 보이는 영역만 사용 (상단 배너에 아래가 잘리지 않게)
+      const panelTopScreen = Math.max(cy + CLUSTER_PAD, insets.top + headerHeight + CLUSTER_PAD);
+      const available = Math.max(200, visibleBottom - panelTopScreen - CLUSTER_PAD);
+      const detailHeight = Math.max(240, Math.min(containerH - CLUSTER_PAD * 2, available));
+      let detailTop = panelTopScreen - cy;
+      detailTop = Math.max(CLUSTER_PAD, Math.min(detailTop, containerH - detailHeight - CLUSTER_PAD));
+      return { detailTop, detailHeight };
     },
-    [gridPadding, headerHeight, insets.top, isDesktop, tabBarHeight, windowHeight]
+    [containerScreenY, headerHeight, insets.top, tabBarHeight, windowHeight]
   );
 
   const applyTarget = useCallback(
-    (containerW: number, containerH: number, screenY?: number) => {
-      const t = computeTarget(containerW, containerH, screenY);
-      targetX.value = t.x;
-      targetY.value = t.y;
-      targetW.value = t.width;
-      targetH.value = t.height;
+    (containerH: number, screenY?: number) => {
+      const t = computePanel(containerH, screenY);
       detailTopY.value = t.detailTop;
       detailPanelH.value = t.detailHeight;
       if (screenY !== undefined) setContainerScreenY(screenY);
     },
-    [computeTarget, detailPanelH, detailTopY, targetH, targetW, targetX, targetY]
+    [computePanel, detailPanelH, detailTopY]
   );
 
   const remeasureTarget = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
     container.measureInWindow((_cx, cy) => {
-      applyTarget(containerSize.width, containerSize.height, cy);
+      applyTarget(containerSize.height, cy);
     });
-  }, [applyTarget, containerSize.height, containerSize.width]);
+  }, [applyTarget, containerSize.height]);
 
-  const measureAndSetOrigin = useCallback(
-    (courtId: number, containerW: number, containerH: number, onReady?: () => void) => {
-      const cardView = cardRefs.current.get(courtId);
+  const measureAndExpand = useCallback(
+    (containerH: number, onReady?: () => void) => {
       const container = containerRef.current;
-      if (!cardView || !container) {
+      if (!container) {
         remeasureTarget();
         onReady?.();
         return;
       }
-      cardView.measureInWindow((mx, my, mw, mh) => {
-        container.measureInWindow((cx, cy) => {
-          originX.value = mx - cx;
-          originY.value = my - cy;
-          originW.value = mw;
-          originH.value = mh;
-          applyTarget(containerW, containerH, cy);
-          onReady?.();
-        });
+      container.measureInWindow((_cx, cy) => {
+        applyTarget(containerH, cy);
+        onReady?.();
       });
     },
-    [applyTarget, originH, originW, originX, originY, remeasureTarget]
+    [applyTarget, remeasureTarget]
   );
 
   const startExpand = useCallback(() => {
@@ -199,15 +151,18 @@ export function CourtExpandView({
   }, [onRegisterClose, requestClose]);
 
   useEffect(() => {
+    onRegisterRemeasure?.(remeasureTarget);
+  }, [onRegisterRemeasure, remeasureTarget]);
+
+  useEffect(() => {
     remeasureTarget();
   }, [containerSize, remeasureTarget]);
 
   useEffect(() => {
     if (selectedCourtId == null) return;
-    measureAndSetOrigin(selectedCourtId, containerSize.width, containerSize.height, startExpand);
-    // containerSize intentionally omitted — resize handled by remeasureTarget
+    measureAndExpand(containerSize.height, startExpand);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCourtId, measureAndSetOrigin, startExpand]);
+  }, [selectedCourtId, measureAndExpand, startExpand]);
 
   const registerCourtRef = useCallback((id: number, ref: RNView | null) => {
     if (ref) cardRefs.current.set(id, ref);
@@ -220,7 +175,6 @@ export function CourtExpandView({
         requestClose();
         return;
       }
-
       if (selectedCourtId != null) {
         pendingCourtRef.current = court;
         cancelAnimation(progress);
@@ -232,30 +186,32 @@ export function CourtExpandView({
         });
         return;
       }
-
       onCourtPress(court);
     },
     [onCourtPress, progress, requestClose, selectedCourtId]
   );
 
-  const gridStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.5, 1], [1, 0.35, 0], Extrapolation.CLAMP),
-    transform: [
-      {
-        translateY: interpolate(progress.value, [0, 1], [0, 28], Extrapolation.CLAMP),
-      },
-    ],
-  }));
+  const panelGeom = useMemo(
+    () => computePanel(containerSize.height, containerScreenY),
+    [computePanel, containerSize.height, containerScreenY]
+  );
 
-  const flyingCourtStyle = useAnimatedStyle(() => ({
-    position: 'absolute',
-    left: interpolate(progress.value, [0, 1], [originX.value, targetX.value], Extrapolation.CLAMP),
-    top: interpolate(progress.value, [0, 1], [originY.value, targetY.value], Extrapolation.CLAMP),
-    width: interpolate(progress.value, [0, 1], [originW.value, targetW.value], Extrapolation.CLAMP),
-    height: interpolate(progress.value, [0, 1], [originH.value, targetH.value], Extrapolation.CLAMP),
-    opacity: interpolate(progress.value, [0, 0.06, 0.14], [0, 1, 1], Extrapolation.CLAMP),
-    borderRadius: interpolate(progress.value, [0, 1], [12, borderRadius.lg], Extrapolation.CLAMP),
-    zIndex: 20,
+  const narrowSplit = !isDesktop || windowWidth < 900;
+
+  const splitCourtSize = useMemo(() => {
+    const bodyH = Math.max(120, panelGeom.detailHeight - DETAIL_HEADER_H - 16);
+    const maxW = narrowSplit
+      ? Math.min(containerSize.width - 48, Math.min(bodyH * 0.55, 280) * COURT_ASPECT)
+      : isDesktop
+        ? Math.min(containerSize.width * 0.55, bodyH * COURT_ASPECT)
+        : Math.min(containerSize.width * 0.48, bodyH * COURT_ASPECT);
+    const width = Math.max(120, maxW);
+    return { width, height: getCourtHeight(width) };
+  }, [containerSize.width, isDesktop, narrowSplit, panelGeom.detailHeight]);
+
+  const gridStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.45, 1], [1, 0.2, 0], Extrapolation.CLAMP),
+    transform: [{ translateY: interpolate(progress.value, [0, 1], [0, 16], Extrapolation.CLAMP) }],
   }));
 
   const detailStyle = useAnimatedStyle(() => ({
@@ -264,21 +220,9 @@ export function CourtExpandView({
     right: 0,
     top: detailTopY.value,
     height: detailPanelH.value,
-    opacity: interpolate(progress.value, [0.3, 0.65], [0, 1], Extrapolation.CLAMP),
-    transform: [
-      {
-        translateY: interpolate(progress.value, [0.3, 0.65], [16, 0], Extrapolation.CLAMP),
-      },
-    ],
+    opacity: interpolate(progress.value, [0.08, 0.4], [0, 1], Extrapolation.CLAMP),
+    transform: [{ translateY: interpolate(progress.value, [0.08, 0.4], [20, 0], Extrapolation.CLAMP) }],
   }));
-
-  const expandedLayout = computeTarget(
-    containerSize.width,
-    containerSize.height,
-    containerScreenY
-  );
-  const expandedW = expandedLayout.width;
-  const expandedH = expandedLayout.height;
 
   return (
     <View
@@ -331,29 +275,12 @@ export function CourtExpandView({
             accessibilityLabel="코트 목록으로 돌아가기"
           />
 
-          <Animated.View style={flyingCourtStyle}>
-            <Pressable
-              style={styles.flyingCourt}
-              onPress={requestClose}
-              accessibilityRole="button"
-              accessibilityLabel="코트 닫기"
-            >
-              <CourtIllustration
-                court={selectedCourt}
-                width={expandedW}
-                borderRadius={borderRadius.lg}
-              />
-              <CourtPlayerProfiles
-                players={selectedCourt.players}
-                avatarSize={28}
-                courtWidth={expandedW}
-                courtHeight={expandedH}
-              />
-            </Pressable>
-          </Animated.View>
-
           <Animated.View
-            style={[styles.detailLayer, detailStyle, { pointerEvents: selectedCourtId ? 'box-none' : 'none' }]}
+            style={[
+              styles.detailLayer,
+              detailStyle,
+              { pointerEvents: selectedCourtId ? 'box-none' : 'none' },
+            ]}
           >
             <View style={styles.detailHeader} pointerEvents="box-none">
               <TouchGuard>
@@ -370,15 +297,34 @@ export function CourtExpandView({
                 </Pressable>
               </TouchGuard>
             </View>
-            <View style={styles.detailBody}>
-              <CourtDetailContent
-                court={selectedCourt}
-                hideCourtPreview
-                embedded
-                courtPreviewWidth={expandedW}
-                onDismiss={requestClose}
-                {...detailProps}
-              />
+
+            <View style={[styles.splitBody, narrowSplit && styles.splitBodyStack]}>
+              <View style={[styles.splitCourtCol, narrowSplit && styles.splitCourtColStack]}>
+                <View style={[styles.courtVisual, { width: splitCourtSize.width, height: splitCourtSize.height }]}>
+                  <CourtIllustration
+                    court={selectedCourt}
+                    width={splitCourtSize.width}
+                    borderRadius={borderRadius.md}
+                  />
+                  <CourtPlayerProfiles
+                    players={selectedCourt.players}
+                    avatarSize={Math.max(12, Math.min(22, splitCourtSize.width * 0.08))}
+                    courtWidth={splitCourtSize.width}
+                    courtHeight={splitCourtSize.height}
+                    compact={splitCourtSize.width < 220}
+                  />
+                </View>
+              </View>
+              <View style={[styles.splitDetailCol, narrowSplit && styles.splitDetailColStack]}>
+                <CourtDetailContent
+                  court={selectedCourt}
+                  hideCourtPreview
+                  showInlineCourt={false}
+                  embedded
+                  onDismiss={requestClose}
+                  {...detailProps}
+                />
+              </View>
             </View>
           </Animated.View>
         </>
@@ -395,17 +341,12 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     zIndex: 16,
   },
-  flyingCourt: { flex: 1, overflow: 'hidden' },
   detailLayer: {
     zIndex: 25,
     backgroundColor: colors.surfaceAlt,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
     flexDirection: 'column',
-  },
-  detailBody: {
-    flex: 1,
-    minHeight: 0,
   },
   detailHeader: {
     flexDirection: 'row',
@@ -434,4 +375,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   closeText: { color: colors.textLight, fontSize: 14, fontWeight: '700', lineHeight: 16 },
+  courtVisual: {
+    overflow: 'hidden',
+    borderRadius: borderRadius.md,
+    position: 'relative',
+  },
+  splitBody: {
+    flex: 1,
+    minHeight: 0,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: spacing.md,
+    padding: spacing.md,
+  },
+  splitBodyStack: {
+    flexDirection: 'column',
+  },
+  splitCourtCol: {
+    flexGrow: 0,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splitCourtColStack: {
+    alignSelf: 'center',
+  },
+  splitDetailCol: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+  },
+  splitDetailColStack: {
+    flex: 1,
+    minHeight: 200,
+  },
 });

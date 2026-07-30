@@ -47,6 +47,7 @@ export default function CourtsScreen() {
   const [showScoreSheet, setShowScoreSheet] = useState(false);
   const [filter, setFilter] = useState<'all' | 'empty' | 'mine'>('all');
   const closeExpandRef = useRef<() => void>(() => {});
+  const remeasureExpandRef = useRef<() => void>(() => {});
 
   const selectedCourt = courts.find((c) => c.id === selectedCourtId) ?? null;
 
@@ -61,6 +62,15 @@ export default function CourtsScreen() {
     setShowScoreSheet(false);
     closeExpandRef.current();
   };
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const w = window as unknown as { __selectCourt?: (id: number | null) => void };
+    w.__selectCourt = (id) => selectCourt(id);
+    return () => {
+      delete w.__selectCourt;
+    };
+  }, [selectCourt]);
 
   const isCurrentUserOnCourt =
     selectedCourt?.players.some((p) => p.userId === currentUser?.id) ?? false;
@@ -171,11 +181,21 @@ export default function CourtsScreen() {
           style={styles.scroll}
           contentContainerStyle={[
             styles.scrollContent,
-            selectedCourtId !== null && { minHeight: expandAreaHeight, flexGrow: 1 },
+            selectedCourtId !== null && {
+              minHeight: expandAreaHeight,
+              flexGrow: 1,
+              paddingBottom: 160,
+            },
             selectedCourtId === null && needsVerticalScroll && { minHeight: expandAreaHeight },
           ]}
-          scrollEnabled={selectedCourtId === null}
-          showsVerticalScrollIndicator={needsVerticalScroll}
+          scrollEnabled
+          nestedScrollEnabled
+          showsVerticalScrollIndicator={needsVerticalScroll || selectedCourtId !== null}
+          keyboardShouldPersistTaps="handled"
+          scrollEventThrottle={32}
+          onScroll={() => {
+            if (selectedCourtId != null) remeasureExpandRef.current();
+          }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
@@ -209,6 +229,9 @@ export default function CourtsScreen() {
               onDeselect={() => selectCourt(null)}
               onRegisterClose={(fn) => {
                 closeExpandRef.current = fn;
+              }}
+              onRegisterRemeasure={(fn) => {
+                remeasureExpandRef.current = fn;
               }}
               filter={filter}
               myUserId={currentUser?.id}

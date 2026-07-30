@@ -33,6 +33,8 @@ export interface CourtDetailContentProps {
   canPerformActions: boolean;
   courtPreviewWidth?: number;
   hideCourtPreview?: boolean;
+  /** 확대 패널: 경기유형 옆 작은 코트 */
+  showInlineCourt?: boolean;
   embedded?: boolean;
   /** 확대 뷰 — 버튼 외 영역 탭 시 닫기 */
   onDismiss?: () => void;
@@ -61,6 +63,7 @@ export function CourtDetailContent({
   canPerformActions,
   courtPreviewWidth = 300,
   hideCourtPreview = false,
+  showInlineCourt = false,
   embedded = false,
   onDismiss,
 }: CourtDetailContentProps) {
@@ -86,6 +89,8 @@ export function CourtDetailContent({
   const canJoin = court.status === 'playing' && court.players.length >= 2 && court.players.length < 4;
   const floorColor = COURT_FLOOR_COLORS[court.status];
   const previewH = getCourtHeight(courtPreviewWidth);
+  const inlineW = Math.min(courtPreviewWidth, 160);
+  const inlineH = getCourtHeight(inlineW);
   const colLabel = getCourtColumnLabel(court.id);
   const elapsed = formatElapsed(court.startedAt);
   const cleanupLeft = formatCleanupRemaining(court.finishedAt);
@@ -101,6 +106,24 @@ export function CourtDetailContent({
 
   const guard = (node: React.ReactNode) =>
     onDismiss ? <TouchGuard>{node}</TouchGuard> : node;
+
+  const inlineCourtNode = showInlineCourt ? (
+    <View
+      style={[styles.inlineCourt, { width: inlineW, height: inlineH }]}
+      pointerEvents="none"
+    >
+      <CourtIllustration court={court} width={inlineW} borderRadius={borderRadius.sm} />
+      {court.players.length > 0 && (
+        <CourtPlayerProfiles
+          players={court.players}
+          avatarSize={Math.max(10, Math.min(14, inlineW * 0.1))}
+          courtWidth={inlineW}
+          courtHeight={inlineH}
+          compact
+        />
+      )}
+    </View>
+  ) : null;
 
   const actionsBlock = (
     <View style={[styles.actions, embedded && styles.actionsEmbedded]}>
@@ -241,59 +264,92 @@ export function CourtDetailContent({
       {court.isCoachCourt && <CoachingScreenContent embedded />}
 
       {court.status === 'empty' && court.isCoachCourt && !coachReservable && (
-        <View style={[styles.infoBlock, embedded && styles.infoBlockEmbedded]}>
-          <Text style={styles.infoLine}>
-            <Text style={styles.infoBold}>코치 코트</Text> · 예약할 수 없어요
-          </Text>
-          <Text style={styles.infoSub}>레슨 권한 신청 후 대기 순서가 되면 이 화면에서 예약할 수 있어요.</Text>
+        <View style={[styles.withInlineRow, embedded && styles.withInlineRowEmbedded]}>
+          <View style={[styles.infoBlock, styles.withInlineMain, embedded && styles.infoBlockEmbedded]}>
+            <Text style={styles.infoLine}>
+              <Text style={styles.infoBold}>코치 코트</Text> · 예약할 수 없어요
+            </Text>
+            <Text style={styles.infoSub}>레슨 권한 신청 후 대기 순서가 되면 이 화면에서 예약할 수 있어요.</Text>
+          </View>
+          {inlineCourtNode}
         </View>
       )}
 
       {court.status === 'empty' && canPerformActions && coachReservable && (
-        <View style={[styles.reserveBlock, embedded && styles.reserveBlockEmbedded]}>
-          <Text style={styles.blockTitle}>경기 유형</Text>
-          {guard(
-            <GameModePicker
-              value={gameMode}
-              nantaHalf={nantaHalf}
-              onChange={setGameMode}
-              onNantaHalfChange={setNantaHalf}
-            />
-          )}
-          <Text style={[styles.blockTitle, { marginTop: spacing.sm }]}>게임 수</Text>
-          {guard(<GameCountPicker value={gameCount} onChange={setGameCount} />)}
-          {guard(
-            <Button
-              title={`${gameCount}게임 예약하기`}
-              onPress={() => onReserve(gameCount, gameMode, gameMode === 'nanta' ? nantaHalf : undefined)}
-              fullWidth
-              size="lg"
-            />
-          )}
+        <View style={[styles.withInlineRow, embedded && styles.withInlineRowEmbedded]}>
+          <View style={[styles.reserveBlock, styles.withInlineMain, embedded && styles.reserveBlockEmbedded]}>
+            <Text style={styles.blockTitle}>경기 유형</Text>
+            {guard(
+              <GameModePicker
+                value={gameMode}
+                nantaHalf={nantaHalf}
+                onChange={setGameMode}
+                onNantaHalfChange={setNantaHalf}
+              />
+            )}
+            <Text style={[styles.blockTitle, { marginTop: spacing.sm }]}>게임 수</Text>
+            {guard(<GameCountPicker value={gameCount} onChange={setGameCount} />)}
+            {guard(
+              <Button
+                title={`${gameCount}게임 예약하기`}
+                onPress={() => onReserve(gameCount, gameMode, gameMode === 'nanta' ? nantaHalf : undefined)}
+                fullWidth
+                size="lg"
+              />
+            )}
+          </View>
+          {inlineCourtNode}
+        </View>
+      )}
+
+      {court.status === 'empty' && !canPerformActions && !(court.isCoachCourt && !coachReservable) && (
+        <View style={[styles.withInlineRow, embedded && styles.withInlineRowEmbedded]}>
+          <View style={[styles.infoBlock, styles.withInlineMain, embedded && styles.infoBlockEmbedded]}>
+            <Text style={styles.infoSub}>체육관 근처에서만 예약할 수 있어요.</Text>
+          </View>
+          {inlineCourtNode}
         </View>
       )}
 
       {court.status === 'reserved' && (
-        <View style={[styles.infoBlock, embedded && styles.infoBlockEmbedded]}>
-          <Text style={styles.infoLine}>
-            <Text style={styles.infoBold}>
-              {court.gameMode ? GAME_MODE_CONFIG[court.gameMode].label : '경기'}
+        <View style={[styles.withInlineRow, embedded && styles.withInlineRowEmbedded]}>
+          <View style={[styles.infoBlock, styles.withInlineMain, embedded && styles.infoBlockEmbedded]}>
+            <Text style={styles.infoLine}>
+              <Text style={styles.infoBold}>
+                {court.gameMode ? GAME_MODE_CONFIG[court.gameMode].label : '경기'}
+              </Text>
+              {' · '}
+              <Text style={styles.infoBold}>{court.maxGames}게임</Text> 예약됨
             </Text>
-            {' · '}
-            <Text style={styles.infoBold}>{court.maxGames}게임</Text> 예약됨
-          </Text>
-          <Text style={styles.infoSub}>참가 {court.players.length}명 · 게임 시작 전</Text>
+            <Text style={styles.infoSub}>참가 {court.players.length}명 · 게임 시작 전</Text>
+          </View>
+          {inlineCourtNode}
         </View>
       )}
 
       {court.status === 'playing' && court.maxGames > 0 && (
-        <View style={[styles.infoBlock, embedded && styles.infoBlockEmbedded]}>
-          <Text style={styles.infoLine}>
-            {court.gameMode && (
-              <Text style={styles.infoBold}>{GAME_MODE_CONFIG[court.gameMode].label} · </Text>
-            )}
-            진행 <Text style={styles.infoBold}>{court.gamesCompleted}/{court.maxGames}</Text> 게임
-          </Text>
+        <View style={[styles.withInlineRow, embedded && styles.withInlineRowEmbedded]}>
+          <View style={[styles.infoBlock, styles.withInlineMain, embedded && styles.infoBlockEmbedded]}>
+            <Text style={styles.infoLine}>
+              {court.gameMode && (
+                <Text style={styles.infoBold}>{GAME_MODE_CONFIG[court.gameMode].label} · </Text>
+              )}
+              진행 <Text style={styles.infoBold}>{court.gamesCompleted}/{court.maxGames}</Text> 게임
+            </Text>
+          </View>
+          {inlineCourtNode}
+        </View>
+      )}
+
+      {court.status === 'just_finished' && (
+        <View style={[styles.withInlineRow, embedded && styles.withInlineRowEmbedded]}>
+          <View style={[styles.infoBlock, styles.withInlineMain, embedded && styles.infoBlockEmbedded]}>
+            <Text style={styles.infoLine}>
+              <Text style={styles.infoBold}>정리 중</Text>
+              {cleanupLeft ? ` · ${cleanupLeft}` : ''}
+            </Text>
+          </View>
+          {inlineCourtNode}
         </View>
       )}
 
@@ -383,6 +439,26 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     borderRadius: borderRadius.sm,
     overflow: 'hidden',
+  },
+  withInlineRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+    flexWrap: 'wrap',
+  },
+  withInlineRowEmbedded: { marginBottom: spacing.sm },
+  withInlineMain: {
+    flex: 1,
+    minWidth: 160,
+    marginBottom: 0,
+  },
+  inlineCourt: {
+    flexShrink: 0,
+    borderRadius: borderRadius.sm,
+    overflow: 'hidden',
+    position: 'relative',
+    alignSelf: 'center',
   },
   reserveBlock: {
     backgroundColor: colors.surfaceAlt,

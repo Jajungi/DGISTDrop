@@ -58,6 +58,8 @@ export function CourtCard({
   return (
     <Pressable
       onPress={() => onPress(court)}
+      accessibilityRole="button"
+      accessibilityLabel={`${court.id}번 코트`}
       style={({ pressed }) => [
         styles.wrapper,
         { width: slotWidth, paddingTop: chromeTop },
