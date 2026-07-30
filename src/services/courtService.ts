@@ -15,8 +15,13 @@ export function createEmptyCourts(): Court[] {
       gamesCompleted: 0,
       maxGames: 0,
       joinRequests: [],
+      waitQueue: [],
     };
   });
+}
+
+export function canJoinWaitQueue(court: Court): boolean {
+  return court.status === 'reserved' || court.status === 'playing';
 }
 
 export function canJoinCourt(court: Court): boolean {

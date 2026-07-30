@@ -2,7 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GuideAccordion } from '@/src/components/guide/GuideAccordion';
-import { GUIDE_SECTIONS } from '@/src/constants/guideContent';
+import { useGuideSections } from '@/src/hooks/useGuideSections';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { CLUB_NAME, GYM_LOCATION, SCHOOL_NAME } from '@/src/constants';
@@ -10,6 +10,7 @@ import { colors, spacing, typography } from '@/src/theme';
 
 export default function GuideScreen() {
   const { isDesktop } = useLayoutMode();
+  const sections = useGuideSections();
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
@@ -24,7 +25,7 @@ export default function GuideScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
         >
-          <GuideAccordion sections={GUIDE_SECTIONS} />
+          <GuideAccordion sections={sections} />
         </ScrollView>
       </PageContainer>
     </SafeAreaView>

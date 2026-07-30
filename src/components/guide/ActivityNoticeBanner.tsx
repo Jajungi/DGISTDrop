@@ -1,23 +1,16 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useActivityStatus } from '@/src/hooks/useActivityStatus';
-import { formatCountdownToNext, getActivityDayLabel } from '@/src/services/activityTime';
-import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
-import { formatHHMM } from '@/src/utils/activitySchedule';
+import { useActivityScheduleLabel } from '@/src/hooks/useGuideSections';
+import { formatCountdownToNext } from '@/src/services/activityTime';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 /** 정기 활동 시간 외 안내 — 기능은 그대로, 이용 안내 페이지로 대체하지 않음 */
 export function ActivityNoticeBanner() {
   const { isActive, nextActivity } = useActivityStatus();
-  const schedule = useActivityScheduleStore((s) => s.schedule);
-  const scheduleLabel = useMemo(() => {
-    if (!schedule.length) return '활동 일정 미설정';
-    const days = [...new Set(schedule.map((s) => getActivityDayLabel(s.day)))].join('·');
-    const first = schedule[0];
-    return `매주 ${days} ${formatHHMM(first.startHour, first.startMinute)}–${formatHHMM(first.endHour, first.endMinute)}`;
-  }, [schedule]);
+  const scheduleLabel = useActivityScheduleLabel();
 
   if (isActive) return null;
 

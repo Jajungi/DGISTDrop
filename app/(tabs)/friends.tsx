@@ -8,6 +8,7 @@ import { FriendSchedulePanel } from '@/src/components/friends/FriendSchedulePane
 import { FriendRequestsPanel } from '@/src/components/friends/FriendRequestsPanel';
 import { FriendSearchPanel } from '@/src/components/friends/FriendSearchPanel';
 import { ActivityNoticeBanner } from '@/src/components/guide/ActivityNoticeBanner';
+import { ClubEventBanner } from '@/src/components/guide/ClubEventBanner';
 import { useSearchStore } from '@/src/stores/searchStore';
 import { useFriendsPresence } from '@/src/hooks/useFriendsPresence';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
@@ -37,6 +38,7 @@ export default function FriendsScreen() {
           <Text style={styles.subtitle}>오늘 {activityStart} – {activityEnd}</Text>
         </View>
 
+        <ClubEventBanner />
         <ActivityNoticeBanner />
 
         <FriendsSegmentTabs active={tab} onChange={setTab} />

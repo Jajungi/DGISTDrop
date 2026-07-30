@@ -21,6 +21,9 @@ export interface CourtDetailContentProps {
   court: Court;
   onReserve: (gameCount: number, gameMode: GameMode, nantaHalf?: NantaHalf) => void;
   onJoin: () => void;
+  onJoinWait?: () => void;
+  onLeaveWait?: () => void;
+  onRemoveWait?: (entryId: string) => void;
   onCompleteGame: () => void;
   onReturnCourt: () => void;
   onCancelReservation: () => void;
@@ -51,6 +54,9 @@ export function CourtDetailContent({
   court,
   onReserve,
   onJoin,
+  onJoinWait,
+  onLeaveWait,
+  onRemoveWait,
   onCompleteGame,
   onReturnCourt,
   onCancelReservation,
@@ -87,6 +93,12 @@ export function CourtDetailContent({
     : true;
 
   const canJoin = court.status === 'playing' && court.players.length >= 2 && court.players.length < 4;
+  const waitQueue = court.waitQueue ?? [];
+  const canWait =
+    (court.status === 'reserved' || court.status === 'playing') &&
+    !isCurrentUserOnCourt &&
+    !waitQueue.some((w) => w.userId === currentUserId);
+  const isWaiting = !!currentUserId && waitQueue.some((w) => w.userId === currentUserId);
   const floorColor = COURT_FLOOR_COLORS[court.status];
   const previewH = getCourtHeight(courtPreviewWidth);
   const inlineW = Math.min(courtPreviewWidth, 160);
@@ -169,6 +181,22 @@ export function CourtDetailContent({
       {canJoin && !isCurrentUserOnCourt && canPerformActions &&
         guard(
           <Button title="빈자리 합류 신청" onPress={onJoin} fullWidth size="lg" variant="outline" />
+        )}
+
+      {canWait && onJoinWait && canPerformActions &&
+        guard(
+          <Button
+            title={`다음 이용 대기${waitQueue.length ? ` (${waitQueue.length}명)` : ''}`}
+            onPress={onJoinWait}
+            fullWidth
+            size="md"
+            variant="outline"
+          />
+        )}
+
+      {isWaiting && onLeaveWait && canPerformActions &&
+        guard(
+          <Button title="대기 취소" onPress={onLeaveWait} fullWidth size="md" variant="ghost" />
         )}
 
       {court.status === 'playing' && isCurrentUserOnCourt && canPerformActions && (
@@ -380,6 +408,25 @@ export function CourtDetailContent({
                   <Button title="거절" onPress={() => onRejectJoin(req.id)} size="sm" variant="ghost" />
                 )}
               </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {waitQueue.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>다음 이용 대기 {waitQueue.length}명</Text>
+          {waitQueue.map((w, i) => (
+            <View key={w.id} style={styles.requestRow}>
+              <Text style={styles.playerName}>
+                {i + 1}. {w.userName}
+                {w.userId === currentUserId ? ' (나)' : ''}
+              </Text>
+              {isHost && onRemoveWait && canPerformActions
+                ? guard(
+                    <Button title="제외" onPress={() => onRemoveWait(w.id)} size="sm" variant="ghost" />
+                  )
+                : null}
             </View>
           ))}
         </View>

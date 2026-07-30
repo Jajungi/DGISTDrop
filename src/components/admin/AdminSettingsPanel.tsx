@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Platform } from 'react-native';
 import { AdminOperationsPanel } from '@/src/components/admin/AdminOperationsPanel';
+import { AdminSiteOpsPanel } from '@/src/components/admin/AdminSiteOpsPanel';
 import { AdminSubTabs } from '@/src/components/admin/AdminSubTabs';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
@@ -16,7 +17,7 @@ import { GYM_LOCATION, PEAK_HOURS } from '@/src/constants';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import type { ActivitySession } from '@/src/types';
 
-type SettingsSub = 'schedule' | 'ops' | 'info';
+type SettingsSub = 'schedule' | 'notices' | 'ops' | 'info';
 
 const DAY_OPTIONS = [1, 2, 3, 4, 5, 6, 0]; // 월→일
 
@@ -56,10 +57,13 @@ export function AdminSettingsPanel({ adminId, adminName, onToast }: AdminSetting
         onChange={setSub}
         items={[
           { key: 'schedule', label: '활동 시간' },
-          { key: 'ops', label: '가입·공지·현장' },
+          { key: 'notices', label: '공지·휴관' },
+          { key: 'ops', label: '가입·현장' },
           { key: 'info', label: '참고' },
         ]}
       />
+
+      {sub === 'notices' && <AdminSiteOpsPanel onToast={onToast} />}
 
       {sub === 'schedule' && (
         <View style={styles.stack}>

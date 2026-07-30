@@ -26,6 +26,8 @@ import { SCHOOL_NAME, CLUB_NAME } from '@/src/constants';
 import { validateStudentId } from '@/src/utils/studentId';
 import { isSupabaseEnvConfigured, getSupabaseSetupHint } from '@/src/lib/supabaseEnv';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { SiteOverlayHost } from '@/src/components/site/SiteOverlayHost';
+import { markPostLoginOverlay } from '@/src/components/site/SiteOverlayHost';
 
 type Mode = 'login' | 'register' | 'guest';
 
@@ -64,6 +66,7 @@ export default function LoginScreen() {
         studentId: id.trim(),
         name: displayName ?? user?.name ?? id,
       });
+      markPostLoginOverlay();
       router.replace('/(tabs)');
     } else {
       showToast({ type: 'warning', title: '', message: result.message });
@@ -133,6 +136,7 @@ export default function LoginScreen() {
     void (async () => {
       const result = await loginAsGuest(guestName);
       if (result.success) {
+        markPostLoginOverlay();
         router.replace('/(tabs)');
       } else {
         showToast({ type: 'warning', title: '', message: result.message });
@@ -323,6 +327,7 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <SiteOverlayHost surface="login" />
     </SafeAreaView>
   );
 }

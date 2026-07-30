@@ -1,3 +1,5 @@
+import { GYM_LOCATION } from '@/src/constants';
+
 export interface GuideItem {
   title: string;
   content: string;
@@ -19,7 +21,48 @@ export interface GuideSection {
   tierDistribution?: boolean;
 }
 
+const GYM_NAME = GYM_LOCATION.name;
+
+/** 정적 기본 섹션. 정기 활동 시간은 getGuideSections()로 주입합니다. */
 export const GUIDE_SECTIONS: GuideSection[] = [
+  {
+    id: 'app',
+    title: '앱 이용 방법',
+    icon: '📱',
+    intro:
+      'Drop은 S1 체육관 현장 활동을 위한 코트·파트너·출석·포인트 앱입니다. 아래 순서로 이용하면 됩니다.',
+    items: [
+      {
+        title: '코트 예약',
+        content:
+          '홈 화면에서 원하는 코트를 누르면 확대됩니다. 오른쪽에서 경기 유형(난타/경기)·게임 수를 고른 뒤 예약하세요. 확대를 닫으려면 왼쪽 코트 영역을 다시 누르거나, 모바일에서는 바깥을 누르세요.',
+      },
+      {
+        title: '난타 vs 경기',
+        content:
+          '난타는 반코트만 사용하며 Elo·전적에 반영되지 않습니다. 경기는 코트 전체를 쓰며, 경기 후 점수를 입력하면 Elo·전적·포인트가 반영됩니다. 점수를 입력하지 않으면 친선으로 처리됩니다.',
+      },
+      {
+        title: '빈자리 합류',
+        content:
+          '자리가 비어 있는 코트에 [합류 신청]을 보낼 수 있습니다. 예약자가 수락하면 참가하고, 거절되면 알림으로 안내됩니다.',
+      },
+      {
+        title: '파트너 모집 · 친구',
+        content:
+          '파트너 모집 탭에서 팀을 모집하거나 방에 들어갑니다. 친구 탭에서는 동아리원 일정·출석을 확인할 수 있습니다. 게스트는 모집방 생성·친구 기능이 제한됩니다.',
+      },
+      {
+        title: '위치 인증 (지오펜스)',
+        content: `${GYM_NAME} 반경 약 500m 안에서만 코트 예약·모집방 생성·합류 신청이 가능합니다. 멀리서 미리 독점하는 것을 막기 위함입니다.`,
+      },
+      {
+        title: '코트 반납',
+        content:
+          '예약한 게임 수가 끝나면 [게임 완료 / 코트 반납]을 눌러 주세요. 한 번에 하나의 코트만 이용할 수 있습니다.',
+      },
+    ],
+  },
   {
     id: 'rules',
     title: '배드민턴 기본 규칙',
@@ -69,9 +112,9 @@ export const GUIDE_SECTIONS: GuideSection[] = [
           '단식 서비스 구역 약 24.4㎡, 복식 서비스 구역 약 24.2㎡로 거의 비슷합니다. 복식 서브 구역이 짧고 넓어 플릭 서브로 상대를 속이기 어렵고, 리시버가 앞에서 공격적으로 받을 수 있어 복식 랠리가 첫 타구부터 빠르고 격렬해집니다.',
       },
       {
-        title: '점수 체계 (자율 매치)',
+        title: '점수 체계 (앱 경기)',
         content:
-          '정식 랭킹전 외 일반 친선 매치는 경기 시작 전 원하는 점수(11·15·21·25점 등)를 자유롭게 정할 수 있습니다. 단, 특정 팀의 코트 독점을 막기 위해 단판 30점을 초과하는 설정은 불가합니다.',
+          '앱에서 경기를 시작할 때 원하는 점수(11·15·21·25점 등)를 정할 수 있습니다. 단, 코트 독점을 막기 위해 단판 30점을 초과하는 설정은 불가합니다. 점수를 입력하면 Elo가 반영되고, 입력하지 않으면 친선으로 남습니다.',
       },
       {
         title: '서브 (Serve) 위치',
@@ -96,7 +139,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       {
         title: '난타 구역',
         content:
-          '난타는 네트를 사이에 두고 가로(전체 폭)로 반코트만 사용합니다. 무대 쪽 또는 입구 쪽 반을 선택해 칩니다.',
+          '난타는 네트를 사이에 두고 가로(전체 폭)로 반코트만 사용합니다. 앱에서 무대 쪽 또는 입구 쪽 반을 선택해 칩니다.',
       },
     ],
     courtInteractive: true,
@@ -238,22 +281,28 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       {
         title: '정기 활동 시간',
         content:
-          '매주 2회, 저녁 18:30 ~ 21:50에 S1 체육관에서 진행됩니다. 이 시간 외에는 예약 기능이 닫히고 본 가이드 화면이 메인에 고정됩니다.',
+          // placeholder — getGuideSections에서 설정값으로 교체
+          'PLACEHOLDER_ACTIVITY_SCHEDULE',
       },
       {
         title: '정회원 (동아리비 납부 필수)',
         content:
-          '정식 가입 절차를 거치고 회비 납부가 인증된 활동 회원입니다. 출석 인증 시 +150P(준회원 +100P)가 지급되며, 모든 코트 예약 권한을 가집니다.',
+          '정식 가입·회비 인증이 완료된 활동 회원입니다. 출석 인증 시 +150P가 지급되며, 코트 예약·모집·포인트·친구·랭크 등 모든 기능을 이용할 수 있습니다.',
       },
       {
         title: '준회원 (동아리비 납부 필수)',
         content:
-          '신입 부원이나 파트타임 등 회비는 납부했으나 정회원 승인을 대기 중인 상태입니다. 코트 예약이 가능하며 기본 포인트 적립률이 적용됩니다.',
+          '회비는 납부했으나 정회원 승인을 대기 중인 상태입니다. 코트 예약이 가능하며, 출석 시 +100P가 적용됩니다.',
       },
       {
-        title: '비회원 (게스트 / 회비 미납)',
+        title: '게스트 (임시 입장)',
         content:
-          '학번 인증을 하지 않았거나 외부에서 방문한 게스트입니다. 코트를 직접 예약·개설할 수는 없지만, 정·준회원이 연 파트너 모집방이나 빈자리가 있는 코트에 [합류 신청]으로 매칭 경기에 참여하는 것은 가능합니다.',
+          '학번 회원가입 없이 이름으로 입장한 임시 이용자입니다. 체육관 근처에서 코트 예약·합류는 가능하지만, 포인트·친구·랭크·모집방 생성 등 회원 전용 기능은 사용할 수 없습니다. 정식 이용을 원하면 회원가입을 해 주세요.',
+      },
+      {
+        title: '가입 · 승인',
+        content:
+          '운영진 설정에 따라 가입 즉시 이용하거나, 승인 대기 후 이용할 수 있습니다. 승인·거절·역할(관리자·운영진) 부여는 관리 화면에서 처리합니다.',
       },
       {
         title: '전용 신발 착용',
@@ -267,7 +316,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: '포인트 정책',
     icon: '🪙',
     intro:
-      "포인트는 결제·충전 없이 동아리 활동(출석, 봉사, 경기)으로만 획득합니다. 코트 예약·셔틀콕 등에 사용하는 재화입니다.",
+      '포인트는 결제·충전 없이 동아리 활동(출석, 봉사, 경기)으로만 획득합니다. 코트 예약·셔틀콕 등에 사용하는 재화입니다.',
     items: [
       {
         title: '충전 불가',
@@ -296,7 +345,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: '랭크 · 티어',
     icon: '🏆',
     intro:
-      '경기 점수를 입력하면 Elo 점수가 오르내리고, 점수 구간에 따라 티어가 결정됩니다. 점수를 입력하지 않은 친선경기는 Elo가 변동하지 않아요. 시작 점수는 1000점(실버)입니다.',
+      '경기 점수를 입력하면 Elo 점수가 오르내리고, 점수 구간에 따라 티어가 결정됩니다. 점수를 입력하지 않은 친선·난타는 Elo가 변동하지 않아요. 시작 점수는 1000점(실버)입니다.',
     items: [
       {
         title: 'Elo 점수란?',
@@ -307,6 +356,11 @@ export const GUIDE_SECTIONS: GuideSection[] = [
         title: '티어 승급·강등',
         content:
           '아래 구간을 넘으면 자동으로 티어가 바뀝니다. 별도 승급전은 없으며 점수만 충족하면 즉시 반영됩니다.',
+      },
+      {
+        title: '하루 반영 한도',
+        content:
+          '어뷰징을 막기 위해, 참가자 중 누군가 하루 자동 반영 한도를 넘기면 관리자 승인 대기로 전환될 수 있습니다.',
       },
     ],
     tierDistribution: true,
@@ -319,8 +373,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     items: [
       {
         title: '위치 기반 인증 (Geo-fencing)',
-        content:
-          '기숙사·연구실에서 미리 코트를 독점하는 행위를 막기 위해, 코트 예약·모집방 생성·합류 신청은 S1 체육관 반경 500m 이내에서만 가능합니다.',
+        content: `${GYM_NAME} 반경 약 500m 이내에서만 코트 예약·모집방 생성·합류 신청이 가능합니다.`,
       },
       {
         title: '게임 수 준수 및 즉시 반납',
@@ -330,7 +383,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       {
         title: '빈자리 합류 문화',
         content:
-          '2~3명이 연습 중인 코트에 다른 동아리원이 [빈자리 합류 신청]을 내면, 열린 마음으로 수락해 함께 경기하는 것을 권장합니다.',
+          '2~3명이 연습 중인 코트에 [합류 신청]이 오면 앱에서 수락·거절할 수 있습니다. 가능하면 열린 마음으로 함께 치는 것을 권장합니다.',
       },
     ],
   },
@@ -364,3 +417,28 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     ],
   },
 ];
+
+const ACTIVITY_SCHEDULE_PLACEHOLDER = 'PLACEHOLDER_ACTIVITY_SCHEDULE';
+
+/**
+ * 설정에 저장된 정기 활동 시간 문구를 넣은 이용 안내 섹션.
+ * @param scheduleLabel 예: "매주 화·목 18:30–21:50"
+ */
+export function getGuideSections(scheduleLabel: string): GuideSection[] {
+  const scheduleContent =
+    `${scheduleLabel}에 ${GYM_NAME}에서 정기 활동이 진행됩니다. ` +
+    '정기 활동 시간이 아니면 홈 상단에 안내 배너가 표시됩니다. ' +
+    '코트 예약·합류 등 기능은 그대로 이용할 수 있으며, 자세한 규칙은 이 이용 안내를 참고하세요.';
+
+  return GUIDE_SECTIONS.map((section) => {
+    if (section.id !== 'club') return section;
+    return {
+      ...section,
+      items: section.items.map((item) =>
+        item.content === ACTIVITY_SCHEDULE_PLACEHOLDER || item.title === '정기 활동 시간'
+          ? { ...item, content: scheduleContent }
+          : item
+      ),
+    };
+  });
+}

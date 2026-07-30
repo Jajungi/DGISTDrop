@@ -13,8 +13,10 @@ import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCoachingStore } from '@/src/stores/coachingStore';
 import { useAdminLogStore } from '@/src/stores/adminLogStore';
 import { createEmptyCourts } from '@/src/services/courtService';
-import { fetchOpenRegistration, fetchActivitySchedule } from '@/src/services/supabase/club';
+import { fetchOpenRegistration, fetchActivitySchedule, fetchSiteOverlays, fetchClubEvents } from '@/src/services/supabase/club';
 import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
+import { useSiteOverlayStore } from '@/src/stores/siteOverlayStore';
+import { useClubEventStore } from '@/src/stores/clubEventStore';
 
 let courtsUnsub: (() => void) | null = null;
 let profilesUnsub: (() => void) | null = null;
@@ -62,6 +64,20 @@ export async function initSupabaseApp(): Promise<boolean> {
     if (schedule?.length) {
       useActivityScheduleStore.getState().setScheduleLocal(schedule);
     }
+  } catch {
+    /* keep default */
+  }
+
+  try {
+    const overlays = await fetchSiteOverlays();
+    if (overlays) useSiteOverlayStore.getState().setLocal(overlays);
+  } catch {
+    /* keep default */
+  }
+
+  try {
+    const events = await fetchClubEvents();
+    if (events) useClubEventStore.getState().setLocal(events);
   } catch {
     /* keep default */
   }

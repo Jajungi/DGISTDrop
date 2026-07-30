@@ -18,6 +18,7 @@ import { TeamRoomCard } from '@/src/components/lobby/TeamRoomCard';
 import { TeamCourtReserveModal } from '@/src/components/lobby/TeamCourtReserveModal';
 import { useCourtStore } from '@/src/stores/courtStore';
 import { ActivityNoticeBanner } from '@/src/components/guide/ActivityNoticeBanner';
+import { ClubEventBanner } from '@/src/components/guide/ClubEventBanner';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { Button } from '@/src/components/ui/Button';
@@ -166,6 +167,7 @@ export default function LobbyScreen() {
           <Text style={styles.guestHint}>게스트는 모집방 참여만 가능해요. 방 만들기는 회원 전용입니다.</Text>
         )}
 
+        <ClubEventBanner />
         <ActivityNoticeBanner />
 
         <ScrollView contentContainerStyle={styles.content}>

@@ -17,12 +17,6 @@ interface GuideAccordionProps {
 export function GuideAccordion({ sections }: GuideAccordionProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const open = (id: string) => {
-    if (expanded === id) return;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpanded(id);
-  };
-
   const toggle = (id: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpanded(expanded === id ? null : id);
@@ -33,16 +27,7 @@ export function GuideAccordion({ sections }: GuideAccordionProps) {
       {sections.map((section) => {
         const isOpen = expanded === section.id;
         return (
-          <View
-            key={section.id}
-            style={styles.section}
-            // 웹: 목록 위에 올리면 내용 표시 (클릭도 유지)
-            {...(Platform.OS === 'web'
-              ? {
-                  onMouseEnter: () => open(section.id),
-                }
-              : {})}
-          >
+          <View key={section.id} style={styles.section}>
             <Pressable
               onPress={() => toggle(section.id)}
               style={styles.header}

@@ -46,6 +46,7 @@ type DbCourt = {
   status: Court['status'];
   players: Court['players'];
   join_requests: Court['joinRequests'];
+  wait_queue?: Court['waitQueue'];
   games_completed: number;
   max_games: number;
   reserved_by: string | null;
@@ -138,6 +139,7 @@ export function mapCourtRow(row: DbCourt): Court {
     status: row.status,
     players: row.players ?? [],
     joinRequests: row.join_requests ?? [],
+    waitQueue: row.wait_queue ?? [],
     gamesCompleted: row.games_completed,
     maxGames: row.max_games,
     reservedBy: row.reserved_by ?? undefined,
@@ -188,6 +190,7 @@ export function mapCourtToDb(court: Court): Partial<DbCourt> {
     status: court.status,
     players: court.players,
     join_requests: court.joinRequests,
+    wait_queue: court.waitQueue ?? [],
     games_completed: court.gamesCompleted,
     max_games: court.maxGames,
     reserved_by: court.reservedBy ?? null,

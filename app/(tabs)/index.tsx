@@ -13,7 +13,9 @@ import { CourtOverviewHeader } from '@/src/components/courts/CourtOverviewHeader
 import { CourtExpandView } from '@/src/components/courts/CourtExpandView';
 import { MatchScoreSheet } from '@/src/components/courts/MatchScoreSheet';
 import { ActivityNoticeBanner } from '@/src/components/guide/ActivityNoticeBanner';
+import { ClubEventBanner } from '@/src/components/guide/ClubEventBanner';
 import { PageContainer } from '@/src/components/layout/PageContainer';
+import { SiteOverlayHost } from '@/src/components/site/SiteOverlayHost';
 import { colors } from '@/src/theme';
 import type { Court, GameMode, NantaHalf } from '@/src/types';
 
@@ -34,6 +36,9 @@ export default function CourtsScreen() {
   const requestJoin = useCourtStore((s) => s.requestJoin);
   const acceptJoin = useCourtStore((s) => s.acceptJoin);
   const rejectJoin = useCourtStore((s) => s.rejectJoin);
+  const joinWaitQueue = useCourtStore((s) => s.joinWaitQueue);
+  const leaveWaitQueue = useCourtStore((s) => s.leaveWaitQueue);
+  const removeWaitEntry = useCourtStore((s) => s.removeWaitEntry);
   const refreshCourts = useCourtStore((s) => s.refreshCourts);
 
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -127,6 +132,21 @@ export default function CourtsScreen() {
       if (!selectedCourt) return;
       rejectJoin(selectedCourt.id, requestId);
       showToast({ type: 'info', title: '', message: '합류 신청을 거절했어요.' });
+    },
+    onJoinWait: () => {
+      if (!currentUser || !selectedCourt) return;
+      const result = joinWaitQueue(selectedCourt.id, currentUser.id, currentUser.name);
+      showToast({ type: result.success ? 'success' : 'warning', title: '', message: result.message });
+    },
+    onLeaveWait: () => {
+      if (!currentUser || !selectedCourt) return;
+      const result = leaveWaitQueue(selectedCourt.id, currentUser.id);
+      showToast({ type: result.success ? 'info' : 'warning', title: '', message: result.message });
+    },
+    onRemoveWait: (entryId: string) => {
+      if (!selectedCourt) return;
+      const result = removeWaitEntry(selectedCourt.id, entryId);
+      showToast({ type: result.success ? 'info' : 'warning', title: '', message: result.message });
     },
     onCompleteGame: () => {
       if (!selectedCourt) return;
@@ -228,6 +248,7 @@ export default function CourtsScreen() {
             ) : undefined
           }
         >
+          <ClubEventBanner />
           <ActivityNoticeBanner />
 
           <CourtOverviewHeader
@@ -281,6 +302,7 @@ export default function CourtsScreen() {
         onSubmit={handleSubmitScore}
         onClose={() => setShowScoreSheet(false)}
       />
+      <SiteOverlayHost surface="home" />
     </View>
   );
 }

@@ -34,7 +34,16 @@ export async function upsertCourt(court: Court): Promise<void> {
   const row = mapCourtToDb(court);
   // 9개 코트는 고정 행이므로 UPDATE만 (RLS INSERT 권한 불필요)
   const { error } = await getSupabase().from('courts').update(row).eq('id', court.id);
-  if (error) throw error;
+  if (!error) return;
+  const msg = error.message?.toLowerCase() ?? '';
+  // 026 미적용: wait_queue 컬럼 없음 → 해당 필드만 빼고 재시도
+  if (msg.includes('wait_queue') || msg.includes('42703')) {
+    const { wait_queue: _wq, ...rest } = row as Record<string, unknown>;
+    const { error: retryErr } = await getSupabase().from('courts').update(rest).eq('id', court.id);
+    if (retryErr) throw retryErr;
+    return;
+  }
+  throw error;
 }
 
 export function subscribeCourts(onChange: (courts: Court[]) => void): () => void {

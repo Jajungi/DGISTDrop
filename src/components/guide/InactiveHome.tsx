@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { formatCountdownToNext } from '@/src/services/activityTime';
 import { GuideAccordion } from '@/src/components/guide/GuideAccordion';
-import { GUIDE_SECTIONS } from '@/src/constants/guideContent';
+import { useActivityScheduleLabel, useGuideSections } from '@/src/hooks/useGuideSections';
 import { CLUB_NAME, GYM_LOCATION } from '@/src/constants';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
@@ -13,6 +13,9 @@ interface InactiveHomeProps {
 }
 
 export function InactiveHome({ nextActivity }: InactiveHomeProps) {
+  const scheduleLabel = useActivityScheduleLabel();
+  const sections = useGuideSections();
+
   return (
     <View style={styles.container}>
       <View style={styles.hero}>
@@ -24,7 +27,7 @@ export function InactiveHome({ nextActivity }: InactiveHomeProps) {
 
         <View style={styles.scheduleBox}>
           <Text style={styles.scheduleLabel}>정기 활동</Text>
-          <Text style={styles.scheduleValue}>매주 화·목  18:30 – 21:50</Text>
+          <Text style={styles.scheduleValue}>{scheduleLabel}</Text>
         </View>
 
         {nextActivity && (
@@ -36,7 +39,7 @@ export function InactiveHome({ nextActivity }: InactiveHomeProps) {
       </View>
 
       <Text style={styles.sectionHeader}>이용 안내</Text>
-      <GuideAccordion sections={GUIDE_SECTIONS} />
+      <GuideAccordion sections={sections} />
     </View>
   );
 }

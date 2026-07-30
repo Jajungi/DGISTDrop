@@ -80,6 +80,8 @@ export interface Court {
   /** just_finished 전환 시각 — 자동 반납 타이머용 */
   finishedAt?: string;
   joinRequests: JoinRequest[];
+  /** 예약·경기 중 다음 이용 대기열 */
+  waitQueue: CourtWaitEntry[];
   /** 예약·경기 유형 (empty면 없음) */
   gameMode?: GameMode;
   /** 난타일 때만 — 어느 반코트를 쓰는지 */
@@ -92,6 +94,46 @@ export interface JoinRequest {
   userName: string;
   rank: RankTier;
   requestedAt: string;
+}
+
+/** 코트 사용 중일 때 다음 차례 대기 */
+export interface CourtWaitEntry {
+  id: string;
+  userId: string;
+  userName: string;
+  joinedAt: string;
+}
+
+/** 화면 위 오버레이 공지 노출 위치 */
+export type SiteOverlaySurface = 'login' | 'post_login' | 'home';
+
+export interface SiteOverlay {
+  id: string;
+  title: string;
+  body: string;
+  /** 로그인 창 / 로그인 직후 / 홈 진입 */
+  surfaces: SiteOverlaySurface[];
+  active: boolean;
+  dismissible: boolean;
+  startsAt?: string;
+  endsAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 휴관 · 특강 등 정기 활동 외 일정 */
+export type ClubEventKind = 'closure' | 'special';
+
+export interface ClubEvent {
+  id: string;
+  kind: ClubEventKind;
+  title: string;
+  body?: string;
+  /** YYYY-MM-DD (로컬) */
+  dateStart: string;
+  /** YYYY-MM-DD inclusive */
+  dateEnd: string;
+  active: boolean;
 }
 
 export interface TeamRoom {

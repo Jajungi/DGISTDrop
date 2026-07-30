@@ -41,6 +41,7 @@ export function CourtCard({
   const slotWidth = safeWidth + hPad * 2;
   const radius = COURT_CARD_RADIUS;
   const canJoin = court.status === 'playing' && court.players.length >= 2 && court.players.length < 4;
+  const waitCount = court.waitQueue?.length ?? 0;
   const showProfiles = court.players.length > 0;
   const avatarSize = compact
     ? Math.max(10, Math.min(16, safeWidth * 0.14))
@@ -152,6 +153,12 @@ export function CourtCard({
           {canJoin && (
             <View style={styles.joinBadge}>
               <Text style={styles.joinText}>+</Text>
+            </View>
+          )}
+
+          {waitCount > 0 && (
+            <View style={styles.waitBadge}>
+              <Text style={styles.waitBadgeText}>대기 {waitCount}</Text>
             </View>
           )}
 
@@ -321,6 +328,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   joinText: { color: '#FFF', fontSize: 14, fontWeight: '800', lineHeight: 16 },
+  waitBadge: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  waitBadgeText: { color: '#FFF', fontSize: 9, fontWeight: '700' },
   coachTag: {
     position: 'absolute',
     top: 6,

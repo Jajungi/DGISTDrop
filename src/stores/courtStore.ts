@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Court, CourtPlayer, GameMode, NantaHalf } from '@/src/types';
 import { GAME_COUNT_OPTIONS, COACH_COURT_ID } from '@/src/constants/court';
 import { MIN_PLAYERS_FOR_GAME } from '@/src/constants';
-import { createEmptyCourts, userToCourtPlayer, userHasActiveCourt } from '@/src/services/courtService';
+import { createEmptyCourts, userToCourtPlayer, userHasActiveCourt, canJoinWaitQueue } from '@/src/services/courtService';
 import { createMockCourts } from '@/src/services/mockData';
 import { getReservationCost, isPeakTime, canReserve, isCenterCourtId } from '@/src/services/points';
 import { useAuthStore } from './authStore';
@@ -56,6 +56,10 @@ interface CourtState {
   acceptJoin: (courtId: number, requestId: string) => { success: boolean; message: string };
   rejectJoin: (courtId: number, requestId: string) => void;
   adminClearJoinRequests: (courtId: number) => { success: boolean; message: string };
+  joinWaitQueue: (courtId: number, userId: string, userName: string) => { success: boolean; message: string };
+  leaveWaitQueue: (courtId: number, userId: string) => { success: boolean; message: string };
+  removeWaitEntry: (courtId: number, entryId: string) => { success: boolean; message: string };
+  adminClearWaitQueue: (courtId: number) => { success: boolean; message: string };
   refreshCourts: () => void;
   hydrateCourts: (courts: Court[]) => void;
 }
@@ -81,7 +85,12 @@ export const useCourtStore = create<CourtState>((set, get) => ({
 
   hydrateCourts: (courts) => {
     if (!courts?.length) return;
-    set({ courts, lastUpdated: new Date().toISOString() });
+    const normalized = courts.map((c) => ({
+      ...c,
+      joinRequests: c.joinRequests ?? [],
+      waitQueue: c.waitQueue ?? [],
+    }));
+    set({ courts: normalized, lastUpdated: new Date().toISOString() });
   },
 
   reserveCourt: (courtId, userId, gameCount, gameMode = 'casual', nantaHalf = 'near', teamPlayers) => {
@@ -271,6 +280,8 @@ export const useCourtStore = create<CourtState>((set, get) => ({
   },
 
   returnCourt: (courtId) => {
+    const prev = get().courts.find((c) => c.id === courtId);
+    const waiters = prev?.waitQueue ?? [];
     const nextCourts = get().courts.map((c) =>
       c.id === courtId
         ? {
@@ -280,6 +291,7 @@ export const useCourtStore = create<CourtState>((set, get) => ({
             gamesCompleted: 0,
             maxGames: 0,
             joinRequests: [],
+            waitQueue: [],
             reservedBy: undefined,
             reservedAt: undefined,
             startedAt: undefined,
@@ -291,6 +303,19 @@ export const useCourtStore = create<CourtState>((set, get) => ({
     );
     set({ courts: nextCourts, lastUpdated: new Date().toISOString() });
     persistCourts(nextCourts);
+
+    waiters.forEach((w, i) => {
+      useNotificationStore.getState().pushInbox({
+        type: 'system',
+        title: i === 0 ? '코트 비었어요 · 1번 대기' : `코트 비었어요 · ${i + 1}번 대기`,
+        message:
+          i === 0
+            ? `${courtId}번 코트가 비었어요. 지금 예약하면 다음으로 이용할 수 있어요.`
+            : `${courtId}번 코트가 비었어요. 대기 순번은 ${i + 1}번이었어요.`,
+        targetUserId: w.userId,
+        courtId,
+      });
+    });
   },
 
   adminRemovePlayer: (courtId, userId) => {
@@ -544,6 +569,105 @@ export const useCourtStore = create<CourtState>((set, get) => ({
     set({ courts: nextCourts, lastUpdated: new Date().toISOString() });
     persistCourts(nextCourts);
     return { success: true, message: '합류 신청을 모두 삭제했어요.' };
+  },
+
+  joinWaitQueue: (courtId, userId, userName) => {
+    const appStore = useAppStore.getState();
+    if (!appStore.checkGeoFence()) {
+      return { success: false, message: '체육관 근처에서만 대기할 수 있어요.' };
+    }
+    const court = get().courts.find((c) => c.id === courtId);
+    if (!court || !canJoinWaitQueue(court)) {
+      return { success: false, message: '예약·경기 중인 코트만 대기할 수 있어요.' };
+    }
+    if (court.players.some((p) => p.userId === userId) || court.reservedBy === userId) {
+      return { success: false, message: '이미 이 코트를 이용 중이에요.' };
+    }
+    const queue = court.waitQueue ?? [];
+    if (queue.some((w) => w.userId === userId)) {
+      return { success: false, message: '이미 대기열에 있어요.' };
+    }
+    if (userHasActiveCourt(userId, get().courts)) {
+      return { success: false, message: '다른 코트를 이용 중이면 대기할 수 없어요.' };
+    }
+
+    const entryId = `wq-${Date.now()}`;
+    const nextCourts = get().courts.map((c) =>
+      c.id === courtId
+        ? {
+            ...c,
+            waitQueue: [
+              ...(c.waitQueue ?? []),
+              { id: entryId, userId, userName, joinedAt: new Date().toISOString() },
+            ],
+          }
+        : c
+    );
+    set({ courts: nextCourts, lastUpdated: new Date().toISOString() });
+    persistCourts(nextCourts);
+
+    const position = (court.waitQueue?.length ?? 0) + 1;
+    const hostId = court.reservedBy ?? court.players[0]?.userId;
+    if (hostId && hostId !== userId) {
+      useNotificationStore.getState().pushInbox({
+        type: 'system',
+        title: '대기열 등록',
+        message: `${userName}님이 ${courtId}번 코트 대기열에 올랐어요 (${position}번)`,
+        targetUserId: hostId,
+        courtId,
+      });
+    }
+    return { success: true, message: `${position}번으로 대기열에 등록됐어요.` };
+  },
+
+  leaveWaitQueue: (courtId, userId) => {
+    const court = get().courts.find((c) => c.id === courtId);
+    if (!court?.waitQueue?.some((w) => w.userId === userId)) {
+      return { success: false, message: '대기열에 없어요.' };
+    }
+    const nextCourts = get().courts.map((c) =>
+      c.id === courtId
+        ? { ...c, waitQueue: (c.waitQueue ?? []).filter((w) => w.userId !== userId) }
+        : c
+    );
+    set({ courts: nextCourts, lastUpdated: new Date().toISOString() });
+    persistCourts(nextCourts);
+    return { success: true, message: '대기열에서 나왔어요.' };
+  },
+
+  removeWaitEntry: (courtId, entryId) => {
+    const court = get().courts.find((c) => c.id === courtId);
+    const entry = court?.waitQueue?.find((w) => w.id === entryId);
+    if (!entry) return { success: false, message: '대기자를 찾을 수 없어요.' };
+    const nextCourts = get().courts.map((c) =>
+      c.id === courtId
+        ? { ...c, waitQueue: (c.waitQueue ?? []).filter((w) => w.id !== entryId) }
+        : c
+    );
+    set({ courts: nextCourts, lastUpdated: new Date().toISOString() });
+    persistCourts(nextCourts);
+    useNotificationStore.getState().pushInbox({
+      type: 'system',
+      title: '대기열 제외',
+      message: `${courtId}번 코트 대기열에서 제외됐어요.`,
+      targetUserId: entry.userId,
+      courtId,
+    });
+    return { success: true, message: `${entry.userName}님을 대기열에서 제외했어요.` };
+  },
+
+  adminClearWaitQueue: (courtId) => {
+    const court = get().courts.find((c) => c.id === courtId);
+    if (!court) return { success: false, message: '코트를 찾을 수 없어요.' };
+    if (!(court.waitQueue?.length)) {
+      return { success: false, message: '비울 대기열이 없어요.' };
+    }
+    const nextCourts = get().courts.map((c) =>
+      c.id === courtId ? { ...c, waitQueue: [] } : c
+    );
+    set({ courts: nextCourts, lastUpdated: new Date().toISOString() });
+    persistCourts(nextCourts);
+    return { success: true, message: '대기열을 비웠어요.' };
   },
 
   refreshCourts: () => {

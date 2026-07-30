@@ -21,6 +21,9 @@ import 'react-native-reanimated';
 
 import { ToastContainer } from '@/src/components/ui/ToastContainer';
 import { SirenModal } from '@/src/components/ui/SirenModal';
+import {
+  PostLoginOverlayGate,
+} from '@/src/components/site/SiteOverlayHost';
 import { colors, fonts, typography } from '@/src/theme';
 import { hydrateAppStateFromDisk } from '@/src/services/hydrateApp';
 import { initCrossTabSync } from '@/src/services/crossTabSync';
@@ -119,6 +122,7 @@ export default function RootLayout() {
         </Stack>
         <ToastContainer />
         <SirenModal />
+        <PostLoginOverlayGate />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

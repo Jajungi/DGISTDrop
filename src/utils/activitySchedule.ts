@@ -35,6 +35,29 @@ export function formatHHMM(hour: number, minute: number): string {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
+/** 이용 안내·배너용 활동 일정 한 줄 요약 */
+export function formatActivityScheduleLabel(
+  sessions: { day: number; startHour: number; startMinute: number; endHour: number; endMinute: number }[],
+  dayLabel: (day: number) => string = (d) => ['일', '월', '화', '수', '목', '금', '토'][d] ?? ''
+): string {
+  if (!sessions.length) return '활동 일정 미설정';
+
+  const byKey = new Map<string, number[]>();
+  for (const s of sessions) {
+    const key = `${formatHHMM(s.startHour, s.startMinute)}–${formatHHMM(s.endHour, s.endMinute)}`;
+    const days = byKey.get(key) ?? [];
+    if (!days.includes(s.day)) days.push(s.day);
+    byKey.set(key, days);
+  }
+
+  return [...byKey.entries()]
+    .map(([time, days]) => {
+      const dayText = [...days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map(dayLabel).join('·');
+      return `매주 ${dayText} ${time}`;
+    })
+    .join(' · ');
+}
+
 function clampHour(n: number) {
   return Math.max(0, Math.min(23, Math.round(Number(n)) || 0));
 }
