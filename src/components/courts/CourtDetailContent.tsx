@@ -392,8 +392,14 @@ export function CourtDetailContent({
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={[styles.scrollContent, embedded && styles.scrollContentEmbedded]}
+      contentContainerStyle={[
+        styles.scrollContent,
+        embedded && styles.scrollContentEmbedded,
+        embedded && styles.scrollContentEmbeddedTight,
+      ]}
       keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator
+      bounces={false}
     >
       {onDismiss ? (
         <Pressable onPress={onDismiss} style={styles.dismissSurface}>
@@ -409,8 +415,9 @@ export function CourtDetailContent({
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  scrollContentEmbedded: { padding: spacing.md, paddingBottom: spacing.xl },
-  dismissSurface: { flexGrow: 1 },
+  scrollContentEmbedded: { padding: spacing.md, paddingBottom: spacing.lg },
+  scrollContentEmbeddedTight: { paddingBottom: spacing.md, flexGrow: 0 },
+  dismissSurface: {},
   header: { marginBottom: spacing.md },
   compactStatus: {
     flexDirection: 'row',

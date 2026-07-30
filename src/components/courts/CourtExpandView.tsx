@@ -89,15 +89,16 @@ export function CourtExpandView({
     (containerH: number, screenY?: number) => {
       const cy = screenY ?? containerScreenY;
       const visibleBottom = windowHeight - tabBarHeight;
-      // 앱 헤더 아래·컨테이너 실제 위치 기준으로 보이는 영역만 사용 (상단 배너에 아래가 잘리지 않게)
       const panelTopScreen = Math.max(cy + CLUSTER_PAD, insets.top + headerHeight + CLUSTER_PAD);
       const available = Math.max(200, visibleBottom - panelTopScreen - CLUSTER_PAD);
-      const detailHeight = Math.max(240, Math.min(containerH - CLUSTER_PAD * 2, available));
+      // 모바일: 패널이 남는 여백을 덜 먹도록 가용 높이의 일부만 사용
+      const heightBudget = !isDesktop ? Math.min(available, available * 0.92) : available;
+      const detailHeight = Math.max(220, Math.min(containerH - CLUSTER_PAD * 2, heightBudget));
       let detailTop = panelTopScreen - cy;
       detailTop = Math.max(CLUSTER_PAD, Math.min(detailTop, containerH - detailHeight - CLUSTER_PAD));
       return { detailTop, detailHeight };
     },
-    [containerScreenY, headerHeight, insets.top, tabBarHeight, windowHeight]
+    [containerScreenY, headerHeight, insets.top, isDesktop, tabBarHeight, windowHeight]
   );
 
   const applyTarget = useCallback(
@@ -204,13 +205,13 @@ export function CourtExpandView({
   const narrowSplit = !isDesktop || windowWidth < 900;
 
   const splitCourtSize = useMemo(() => {
-    const bodyH = Math.max(120, panelGeom.detailHeight - DETAIL_HEADER_H - 16);
+    const bodyH = Math.max(100, panelGeom.detailHeight - DETAIL_HEADER_H - (narrowSplit ? 8 : 16));
     const maxW = narrowSplit
-      ? Math.min(containerSize.width - 48, Math.min(bodyH * 0.55, 280) * COURT_ASPECT)
+      ? Math.min(containerSize.width - 32, Math.min(bodyH * 0.36, 168) * COURT_ASPECT)
       : isDesktop
         ? Math.min(containerSize.width * 0.55, bodyH * COURT_ASPECT)
         : Math.min(containerSize.width * 0.48, bodyH * COURT_ASPECT);
-    const width = Math.max(120, maxW);
+    const width = Math.max(narrowSplit ? 100 : 120, maxW);
     return { width, height: getCourtHeight(width) };
   }, [containerSize.width, isDesktop, narrowSplit, panelGeom.detailHeight]);
 
@@ -303,7 +304,13 @@ export function CourtExpandView({
               </TouchGuard>
             </View>
 
-            <View style={[styles.splitBody, narrowSplit && styles.splitBodyStack]}>
+            <View
+              style={[
+                styles.splitBody,
+                narrowSplit && styles.splitBodyStack,
+                narrowSplit && styles.splitBodyStackTight,
+              ]}
+            >
               <Pressable
                 style={[styles.splitCourtCol, narrowSplit && styles.splitCourtColStack]}
                 onPress={requestClose}
@@ -400,6 +407,12 @@ const styles = StyleSheet.create({
   splitBodyStack: {
     flexDirection: 'column',
   },
+  splitBodyStackTight: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
+  },
   splitCourtCol: {
     flexGrow: 0,
     flexShrink: 0,
@@ -408,6 +421,7 @@ const styles = StyleSheet.create({
   },
   splitCourtColStack: {
     alignSelf: 'center',
+    marginBottom: 0,
   },
   splitDetailCol: {
     flex: 1,
@@ -419,6 +433,6 @@ const styles = StyleSheet.create({
   },
   splitDetailColStack: {
     flex: 1,
-    minHeight: 200,
+    minHeight: 120,
   },
 });

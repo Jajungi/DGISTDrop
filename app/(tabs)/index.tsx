@@ -21,7 +21,7 @@ export default function CourtsScreen() {
   const { remaining } = useActivityStatus();
   const { isAtGym } = useGeoLocation();
   useCourtRealtime();
-  const { expandAreaHeight, needsVerticalScroll } = useLayoutMode();
+  const { expandAreaHeight, needsVerticalScroll, isDesktop } = useLayoutMode();
 
   const courts = useCourtStore((s) => s.courts);
   const selectedCourtId = useCourtStore((s) => s.selectedCourtId);
@@ -192,23 +192,37 @@ export default function CourtsScreen() {
           style={styles.scroll}
           contentContainerStyle={[
             styles.scrollContent,
-            selectedCourtId !== null && {
-              minHeight: expandAreaHeight,
-              flexGrow: 1,
-              paddingBottom: 160,
-            },
+            selectedCourtId !== null &&
+              isDesktop && {
+                minHeight: expandAreaHeight,
+                flexGrow: 1,
+                paddingBottom: 120,
+              },
+            selectedCourtId !== null &&
+              !isDesktop && {
+                flexGrow: 1,
+                minHeight: expandAreaHeight,
+                paddingBottom: 8,
+              },
             selectedCourtId === null && needsVerticalScroll && { minHeight: expandAreaHeight },
           ]}
-          scrollEnabled
-          nestedScrollEnabled
-          showsVerticalScrollIndicator={needsVerticalScroll || selectedCourtId !== null}
+          // 모바일 확대 중에는 바깥 스크롤 잠금 — 상세(예약) 영역만 스크롤
+          scrollEnabled={selectedCourtId === null || isDesktop}
+          nestedScrollEnabled={isDesktop}
+          showsVerticalScrollIndicator={
+            selectedCourtId === null
+              ? needsVerticalScroll
+              : isDesktop
+          }
           keyboardShouldPersistTaps="handled"
           scrollEventThrottle={32}
           onScroll={() => {
-            if (selectedCourtId != null) remeasureExpandRef.current();
+            if (selectedCourtId != null && isDesktop) remeasureExpandRef.current();
           }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+            selectedCourtId === null ? (
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+            ) : undefined
           }
         >
           <ActivityNoticeBanner />

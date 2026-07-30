@@ -1,6 +1,12 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import { type PropsWithChildren } from 'react';
 
+/** Cloudflare Pages 기본 배포 URL — OG 이미지는 절대 경로 필요 */
+const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://dgistdrop.pages.dev';
+const OG_IMAGE = `${SITE_URL}/og-image.png`;
+const SITE_TITLE = 'Drop — DGIST 배드민턴';
+const SITE_DESC = 'DGIST 배드민턴 동아리 Drop — 코트 예약·출석·매칭·포인트';
+
 export default function Root({ children }: PropsWithChildren) {
   return (
     <html lang="ko">
@@ -16,7 +22,23 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Drop" />
-        <meta name="description" content="DGIST 배드민턴 동아리 Drop — 코트 예약·출석·매칭·포인트" />
+        <meta name="description" content={SITE_DESC} />
+
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Drop" />
+        <meta property="og:title" content={SITE_TITLE} />
+        <meta property="og:description" content={SITE_DESC} />
+        <meta property="og:url" content={SITE_URL} />
+        <meta property="og:image" content={OG_IMAGE} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:locale" content="ko_KR" />
+
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={SITE_TITLE} />
+        <meta name="twitter:description" content={SITE_DESC} />
+        <meta name="twitter:image" content={OG_IMAGE} />
+
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" type="image/png" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
