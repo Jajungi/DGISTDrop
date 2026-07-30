@@ -23,6 +23,12 @@ let socialUnsubs: (() => void)[] = [];
 /** 디자인용 mock 초기값 제거 — Supabase가 아직 채우지 않는 스토어 비우기 */
 export function resetSupabaseSessionStores() {
   setRemoteCourtWriteEnabled(false);
+  // mock 유저(지금 N명 등)가 하이드레이션 전에 깜빡이지 않도록 즉시 비움
+  useAuthStore.setState({
+    users: [],
+    attendanceRecords: [],
+    authHydrated: false,
+  });
   useFriendStore.getState().hydrate({}, []);
   usePointStore.getState().hydrate([]);
   useLobbyStore.getState().hydrateRooms([]);

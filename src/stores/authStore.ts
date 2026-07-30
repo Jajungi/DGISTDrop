@@ -218,14 +218,15 @@ function canDeleteUser(
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   currentUser: null,
-  users: MOCK_USERS,
+  // Supabase 모드에서는 mock이 먼저 그려지지 않도록 빈 목록으로 시작
+  users: isSupabaseEnabled() ? [] : MOCK_USERS,
   isAuthenticated: false,
   isGuestSession: false,
   authHydrated: false,
   peakResetDate: null,
   lastCleaningBonusMonth: null,
   credentials: seedDemoCredentials(
-    MOCK_USERS.map((u) => u.studentId)
+    isSupabaseEnabled() ? [] : MOCK_USERS.map((u) => u.studentId)
   ),
 
   setAuthHydrated: () => set({ authHydrated: true }),
@@ -640,7 +641,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { users, currentUser };
     }),
 
-  attendanceRecords: MOCK_ATTENDANCE,
+  attendanceRecords: isSupabaseEnabled() ? [] : MOCK_ATTENDANCE,
 
   checkIn: (userId, options) => {
     if (!options?.skipGeoFence && !useAppStore.getState().checkGeoFence()) {

@@ -38,11 +38,14 @@ export default function CourtsScreen() {
 
   const currentUser = useAuthStore((s) => s.currentUser);
   const users = useAuthStore((s) => s.users);
+  const authHydrated = useAuthStore((s) => s.authHydrated);
   const checkGeoFence = useAppStore((s) => s.checkGeoFence);
   const showToast = useNotificationStore((s) => s.showToast);
   const submitMatchResult = useNotificationStore((s) => s.submitMatchResult);
 
-  const atGymCount = users.filter((u) => u.isAtGym && u.memberStatus === 'approved').length;
+  const atGymCount = authHydrated
+    ? users.filter((u) => u.isAtGym && u.memberStatus === 'approved').length
+    : undefined;
 
   const [refreshing, setRefreshing] = useState(false);
   const [showScoreSheet, setShowScoreSheet] = useState(false);
