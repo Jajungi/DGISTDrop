@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import type { Court, CourtPlayer, GameMode, NantaHalf } from '@/src/types';
 import { GAME_COUNT_OPTIONS, COACH_COURT_ID } from '@/src/constants/court';
 import { MIN_PLAYERS_FOR_GAME } from '@/src/constants';
+import { createEmptyCourts, userToCourtPlayer, userHasActiveCourt } from '@/src/services/courtService';
 import { createMockCourts } from '@/src/services/mockData';
-import { userToCourtPlayer, userHasActiveCourt } from '@/src/services/courtService';
 import { getReservationCost, isPeakTime, canReserve, isCenterCourtId } from '@/src/services/points';
 import { useAuthStore } from './authStore';
 import { useAppStore } from './authStore';
@@ -16,6 +16,16 @@ import { applyCourtMaintenance } from '@/src/services/courtMaintenance';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { upsertCourt } from '@/src/services/supabase/courts';
 import { isGuestUser } from '@/src/utils/guestAccess';
+
+/**
+ * Supabase 모드에서 서버 hydrate 전에 mock/빈 상태를 upsert 하지 않도록 막음.
+ * (로컬 mock 코트가 프로덕션 DB를 덮어쓰는 사고 방지)
+ */
+let allowRemoteCourtWrite = !isSupabaseEnabled();
+
+export function setRemoteCourtWriteEnabled(enabled: boolean) {
+  allowRemoteCourtWrite = enabled;
+}
 
 interface CourtState {
   courts: Court[];
@@ -52,6 +62,7 @@ interface CourtState {
 
 function persistCourts(courts: Court[]) {
   if (isSupabaseEnabled()) {
+    if (!allowRemoteCourtWrite) return;
     courts.forEach((court) => {
       void upsertCourt(court).catch(() => {});
     });
@@ -61,7 +72,8 @@ function persistCourts(courts: Court[]) {
 }
 
 export const useCourtStore = create<CourtState>((set, get) => ({
-  courts: createMockCourts(),
+  // Supabase 사용 시 mock 시드 금지 — 빈 코트로 시작 후 서버 hydrate
+  courts: isSupabaseEnabled() ? createEmptyCourts() : createMockCourts(),
   selectedCourtId: null,
   lastUpdated: new Date().toISOString(),
 
@@ -428,6 +440,7 @@ export const useCourtStore = create<CourtState>((set, get) => ({
       return { success: false, message: '이미 합류 신청했어요.' };
     }
 
+    const requestId = `jr-${Date.now()}`;
     const nextCourts = get().courts.map((c) =>
       c.id === courtId
         ? {
@@ -435,7 +448,7 @@ export const useCourtStore = create<CourtState>((set, get) => ({
             joinRequests: [
               ...c.joinRequests,
               {
-                id: `jr-${Date.now()}`,
+                id: requestId,
                 userId,
                 userName,
                 rank,
@@ -455,6 +468,7 @@ export const useCourtStore = create<CourtState>((set, get) => ({
         title: '참가 요청',
         message: `${userName}님이 ${courtId}번 코트 합류를 요청했어요`,
         courtId,
+        joinRequestId: requestId,
         targetUserId: hostId,
       });
     }
@@ -487,10 +501,19 @@ export const useCourtStore = create<CourtState>((set, get) => ({
 
     set({ courts: nextCourts, lastUpdated: new Date().toISOString() });
     persistCourts(nextCourts);
+    useNotificationStore.getState().pushInbox({
+      type: 'join',
+      title: '합류 수락',
+      message: `${courtId}번 코트 합류가 수락됐어요.`,
+      targetUserId: request.userId,
+      courtId,
+    });
     return { success: true, message: `${request.userName}님이 합류했어요.` };
   },
 
   rejectJoin: (courtId, requestId) => {
+    const court = get().courts.find((c) => c.id === courtId);
+    const request = court?.joinRequests.find((r) => r.id === requestId);
     const nextCourts = get().courts.map((c) =>
       c.id === courtId
         ? { ...c, joinRequests: c.joinRequests.filter((r) => r.id !== requestId) }
@@ -498,6 +521,15 @@ export const useCourtStore = create<CourtState>((set, get) => ({
     );
     set({ courts: nextCourts, lastUpdated: new Date().toISOString() });
     persistCourts(nextCourts);
+    if (request) {
+      useNotificationStore.getState().pushInbox({
+        type: 'join',
+        title: '합류 거절',
+        message: `${courtId}번 코트 합류가 거절됐어요.`,
+        targetUserId: request.userId,
+        courtId,
+      });
+    }
   },
 
   adminClearJoinRequests: (courtId) => {

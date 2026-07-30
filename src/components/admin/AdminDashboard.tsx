@@ -147,6 +147,12 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
     showToast({ type: 'info', title: '', message: `코트 ${court.id}를 반납 처리했어요.` });
   };
 
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const isAdminActor =
+    currentUser?.id === adminId
+      ? currentUser.membershipTier === 'admin'
+      : users.find((u) => u.id === adminId)?.membershipTier === 'admin';
+
   const sections: { key: AdminSection; label: string; badge?: number }[] = [
     { key: 'overview', label: '요약' },
     { key: 'alerts', label: '알림', badge: adminAlerts.length || undefined },
@@ -179,7 +185,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
     },
     { key: 'points', label: '포인트' },
     { key: 'courts', label: '코트' },
-    { key: 'developer', label: '개발자' },
+    ...(isAdminActor ? [{ key: 'developer' as AdminSection, label: '개발자' }] : []),
   ];
 
   return (
@@ -320,7 +326,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
         </View>
       )}
 
-      {section === 'developer' && (
+      {section === 'developer' && isAdminActor && (
         <View style={styles.sectionBody}>
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>개발자 모드</Text>

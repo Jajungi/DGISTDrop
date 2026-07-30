@@ -36,13 +36,15 @@ export function CourtCard({
   hPad = 3,
   chromeTop = 14,
 }: CourtCardProps) {
-  const courtHeight = getCourtHeight(courtWidth);
+  const safeWidth = Number.isFinite(courtWidth) && courtWidth > 0 ? courtWidth : 96;
+  const courtHeight = getCourtHeight(safeWidth);
+  const slotWidth = safeWidth + hPad * 2;
   const radius = COURT_CARD_RADIUS;
   const canJoin = court.status === 'playing' && court.players.length >= 2 && court.players.length < 4;
   const showProfiles = court.players.length > 0;
   const avatarSize = compact
-    ? Math.max(10, Math.min(16, courtWidth * 0.14))
-    : Math.max(14, Math.min(22, courtWidth * 0.2));
+    ? Math.max(10, Math.min(16, safeWidth * 0.14))
+    : Math.max(14, Math.min(22, safeWidth * 0.2));
   const isReserved = court.status === 'reserved';
   const isPlaying = court.status === 'playing';
   const isCooling = court.status === 'just_finished';
@@ -51,12 +53,14 @@ export function CourtCard({
   const cleanupLeft = formatCleanupRemaining(court.finishedAt);
   const colLabel = getCourtColumnLabel(court.id);
 
+  if (courtHeight <= 0) return null;
+
   return (
     <Pressable
       onPress={() => onPress(court)}
       style={({ pressed }) => [
         styles.wrapper,
-        { width: courtWidth, paddingTop: chromeTop, paddingHorizontal: hPad },
+        { width: slotWidth, paddingTop: chromeTop },
         isDimmed && styles.dimmed,
         pressed && styles.pressed,
       ]}
@@ -80,22 +84,22 @@ export function CourtCard({
       <LightShadowView
         style={[
           styles.courtShadow,
-          { width: courtWidth, borderRadius: radius },
+          { width: safeWidth, borderRadius: radius },
           isSelected && styles.selected,
         ]}
         intensity={isSelected ? 1.1 : 1}
         elevated={isPlaying}
       >
-        <View style={[styles.courtClip, { width: courtWidth, height: courtHeight, borderRadius: radius }]}>
-          <CourtIllustration court={court} width={courtWidth} borderRadius={radius} />
+        <View style={[styles.courtClip, { width: safeWidth, height: courtHeight, borderRadius: radius }]}>
+          <CourtIllustration court={court} width={safeWidth} borderRadius={radius} />
 
-          <CourtGameProgress court={court} courtWidth={courtWidth} />
+          <CourtGameProgress court={court} courtWidth={safeWidth} />
 
           {showProfiles && (
             <CourtPlayerProfiles
               players={court.players}
               avatarSize={avatarSize}
-              courtWidth={courtWidth}
+              courtWidth={safeWidth}
               courtHeight={courtHeight}
               compact={compact}
             />
@@ -151,7 +155,7 @@ export function CourtCard({
 
           {court.isCoachCourt && !canJoin && (
             <View style={styles.coachTag}>
-              <Text style={styles.coachText}>C</Text>
+              <Text style={styles.coachText}>코칭</Text>
             </View>
           )}
         </View>
@@ -163,6 +167,7 @@ export function CourtCard({
 const styles = StyleSheet.create({
   wrapper: {
     paddingBottom: 3,
+    alignItems: 'center',
     ...Platform.select({ web: { cursor: 'pointer' as const } }),
   },
   reservedTagWrap: {
@@ -325,5 +330,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  coachText: { color: '#FFF', fontSize: 8, fontWeight: '700' },
+  coachText: { color: '#FFF', fontSize: 9, fontWeight: '800' },
 });

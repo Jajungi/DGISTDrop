@@ -5,9 +5,9 @@ import { CourtCard } from './CourtCard';
 import { LightShadowCapture } from '@/src/components/ui/LightShadowView';
 import { SoftEdgeFade } from '@/src/components/ui/SoftEdgeFade';
 import { GymFloorMap } from '@/src/components/courts/GymFloorMap';
-import { CoachingEntryLink } from '@/src/components/coaching/CoachingEntryLink';
 import { GYM_COURT_ROWS, GYM_VENUE } from '@/src/constants/court';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
+import { CoachingEntryLink } from '@/src/components/coaching/CoachingEntryLink';
 import { colors, typography, spacing } from '@/src/theme';
 
 interface CourtGridProps {
@@ -17,6 +17,7 @@ interface CourtGridProps {
   filter?: 'all' | 'empty' | 'mine';
   myUserId?: string;
   registerCourtRef?: (id: number, ref: View | null) => void;
+  /** 3번 코트 아래 코칭 화면 링크 */
   showCoachingLink?: boolean;
 }
 
@@ -41,23 +42,23 @@ export function CourtGrid({
   registerCourtRef,
   showCoachingLink = false,
 }: CourtGridProps) {
+  const { gymLayout, needsHorizontalScroll, gridRenderWidth } = useLayoutMode();
   const {
     courtWidth,
+    slotWidth,
     courtGap,
-    gridPadding,
-    gridContentHeight,
-    gridRenderWidth,
-    needsHorizontalScroll,
     entranceGutter,
+    rowEntranceGap,
     cardHPad,
     cardChromeTop,
-    cardChrome,
     floorContentTop,
-    floorStageH,
-    floorHeaderH,
     aisleH,
-  } = useLayoutMode();
-  const floorTopInset = floorContentTop;
+    courtsRowWidth,
+    floorWidth,
+  } = gymLayout;
+
+  // 바닥·코트 블록을 동일 폭으로 묶어서 중앙 정렬 (패널이 더 넓어도 어긋나지 않음)
+  const blockWidth = Math.max(floorWidth, entranceGutter + rowEntranceGap + courtsRowWidth);
 
   return (
     <LightShadowCapture>
@@ -65,74 +66,78 @@ export function CourtGrid({
         <View
           style={[
             styles.container,
-            { paddingHorizontal: gridPadding, minHeight: gridContentHeight, width: gridRenderWidth },
+            {
+              width: needsHorizontalScroll ? blockWidth : gridRenderWidth,
+              minHeight: gymLayout.floorHeight + 36,
+            },
             needsHorizontalScroll && styles.containerScroll,
           ]}
         >
-          <GymFloorMap
-            courtWidth={courtWidth}
-            courtGap={courtGap}
-            floorWidth={gridRenderWidth}
-            entranceGutter={entranceGutter}
-            cardChrome={cardChrome}
-            stageH={floorStageH}
-            headerH={floorHeaderH}
-            contentTop={floorContentTop}
-            aisleH={aisleH}
-          />
-          <View style={{ paddingTop: floorTopInset }}>
-            {GYM_COURT_ROWS.map((row, rowIdx) => (
-              <View
-                key={rowIdx}
-                style={[styles.rowWrap, { marginBottom: aisleH }]}
-              >
-                {rowIdx === GYM_COURT_ROWS.length - 1 ? (
-                  <View style={[styles.entranceCol, { width: entranceGutter }]}>
-                    <Text style={styles.entranceLabel}>{GYM_VENUE.entranceLabel}</Text>
-                    <Text style={styles.entranceArrow}>▼</Text>
+          <View style={[styles.alignedBlock, { width: blockWidth, alignSelf: 'center' }]}>
+            <GymFloorMap layout={gymLayout} />
+
+            <View style={{ paddingTop: floorContentTop, width: blockWidth }}>
+              {GYM_COURT_ROWS.map((row, rowIdx) => (
+                <View
+                  key={rowIdx}
+                  style={[
+                    styles.rowWrap,
+                    {
+                      marginBottom: aisleH,
+                      width: blockWidth,
+                      gap: rowEntranceGap,
+                    },
+                  ]}
+                >
+                  {rowIdx === GYM_COURT_ROWS.length - 1 ? (
+                    <View style={[styles.entranceCol, { width: entranceGutter }]}>
+                      <Text style={styles.entranceLabel}>{GYM_VENUE.entranceLabel}</Text>
+                      <Text style={styles.entranceArrow}>▼</Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.entranceSpacer, { width: entranceGutter }]} />
+                  )}
+
+                  <View style={[styles.row, { width: courtsRowWidth, gap: courtGap }]}>
+                    {row.map((courtId) => {
+                      const court = getCourtById(courts, courtId);
+                      if (!court) {
+                        return <View key={courtId} style={{ width: slotWidth }} />;
+                      }
+                      const dimmed = filter !== 'all' && !matchesFilter(court, filter, myUserId);
+                      return (
+                        <View
+                          key={courtId}
+                          ref={(ref) => registerCourtRef?.(courtId, ref)}
+                          collapsable={false}
+                          style={[styles.courtSlot, { width: slotWidth }]}
+                        >
+                          <CourtCard
+                            court={court}
+                            onPress={onCourtPress}
+                            isSelected={selectedCourtId === courtId}
+                            isDimmed={dimmed}
+                            courtWidth={courtWidth}
+                            hPad={cardHPad}
+                            chromeTop={cardChromeTop}
+                            compact
+                          />
+                        </View>
+                      );
+                    })}
                   </View>
-                ) : (
+                </View>
+              ))}
+
+              {showCoachingLink && (
+                <View style={[styles.coachingRow, { width: blockWidth, gap: rowEntranceGap }]}>
                   <View style={[styles.entranceSpacer, { width: entranceGutter }]} />
-                )}
-
-                <View style={[styles.row, { gap: courtGap }]}>
-                  {row.map((courtId) => {
-                    const court = getCourtById(courts, courtId);
-                    if (!court) return null;
-                    const dimmed = filter !== 'all' && !matchesFilter(court, filter, myUserId);
-                    return (
-                      <View
-                        key={courtId}
-                        ref={(ref) => registerCourtRef?.(courtId, ref)}
-                        collapsable={false}
-                        style={styles.courtSlot}
-                      >
-                        <CourtCard
-                          court={court}
-                          onPress={onCourtPress}
-                          isSelected={selectedCourtId === courtId}
-                          isDimmed={dimmed}
-                          courtWidth={courtWidth}
-                          hPad={cardHPad}
-                          chromeTop={cardChromeTop}
-                          compact
-                        />
-                      </View>
-                    );
-                  })}
+                  <View style={[styles.coachingLinkArea, { width: courtsRowWidth }]}>
+                    <CoachingEntryLink />
+                  </View>
                 </View>
-              </View>
-            ))}
-
-            {/* 코칭·레슨·공지 링크 — 3번 코트(좌측 하단) 아래 */}
-            {showCoachingLink && (
-              <View style={styles.coachingRow}>
-                <View style={[styles.entranceSpacer, { width: entranceGutter }]} />
-                <View style={styles.coachingLinkArea}>
-                  <CoachingEntryLink />
-                </View>
-              </View>
-            )}
+              )}
+            </View>
           </View>
         </View>
       </SoftEdgeFade>
@@ -150,16 +155,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   containerScroll: {
-    // 가로 스크롤 시 코트가 잘리지 않도록 폭 제한·클리핑 해제
     alignSelf: 'flex-start',
     maxWidth: undefined,
     overflow: 'visible',
   },
+  alignedBlock: {
+    position: 'relative',
+  },
   rowWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    width: '100%',
     zIndex: 1,
   },
   entranceCol: {
@@ -167,6 +172,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
     flexShrink: 0,
+    flexGrow: 0,
   },
   entranceLabel: {
     ...typography.small,
@@ -181,27 +187,24 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     opacity: 0.65,
   },
-  entranceSpacer: { flexShrink: 0 },
+  entranceSpacer: { flexShrink: 0, flexGrow: 0 },
   row: {
-    flex: 1,
     flexDirection: 'row',
     justifyContent: 'flex-start',
-    gap: 0,
-    minWidth: 0,
+    flexShrink: 0,
+    flexGrow: 0,
   },
   courtSlot: {
-    flexShrink: 1,
-    minWidth: 0,
+    flexShrink: 0,
+    flexGrow: 0,
   },
   coachingRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 2,
-    width: '100%',
     zIndex: 1,
   },
   coachingLinkArea: {
-    flex: 1,
     alignItems: 'flex-start',
+    flexShrink: 0,
   },
 });

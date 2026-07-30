@@ -73,6 +73,7 @@ export async function adminUpdateProfileRemote(user: User): Promise<void> {
     lesson_status: user.lessonStatus,
     lesson_requested_at: user.lessonRequestedAt ?? null,
     is_coach: user.isCoach ?? false,
+    is_operator: user.isOperator ?? false,
     admin_note: user.adminNote ?? null,
     club_fee_verified_at: user.clubFeeVerifiedAt ?? null,
     club_fee_verified_by: user.clubFeeVerifiedBy ?? null,

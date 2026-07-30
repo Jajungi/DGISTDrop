@@ -7,6 +7,7 @@ import {
   Pressable,
   ScrollView,
   Platform,
+  Alert,
 } from 'react-native';
 import { NumericConfirmModal, type NumericConfirmStep } from '@/src/components/ui/NumericConfirmModal';
 import { generateNumericConfirmCode } from '@/src/utils/confirmCode';
@@ -22,6 +23,7 @@ import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
 import { getEffectiveSchedule } from '@/src/utils/dateFormat';
 import { isGuestStudentId } from '@/src/utils/studentId';
+import { isAdminUser } from '@/src/utils/staffAccess';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import { POINT_EARN } from '@/src/constants/points';
 import { RANK_THRESHOLDS, RANK_ORDER } from '@/src/constants';
@@ -73,6 +75,9 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
   const adminSetMemberStatus = useAuthStore((s) => s.adminSetMemberStatus);
   const adminSetLessonStatus = useAuthStore((s) => s.adminSetLessonStatus);
   const adminSetCoach = useAuthStore((s) => s.adminSetCoach);
+  const adminSetOperator = useAuthStore((s) => s.adminSetOperator);
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const canManageAdminTier = isAdminUser(currentUser);
   const adminAdjustPoints = useAuthStore((s) => s.adminAdjustPoints);
   const adminVerifyClubFee = useAuthStore((s) => s.adminVerifyClubFee);
   const adminRevokeClubFee = useAuthStore((s) => s.adminRevokeClubFee);
@@ -168,6 +173,13 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
 
   const notify = (r: { success: boolean; message: string }, type: 'success' | 'warning' = 'success') => {
     onToast(r.success ? type : 'warning', r.message);
+  };
+
+  const confirmRoleChange = (message: string, action: () => void) => {
+    Alert.alert('역할 변경 확인', message, [
+      { text: '취소', style: 'cancel' },
+      { text: '확인', style: 'destructive', onPress: action },
+    ]);
   };
 
   const closeDeleteFlow = () => {
@@ -268,14 +280,31 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
           <Section title="역할 · 등급">
             <Text style={styles.sectionHint}>Discord 역할처럼 회원 등급을 부여합니다.</Text>
             <View style={styles.chipRow}>
-              {(['associate', 'full', 'admin'] as MembershipTier[]).map((tier) => (
+              {(['associate', 'full'] as MembershipTier[]).map((tier) => (
                 <Chip
                   key={tier}
                   label={TIER_LABEL[tier]}
                   active={selected.membershipTier === tier}
-                  onPress={() => notify(adminSetMembershipTier(selected.id, tier))}
+                  onPress={() =>
+                    confirmRoleChange(
+                      `${selected.name}님을 ${TIER_LABEL[tier]}(으)로 변경할까요?`,
+                      () => notify(adminSetMembershipTier(selected.id, tier))
+                    )
+                  }
                 />
               ))}
+              {canManageAdminTier && (
+                <Chip
+                  label={TIER_LABEL.admin}
+                  active={selected.membershipTier === 'admin'}
+                  onPress={() =>
+                    confirmRoleChange(
+                      `${selected.name}님을 관리자로 변경할까요?`,
+                      () => notify(adminSetMembershipTier(selected.id, 'admin'))
+                    )
+                  }
+                />
+              )}
             </View>
           </Section>
 
@@ -357,12 +386,47 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
               <Chip
                 label="코치 권한 부여"
                 active={!!selected.isCoach}
-                onPress={() => notify(adminSetCoach(selected.id, true))}
+                onPress={() =>
+                  confirmRoleChange(`${selected.name}님에게 코치 권한을 부여할까요?`, () =>
+                    notify(adminSetCoach(selected.id, true))
+                  )
+                }
               />
               <Chip
                 label="권한 해제"
                 active={!selected.isCoach}
-                onPress={() => notify(adminSetCoach(selected.id, false))}
+                onPress={() =>
+                  confirmRoleChange(`${selected.name}님의 코치 권한을 회수할까요?`, () =>
+                    notify(adminSetCoach(selected.id, false))
+                  )
+                }
+              />
+            </View>
+          </Section>
+
+          <Section title="운영자 권한">
+            <Text style={styles.sectionHint}>
+              일상 운영 권한(개발자 탭·관리자 승격 제외) · 현재:{' '}
+              {selected.isOperator ? '운영자' : '없음'}
+            </Text>
+            <View style={styles.chipRow}>
+              <Chip
+                label="운영자 부여"
+                active={!!selected.isOperator}
+                onPress={() =>
+                  confirmRoleChange(`${selected.name}님에게 운영자 권한을 부여할까요?`, () =>
+                    notify(adminSetOperator(selected.id, true))
+                  )
+                }
+              />
+              <Chip
+                label="권한 해제"
+                active={!selected.isOperator}
+                onPress={() =>
+                  confirmRoleChange(`${selected.name}님의 운영자 권한을 회수할까요?`, () =>
+                    notify(adminSetOperator(selected.id, false))
+                  )
+                }
               />
             </View>
           </Section>

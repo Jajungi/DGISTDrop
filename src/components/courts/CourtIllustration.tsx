@@ -35,7 +35,11 @@ interface CourtIllustrationProps {
 }
 
 export function CourtIllustration({ court, width, borderRadius: radius = 0 }: CourtIllustrationProps) {
-  const height = getCourtHeight(width);
+  const safeWidth = Number.isFinite(width) && width > 0 ? width : 0;
+  const height = getCourtHeight(safeWidth);
+  if (safeWidth < 2 || height < 2) {
+    return <View style={{ width: Math.max(0, safeWidth), height: Math.max(0, height) }} />;
+  }
   const lineW = 1;
   const isLit = court.status === 'playing';
   const isEmpty = court.status === 'empty';

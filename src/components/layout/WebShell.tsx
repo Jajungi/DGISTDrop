@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Platform, Text, Pressable } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,7 +6,9 @@ import { useWindowDimensions } from 'react-native';
 import { AppHeader } from './AppHeader';
 import { useShellStore } from '@/src/stores/shellStore';
 import { useAuthStore } from '@/src/stores/authStore';
+import { useCourtStore } from '@/src/stores/courtStore';
 import { useAdminAlertCount } from '@/src/hooks/useAdminAlerts';
+import { isStaffUser } from '@/src/utils/staffAccess';
 import { NAV_ITEMS, ADMIN_NAV_ITEM, WEB_BREAKPOINT } from '@/src/constants/nav';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
@@ -16,7 +18,6 @@ const MAIN_GAP_COLLAPSED = 8;
 const MAIN_GAP_EXPANDED = 20;
 const ANIM_MS = 150;
 
-/** 웹 전용 부드러운 전환 — 레이아웃 속성을 컴포지터(브라우저 CSS transition)에 위임 */
 const sidebarTransition = Platform.select({
   web: {
     transitionProperty: 'width',
@@ -52,16 +53,31 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
   const router = useRouter();
   const sidebarExpanded = useShellStore((s) => s.sidebarExpanded);
   const isDesktop = Platform.OS === 'web' && width >= WEB_BREAKPOINT;
-  const isAdmin = useAuthStore((s) => s.currentUser?.membershipTier === 'admin');
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const isStaff = isStaffUser(currentUser);
   const isGuest = useAuthStore((s) => s.isGuestSession);
+  const selectedCourtId = useCourtStore((s) => s.selectedCourtId);
+  const selectCourt = useCourtStore((s) => s.selectCourt);
   const adminAlerts = useAdminAlertCount();
-  const navItems = (isAdmin ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS).filter(
+  const [hoveredHref, setHoveredHref] = useState<string | null>(null);
+  const navItems = (isStaff ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS).filter(
     (item) => !isGuest || item.href !== '/friends'
   );
 
   if (!isDesktop) {
     return <>{children}</>;
   }
+
+  const handleNavPress = (href: string) => {
+    const onCourts =
+      href === '/' &&
+      (pathname === '/' || pathname === '/(tabs)' || pathname === '/(tabs)/');
+    if (onCourts && selectedCourtId != null) {
+      selectCourt(null);
+      return;
+    }
+    router.push(href as '/');
+  };
 
   return (
     <View style={styles.root}>
@@ -81,10 +97,13 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
                 ? pathname === '/' || pathname === '/(tabs)' || pathname === '/(tabs)/'
                 : pathname.includes(item.href.replace('/', ''));
             const alerting = item.href === '/admin' && adminAlerts > 0;
+            const showHoverLabel = !sidebarExpanded && hoveredHref === item.href;
             return (
               <Pressable
                 key={item.href}
-                onPress={() => router.push(item.href as '/')}
+                onPress={() => handleNavPress(item.href)}
+                onHoverIn={() => setHoveredHref(item.href)}
+                onHoverOut={() => setHoveredHref((h) => (h === item.href ? null : h))}
                 style={[styles.navRow, active && styles.navRowActive]}
                 accessibilityRole="button"
                 accessibilityLabel={
@@ -117,6 +136,11 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
                 >
                   {item.label}
                 </Text>
+                {showHoverLabel ? (
+                  <View style={styles.hoverTip} pointerEvents="none">
+                    <Text style={styles.hoverTipText}>{item.label}</Text>
+                  </View>
+                ) : null}
               </Pressable>
             );
           })}
@@ -152,8 +176,9 @@ const styles = StyleSheet.create({
   sidebar: {
     paddingVertical: 28,
     paddingHorizontal: spacing.sm,
-    overflow: 'hidden',
+    overflow: 'visible',
     flexShrink: 0,
+    zIndex: 20,
   },
   navRow: {
     flexDirection: 'row',
@@ -163,6 +188,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderRadius: borderRadius.md,
     marginBottom: 4,
+    position: 'relative',
     ...Platform.select({ web: { cursor: 'pointer' as const } }),
   },
   navRowActive: {
@@ -205,6 +231,24 @@ const styles = StyleSheet.create({
   },
   navLabelActive: {
     color: colors.primary,
+  },
+  hoverTip: {
+    position: 'absolute',
+    left: 52,
+    top: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    zIndex: 30,
+  },
+  hoverTipText: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '600',
+    fontSize: 13,
   },
   main: {
     flex: 1,

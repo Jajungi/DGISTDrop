@@ -40,8 +40,10 @@ export interface User {
   scheduledEnd?: string;
   lessonStatus: LessonAccessStatus;
   lessonRequestedAt?: string;
-  /** 코치 공지 작성 권한 (관리자가 부여) */
+  /** 코치 공지 작성 권한 (운영진이 부여) */
   isCoach?: boolean;
+  /** 운영자 — 일상 운영 권한 (관리자만 개발자/관리자 승격) */
+  isOperator?: boolean;
   avatarColor: string;
   avatarUri?: string;
   createdAt: string;
@@ -269,6 +271,8 @@ export interface AppNotification {
   read: boolean;
   createdAt: string;
   courtId?: number;
+  /** 합류 요청 원탭 수락용 */
+  joinRequestId?: string;
   /** 수신 대상 (없으면 브로드캐스트 — 레거시) */
   targetUserId?: string;
 }

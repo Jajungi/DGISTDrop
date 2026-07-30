@@ -10,7 +10,7 @@ import type { User } from '@/src/types';
 export async function afterSupabaseAuth(user: User | null): Promise<void> {
   if (!isSupabaseEnabled()) return;
   if (user) {
-    await bindSupabaseSession(user.id, user.membershipTier === 'admin');
+    await bindSupabaseSession(user.id, user.membershipTier === 'admin' || !!user.isOperator);
     return;
   }
   teardownSupabaseSubscriptions();

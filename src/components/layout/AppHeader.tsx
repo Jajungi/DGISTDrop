@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +37,23 @@ export function AppHeader() {
 
   const [searchFocused, setSearchFocused] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const notifCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openNotif = () => {
+    if (notifCloseTimer.current) {
+      clearTimeout(notifCloseTimer.current);
+      notifCloseTimer.current = null;
+    }
+    setNotifOpen(true);
+  };
+
+  const scheduleCloseNotif = () => {
+    if (notifCloseTimer.current) clearTimeout(notifCloseTimer.current);
+    notifCloseTimer.current = setTimeout(() => {
+      setNotifOpen(false);
+      notifCloseTimer.current = null;
+    }, 180);
+  };
 
   const handleSearchSubmit = () => {
     const trimmed = searchQuery.trim();
@@ -153,11 +170,20 @@ export function AppHeader() {
           )}
         </Pressable>
 
-        <View style={styles.notifWrap}>
+        <View
+          style={styles.notifWrap}
+          {...(Platform.OS === 'web'
+            ? {
+                onMouseEnter: openNotif,
+                onMouseLeave: scheduleCloseNotif,
+              }
+            : {})}
+        >
           <Pressable
             style={styles.iconBtn}
             onPress={() => setNotifOpen((v) => !v)}
             accessibilityLabel="알림"
+            accessibilityState={{ expanded: notifOpen }}
           >
             <Ionicons name="notifications-outline" size={22} color={colors.text} />
             {unreadCount > 0 && (
@@ -166,7 +192,11 @@ export function AppHeader() {
               </View>
             )}
           </Pressable>
-          {notifOpen && <NotificationPanel onClose={() => setNotifOpen(false)} />}
+          {notifOpen && (
+            <View style={styles.notifDropdown}>
+              <NotificationPanel onClose={() => setNotifOpen(false)} />
+            </View>
+          )}
         </View>
 
         {currentUser && (
@@ -314,6 +344,13 @@ const styles = StyleSheet.create({
   actionLabelMuted: { color: colors.textMuted },
   notifWrap: {
     position: 'relative',
+    zIndex: 200,
+  },
+  notifDropdown: {
+    position: 'absolute',
+    top: '100%',
+    right: 0,
+    paddingTop: 8,
     zIndex: 200,
   },
   iconBtn: {

@@ -55,6 +55,7 @@ export const GYM_COURT_ROWS: number[][] = [
 ];
 
 export function getCourtHeight(width: number): number {
+  if (!Number.isFinite(width) || width <= 0) return 0;
   return width / COURT_ASPECT;
 }
 

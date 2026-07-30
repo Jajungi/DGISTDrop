@@ -12,6 +12,8 @@ interface CourtOverviewHeaderProps {
   onFilterChange: (f: 'all' | 'empty' | 'mine') => void;
   myUserId?: string;
   isAtGym: boolean;
+  /** 체육관에 있는 인원 (isAtGym 실시간) */
+  atGymCount?: number;
   remaining?: string | null;
   isExpanded?: boolean;
 }
@@ -27,6 +29,7 @@ export function CourtOverviewHeader({
   onFilterChange,
   myUserId,
   isAtGym,
+  atGymCount,
   remaining,
   isExpanded = false,
 }: CourtOverviewHeaderProps) {
@@ -92,6 +95,9 @@ export function CourtOverviewHeader({
       {!isExpanded && (
         <View style={[styles.lineRow, isMobile && styles.lineRowMobile]}>
           <View style={styles.statusRow}>
+            {atGymCount != null && (
+              <StatusItem number={`${atGymCount}명`} label="지금" isText compact={isMobile} emphasize />
+            )}
             <StatusItem number={emptyCount} label="가능" compact={isMobile} />
             <StatusItem number={reservedCount} label="예약" compact={isMobile} />
             <StatusItem number={playingCount} label="경기" compact={isMobile} />
@@ -135,18 +141,35 @@ function StatusItem({
   label,
   isText,
   compact,
+  emphasize,
 }: {
   number: number | string;
   label: string;
   isText?: boolean;
   compact?: boolean;
+  emphasize?: boolean;
 }) {
   return (
     <View style={[styles.statusItem, compact && styles.statusItemCompact]}>
-      <Text style={[styles.statusNumber, isText && styles.statusNumberSm, compact && styles.statusNumberCompact]}>
+      <Text
+        style={[
+          styles.statusNumber,
+          isText && styles.statusNumberSm,
+          compact && styles.statusNumberCompact,
+          emphasize && styles.statusNumberEmph,
+        ]}
+      >
         {number}
       </Text>
-      <Text style={[styles.statusType, compact && styles.statusTypeCompact]}>{label}</Text>
+      <Text
+        style={[
+          styles.statusType,
+          compact && styles.statusTypeCompact,
+          emphasize && styles.statusTypeEmph,
+        ]}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -235,6 +258,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 22,
   },
+  statusNumberEmph: {
+    color: colors.primary,
+  },
   statusNumberSm: {
     fontSize: 16,
     lineHeight: 22,
@@ -247,6 +273,10 @@ const styles = StyleSheet.create({
   statusTypeCompact: {
     paddingRight: spacing.sm,
     fontSize: 10,
+  },
+  statusTypeEmph: {
+    color: colors.primary,
+    fontWeight: '600',
   },
   viewActions: {
     flexDirection: 'row',

@@ -152,14 +152,17 @@ export async function supabaseRegister(input: {
     return { success: false, message: formatAuthError(error) };
   }
 
-  if (data.user && !data.session) {
-    return {
-      success: true,
-      message: '회원가입이 완료됐어요. 바로 로그인할 수 있어요.',
-    };
+  if (data.user) {
+    const profile = await fetchProfileById(data.user.id).catch(() => null);
+    await getSupabase().auth.signOut();
+    if (profile?.memberStatus === 'pending') {
+      return {
+        success: true,
+        message: '회원가입이 접수됐어요. 운영진 승인 후 로그인할 수 있어요.',
+      };
+    }
   }
 
-  await getSupabase().auth.signOut();
   return {
     success: true,
     message: '회원가입이 완료됐어요. 바로 로그인할 수 있어요.',

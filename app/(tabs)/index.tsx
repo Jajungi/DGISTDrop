@@ -36,9 +36,12 @@ export default function CourtsScreen() {
   const refreshCourts = useCourtStore((s) => s.refreshCourts);
 
   const currentUser = useAuthStore((s) => s.currentUser);
+  const users = useAuthStore((s) => s.users);
   const checkGeoFence = useAppStore((s) => s.checkGeoFence);
   const showToast = useNotificationStore((s) => s.showToast);
   const submitMatchResult = useNotificationStore((s) => s.submitMatchResult);
+
+  const atGymCount = users.filter((u) => u.isAtGym && u.memberStatus === 'approved').length;
 
   const [refreshing, setRefreshing] = useState(false);
   const [showScoreSheet, setShowScoreSheet] = useState(false);
@@ -185,6 +188,7 @@ export default function CourtsScreen() {
             onFilterChange={setFilter}
             myUserId={currentUser?.id}
             isAtGym={isAtGym}
+            atGymCount={atGymCount}
             remaining={remaining}
             isExpanded={selectedCourtId !== null}
           />

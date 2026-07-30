@@ -3,8 +3,8 @@ import { loadSupabaseAuthBundle, supabaseRestoreSession } from '@/src/services/s
 import { fetchCourts, subscribeCourts, subscribeProfiles } from '@/src/services/supabase/courts';
 import { fetchAllProfiles } from '@/src/services/supabase/profiles';
 import { getSupabase } from '@/src/lib/supabase';
-import { useAuthStore } from '@/src/stores/authStore';
-import { useCourtStore } from '@/src/stores/courtStore';
+import { useAuthStore, useAppStore } from '@/src/stores/authStore';
+import { useCourtStore, setRemoteCourtWriteEnabled } from '@/src/stores/courtStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { useFriendStore } from '@/src/stores/friendStore';
 import { usePointStore } from '@/src/stores/pointStore';
@@ -13,6 +13,7 @@ import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCoachingStore } from '@/src/stores/coachingStore';
 import { useAdminLogStore } from '@/src/stores/adminLogStore';
 import { createEmptyCourts } from '@/src/services/courtService';
+import { fetchOpenRegistration } from '@/src/services/supabase/club';
 
 let courtsUnsub: (() => void) | null = null;
 let profilesUnsub: (() => void) | null = null;
@@ -20,6 +21,7 @@ let socialUnsubs: (() => void)[] = [];
 
 /** 디자인용 mock 초기값 제거 — Supabase가 아직 채우지 않는 스토어 비우기 */
 export function resetSupabaseSessionStores() {
+  setRemoteCourtWriteEnabled(false);
   useFriendStore.getState().hydrate({}, []);
   usePointStore.getState().hydrate([]);
   useLobbyStore.getState().hydrateRooms([]);
@@ -41,6 +43,13 @@ export async function initSupabaseApp(): Promise<boolean> {
 
   resetSupabaseSessionStores();
 
+  try {
+    const open = await fetchOpenRegistration();
+    useAppStore.setState({ openRegistration: open });
+  } catch {
+    /* keep default */
+  }
+
   const sessionUserId = await supabaseRestoreSession();
   const bundle = await loadSupabaseAuthBundle(sessionUserId);
 
@@ -61,9 +70,14 @@ export async function initSupabaseApp(): Promise<boolean> {
   if (courts.length) {
     useCourtStore.getState().hydrateCourts(courts);
   }
+  // 서버 코트 로드 후에만 원격 upsert 허용 (mock 오염 방지)
+  setRemoteCourtWriteEnabled(true);
 
   if (currentUser) {
-    await bindSupabaseSession(currentUser.id, currentUser.membershipTier === 'admin');
+    await bindSupabaseSession(
+      currentUser.id,
+      currentUser.membershipTier === 'admin' || !!currentUser.isOperator
+    );
   }
 
   courtsUnsub?.();

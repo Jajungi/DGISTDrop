@@ -129,6 +129,7 @@ interface AuthState {
     status: LessonAccessStatus
   ) => { success: boolean; message: string };
   adminSetCoach: (userId: string, enabled: boolean) => { success: boolean; message: string };
+  adminSetOperator: (userId: string, enabled: boolean) => { success: boolean; message: string };
   adminAdjustPoints: (
     userId: string,
     delta: number,
@@ -366,6 +367,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { success: false, message: '이미 등록된 학번이에요. 로그인하거나 계정을 삭제한 뒤 다시 가입해 주세요.' };
     }
 
+    const openRegistration = useAppStore.getState().openRegistration;
     const newUser: User = {
       id: `user-${Date.now()}`,
       studentId: normalizedId,
@@ -373,7 +375,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       nickname: trimmedName,
       email: email.trim() || `${normalizedId}@dgist.ac.kr`,
       membershipTier: 'associate',
-      memberStatus: 'approved',
+      memberStatus: openRegistration ? 'approved' : 'pending',
       rank: 'bronze',
       elo: 1000,
       points: 0,
@@ -398,7 +400,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     persistAppState();
     return {
       success: true,
-      message: '회원가입이 완료됐어요. 바로 로그인할 수 있어요.',
+      message: openRegistration
+        ? '회원가입이 완료됐어요. 바로 로그인할 수 있어요.'
+        : '회원가입이 접수됐어요. 운영진 승인 후 로그인할 수 있어요.',
     };
   },
 
@@ -412,6 +416,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       ),
     }));
     syncAdminProfileRemote(get().users.find((u) => u.id === userId));
+
+    useNotificationStore.getState().pushInbox({
+      type: 'system',
+      title: '회원 가입 승인',
+      message: '회원 가입이 승인됐어요. Drop을 이용할 수 있습니다.',
+      targetUserId: userId,
+    });
 
     recordAdminLogAsCurrentUser({
       category: 'member',
@@ -432,6 +443,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }));
     syncAdminProfileRemote(get().users.find((u) => u.id === userId));
     if (user) {
+      useNotificationStore.getState().pushInbox({
+        type: 'system',
+        title: '회원 가입 거절',
+        message: '회원 가입이 거절됐어요.',
+        targetUserId: userId,
+      });
       recordAdminLogAsCurrentUser({
         category: 'member',
         action: 'member.reject',
@@ -937,6 +954,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
     syncAdminProfileRemote(get().users.find((u) => u.id === userId));
     persistAppState();
+
+    useNotificationStore.getState().pushInbox({
+      type: 'system',
+      title: '레슨 권한 거절',
+      message: '레슨 이용 권한이 거절됐어요.',
+      targetUserId: userId,
+    });
+
     recordAdminLogAsCurrentUser({
       category: 'lesson',
       action: 'lesson.reject',
@@ -1021,8 +1046,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setLastCleaningBonusMonth: (month) => set({ lastCleaningBonusMonth: month }),
 
   adminSetMembershipTier: (userId, tier) => {
+    const actor = get().currentUser;
     const user = get().users.find((u) => u.id === userId);
     if (!user) return { success: false, message: '회원을 찾을 수 없어요.' };
+    if (tier === 'admin' || user.membershipTier === 'admin') {
+      if (actor?.membershipTier !== 'admin') {
+        return { success: false, message: '관리자만 관리자 등급을 부여·변경할 수 있어요.' };
+      }
+    }
     if (user.membershipTier === 'admin' && tier !== 'admin') {
       const adminCount = get().users.filter((u) => u.membershipTier === 'admin').length;
       if (adminCount <= 1) {
@@ -1052,9 +1083,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   adminSetMemberStatus: (userId, status, reason) => {
+    const actor = get().currentUser;
     const user = get().users.find((u) => u.id === userId);
     if (!user) return { success: false, message: '회원을 찾을 수 없어요.' };
     if (user.membershipTier === 'admin' && status !== 'approved') {
+      if (actor?.membershipTier !== 'admin') {
+        return { success: false, message: '관리자 계정은 관리자만 정지·거절할 수 있어요.' };
+      }
       const adminCount = get().users.filter(
         (u) => u.membershipTier === 'admin' && u.memberStatus === 'approved'
       ).length;
@@ -1095,6 +1130,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           : status === 'suspended'
             ? '정지'
             : '거절';
+
+    if (status === 'approved') {
+      useNotificationStore.getState().pushInbox({
+        type: 'system',
+        title: '회원 가입 승인',
+        message: '회원 가입이 승인됐어요. Drop을 이용할 수 있습니다.',
+        targetUserId: userId,
+      });
+    } else if (status === 'rejected') {
+      useNotificationStore.getState().pushInbox({
+        type: 'system',
+        title: '회원 가입 거절',
+        message: '회원 가입이 거절됐어요.',
+        targetUserId: userId,
+      });
+    } else if (status === 'suspended') {
+      useNotificationStore.getState().pushInbox({
+        type: 'system',
+        title: '계정 정지',
+        message: reason?.trim()
+          ? `계정이 정지됐어요. 사유: ${reason.trim()}`
+          : '계정이 정지됐어요.',
+        targetUserId: userId,
+      });
+    }
+
     recordAdminLogAsCurrentUser({
       category: 'member',
       action: `member.status.${status}`,
@@ -1158,6 +1219,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
     syncAdminProfileRemote(get().users.find((u) => u.id === userId));
 
+    useNotificationStore.getState().pushInbox({
+      type: 'system',
+      title: enabled ? '코치 권한 부여' : '코치 권한 회수',
+      message: enabled
+        ? '코치 권한이 부여됐어요. 코칭 공지를 작성할 수 있습니다.'
+        : '코치 권한이 회수됐어요.',
+      targetUserId: userId,
+    });
+
     recordAdminLogAsCurrentUser({
       category: 'lesson',
       action: enabled ? 'coach.grant' : 'coach.revoke',
@@ -1174,6 +1244,47 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     };
   },
 
+  adminSetOperator: (userId, enabled) => {
+    const user = get().users.find((u) => u.id === userId);
+    if (!user) return { success: false, message: '회원을 찾을 수 없어요.' };
+    if (user.memberStatus !== 'approved') {
+      return { success: false, message: '승인된 회원에게만 운영자 권한을 줄 수 있어요.' };
+    }
+
+    set((state) => {
+      const users = state.users.map((u) =>
+        u.id === userId ? { ...u, isOperator: enabled } : u
+      );
+      const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
+      return { users, currentUser };
+    });
+    syncAdminProfileRemote(get().users.find((u) => u.id === userId));
+
+    useNotificationStore.getState().pushInbox({
+      type: 'system',
+      title: enabled ? '운영자 권한 부여' : '운영자 권한 회수',
+      message: enabled
+        ? '운영자 권한이 부여됐어요. 관리 패널에서 일상 운영을 할 수 있습니다.'
+        : '운영자 권한이 회수됐어요.',
+      targetUserId: userId,
+    });
+
+    recordAdminLogAsCurrentUser({
+      category: 'member',
+      action: enabled ? 'operator.grant' : 'operator.revoke',
+      message: `${user.name} 운영자 권한 ${enabled ? '부여' : '해제'}`,
+      targetId: userId,
+      targetName: user.name,
+    });
+    persistAppState();
+    return {
+      success: true,
+      message: enabled
+        ? `${user.name}님에게 운영자 권한을 부여했어요.`
+        : `${user.name}님의 운영자 권한을 해제했어요.`,
+    };
+  },
+
   adminAdjustPoints: (userId, delta, reason) => {
     const user = get().users.find((u) => u.id === userId);
     if (!user) return { success: false, message: '회원을 찾을 수 없어요.' };
@@ -1184,6 +1295,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!trimmed) return { success: false, message: '조정 사유를 입력해 주세요.' };
 
     applyPointChange(userId, delta, 'admin', `운영진 조정 · ${trimmed}`);
+
+    useNotificationStore.getState().pushInbox({
+      type: 'system',
+      title: '포인트 조정',
+      message: `운영진이 포인트를 조정했어요. (${delta >= 0 ? '+' : ''}${delta}P · ${trimmed})`,
+      targetUserId: userId,
+    });
+
     recordAdminLogAsCurrentUser({
       category: 'point',
       action: 'point.admin_adjust',
@@ -1461,11 +1580,14 @@ interface AppState {
   /** 개발자 모드: ON 시 대량 포인트 부여, OFF 시 원래 포인트로 복귀 */
   infinitePoints: boolean;
   infinitePointsSnapshot: number | null;
+  /** 가입 즉시 승인 (OFF면 승인 대기) — 운영진 설정 */
+  openRegistration: boolean;
   setActivityTime: (value: boolean) => void;
   setLocation: (location: GeoLocation | null) => void;
   setLocationError: (error: string | null) => void;
   setDemoMode: (value: boolean) => void;
   setInfinitePoints: (value: boolean) => void;
+  setOpenRegistration: (value: boolean) => Promise<{ success: boolean; message: string }>;
   checkGeoFence: () => boolean;
 }
 
@@ -1479,6 +1601,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   demoMode: false,
   infinitePoints: false,
   infinitePointsSnapshot: null,
+  openRegistration: true,
 
   setActivityTime: (value) => {
     if (get().isActivityTime === value) return;
@@ -1495,6 +1618,28 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   setLocationError: (error) => set({ locationError: error }),
   setDemoMode: (value) => set({ demoMode: value, isAtGym: value ? true : get().isAtGym }),
+  setOpenRegistration: async (value) => {
+    const prev = get().openRegistration;
+    set({ openRegistration: value });
+    if (isSupabaseEnabled()) {
+      try {
+        const { setOpenRegistrationRemote } = await import('@/src/services/supabase/club');
+        await setOpenRegistrationRemote(value);
+      } catch (err) {
+        set({ openRegistration: prev });
+        return {
+          success: false,
+          message: err instanceof Error ? err.message : '설정 저장에 실패했어요.',
+        };
+      }
+    }
+    return {
+      success: true,
+      message: value
+        ? '가입 즉시 승인이 켜졌어요. 새 회원은 바로 이용할 수 있어요.'
+        : '가입 즉시 승인이 꺼졌어요. 새 회원은 승인 대기가 됩니다.',
+    };
+  },
   setInfinitePoints: (value) => {
     if (get().infinitePoints === value) return;
 
@@ -1526,8 +1671,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   checkGeoFence: () => {
     const { demoMode, location } = get();
     if (demoMode) return true;
-    const admin = useAuthStore.getState().currentUser;
-    if (admin?.membershipTier === 'admin') return true;
+    const user = useAuthStore.getState().currentUser;
+    if (user?.membershipTier === 'admin' || user?.isOperator) return true;
     if (!location) return false;
     return isWithinGymFence(location);
   },

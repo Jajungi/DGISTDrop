@@ -198,6 +198,12 @@ export const useFriendStore = create<FriendState>((set, get) => ({
     }));
     persistAppState();
     remoteFriendRequest(requestId, (id, m) => m.respondFriendRequestRemote(id, 'rejected'));
+    useNotificationStore.getState().pushInbox({
+      type: 'friend',
+      title: '친구 거절',
+      message: `${req.toUserName}님이 친구 신청을 거절했어요.`,
+      targetUserId: req.fromUserId,
+    });
     return { success: true, message: '친구 신청을 거절했어요.' };
   },
 

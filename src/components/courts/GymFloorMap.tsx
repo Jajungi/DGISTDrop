@@ -1,110 +1,97 @@
-import React from 'react';
+import React, { useId, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Defs, Pattern, Rect, Line } from 'react-native-svg';
-import { COURT_COLUMNS, GYM_FLOOR, GYM_VENUE, GYM_COURT_ROWS } from '@/src/constants/court';
+import { COURT_COLUMNS, GYM_FLOOR, GYM_VENUE } from '@/src/constants/court';
+import type { GymGridLayout } from '@/src/utils/gymGridGeometry';
 import { colors, typography } from '@/src/theme';
 
-const ROW_GUTTER = 2;
-
 interface GymFloorMapProps {
-  courtWidth: number;
-  courtGap: number;
-  /** 전체 그리드 가로 폭 (패널 맞춤) */
-  floorWidth?: number;
-  /** CourtCard wrapper chrome (paddingTop + paddingBottom) */
-  cardChrome?: number;
-  /** 좌측 입구 라벨 여백 */
-  entranceGutter?: number;
-  /** 무대 밴드 높이 (그리드와 공유) */
-  stageH?: number;
-  /** 열 라벨 영역 높이 (그리드와 공유) */
-  headerH?: number;
-  /** 첫 코트 행 시작 y = stageH + headerH (그리드 paddingTop과 동일) */
-  contentTop?: number;
-  /** 행 사이 통로 높이 = 그리드 행 간격 */
-  aisleH?: number;
+  layout: GymGridLayout;
 }
 
-export function GymFloorMap({
-  courtWidth,
-  courtGap,
-  floorWidth,
-  cardChrome = 17,
-  entranceGutter = 18,
-  stageH = 18,
-  headerH = 14,
-  contentTop = stageH + headerH,
-  aisleH = Math.max(6, Math.round(courtGap * 0.85)),
-}: GymFloorMapProps) {
-  const ENTRANCE_GUTTER = entranceGutter;
-  const colUnit = courtWidth + courtGap;
-  const floorW =
-    floorWidth ?? ENTRANCE_GUTTER + ROW_GUTTER + colUnit * 3 - courtGap;
-  const rowUnit = cardChrome + courtWidth / (13.4 / 6.1);
-  const totalRows = GYM_COURT_ROWS.length;
-  const floorH = contentTop + rowUnit * totalRows + aisleH * (totalRows - 1) + 8;
+export function GymFloorMap({ layout }: GymFloorMapProps) {
+  const patternUid = useId().replace(/:/g, '');
+  const patternId = `gym-floor-stripe-${patternUid}`;
+
+  const {
+    floorWidth,
+    floorHeight,
+    slotWidth,
+    courtGap,
+    entranceGutter,
+    rowEntranceGap,
+    floorStageH,
+    aisleH,
+    courtsRowWidth,
+    columnDividerXs,
+    aisleCenterYs,
+    cols,
+  } = layout;
+
+  const safeW = Math.max(1, floorWidth);
+  const safeH = Math.max(1, floorHeight);
+
+  const colHeaders = useMemo(
+    () =>
+      COURT_COLUMNS.map((col, i) => ({
+        ...col,
+        width: slotWidth,
+        marginRight: i < cols - 1 ? courtGap : 0,
+      })),
+    [slotWidth, courtGap, cols]
+  );
 
   return (
-    <View style={[styles.wrap, { width: floorW, height: floorH, pointerEvents: 'none' }]}>
-      <Svg width={floorW} height={floorH} style={StyleSheet.absoluteFill}>
+    <View style={[styles.wrap, { width: safeW, height: safeH, pointerEvents: 'none' }]}>
+      <Svg width={safeW} height={safeH} style={StyleSheet.absoluteFill}>
         <Defs>
-          <Pattern id="gym-floor-stripe" patternUnits="userSpaceOnUse" width={8} height={8}>
+          <Pattern id={patternId} patternUnits="userSpaceOnUse" width={8} height={8}>
             <Rect width={8} height={8} fill={GYM_FLOOR.base} />
             <Line x1={0} y1={8} x2={8} y2={0} stroke={GYM_FLOOR.stripe} strokeWidth={0.6} />
           </Pattern>
         </Defs>
 
-        <Rect x={0} y={0} width={floorW} height={floorH} rx={4} ry={4} fill="url(#gym-floor-stripe)" />
+        <Rect x={0} y={0} width={safeW} height={safeH} rx={4} ry={4} fill={`url(#${patternId})`} />
 
-        {/* 무대측 구역 */}
-        <Rect x={0} y={0} width={floorW} height={stageH} rx={4} fill={GYM_FLOOR.stage} opacity={0.55} />
+        <Rect x={0} y={0} width={safeW} height={floorStageH} rx={4} fill={GYM_FLOOR.stage} opacity={0.55} />
 
-        {/* 입구측 구역 */}
         <Rect
           x={0}
-          y={floorH - 10}
-          width={floorW}
+          y={Math.max(0, safeH - 10)}
+          width={safeW}
           height={10}
           fill={GYM_FLOOR.entrance}
           opacity={0.45}
         />
 
-        {/* 열 구분선 */}
-        {([1, 2] as const).map((i) => {
-          const x = ENTRANCE_GUTTER + ROW_GUTTER + colUnit * i - courtGap / 2;
-          return (
-            <Line
-              key={i}
-              x1={x}
-              y1={stageH + 4}
-              x2={x}
-              y2={floorH - 8}
-              stroke={GYM_FLOOR.divider}
-              strokeWidth={1}
-              strokeDasharray="4 5"
-            />
-          );
-        })}
+        {columnDividerXs.map((x, i) => (
+          <Line
+            key={`div-${i}`}
+            x1={x}
+            y1={floorStageH + 4}
+            x2={x}
+            y2={safeH - 8}
+            stroke={GYM_FLOOR.divider}
+            strokeWidth={1}
+            strokeDasharray="4 5"
+          />
+        ))}
 
-        {/* 통로 (행 사이) — 코트 행 시작(contentTop) 기준으로 배치 */}
-        {Array.from({ length: totalRows - 1 }, (_, i) => i).map((i) => {
-          const y = contentTop + rowUnit * (i + 1) + aisleH * i + aisleH / 2;
-          return (
-            <Rect
-              key={`aisle-${i}`}
-              x={ENTRANCE_GUTTER + ROW_GUTTER}
-              y={y - aisleH / 2}
-              width={colUnit * 3 - courtGap}
-              height={aisleH}
-              fill={GYM_FLOOR.aisle}
-              opacity={0.65}
-              rx={3}
-            />
-          );
-        })}
+        {aisleCenterYs.map((y, i) => (
+          <Rect
+            key={`aisle-${i}`}
+            x={entranceGutter + rowEntranceGap}
+            y={y - aisleH / 2}
+            width={courtsRowWidth}
+            height={Math.max(0, aisleH)}
+            fill={GYM_FLOOR.aisle}
+            opacity={0.65}
+            rx={3}
+          />
+        ))}
       </Svg>
 
-      <View style={[styles.stageBand, { width: floorW, height: stageH }]}>
+      <View style={[styles.stageBand, { width: safeW, height: floorStageH }]}>
         <Text style={styles.stageText}>▲ {GYM_VENUE.stageLabel}</Text>
         <Text style={styles.venueHint}>{GYM_VENUE.shortName}</Text>
       </View>
@@ -113,14 +100,14 @@ export function GymFloorMap({
         style={[
           styles.colHeaders,
           {
-            top: stageH + 2,
-            left: ENTRANCE_GUTTER + ROW_GUTTER,
-            width: colUnit * 3 - courtGap,
+            top: floorStageH + 2,
+            left: entranceGutter + rowEntranceGap,
+            width: courtsRowWidth,
           },
         ]}
       >
-        {COURT_COLUMNS.map((col, i) => (
-          <View key={col.key} style={[styles.colHeader, { width: courtWidth, marginRight: i < 2 ? courtGap : 0 }]}>
+        {colHeaders.map((col) => (
+          <View key={col.key} style={[styles.colHeader, { width: col.width, marginRight: col.marginRight }]}>
             <Text style={styles.colLabel}>{col.label}</Text>
             {col.sublabel ? <Text style={styles.colSub}>{col.sublabel}</Text> : null}
           </View>
@@ -134,7 +121,7 @@ const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
     top: 0,
-    alignSelf: 'center',
+    left: 0,
     zIndex: 0,
     borderRadius: 4,
     overflow: 'hidden',

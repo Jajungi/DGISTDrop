@@ -105,11 +105,12 @@ export const DB_RESET_OPTIONS: DbResetOption[] = [
   {
     scope: 'full',
     title: '완전 초기화',
-    description: '모든 계정과 데이터를 삭제합니다. 관리자 계정도 삭제됩니다.',
+    description: '관리자(owner) 계정을 제외한 모든 계정과 데이터를 삭제합니다.',
     effects: [
-      '모든 auth 계정 삭제 (본인 포함)',
-      '모든 테이블 데이터 삭제',
-      '실행 후 다시 회원가입 필요',
+      '관리자 계정은 유지 (실행자 포함)',
+      '그 외 auth 계정 삭제',
+      '활동 데이터·코트 초기화',
+      '남은 관리자 스탯은 초기화',
     ],
     danger: 'critical',
   },
@@ -242,22 +243,30 @@ function executeLocalReset(scope: DbResetScope): { deletedUsers: number; require
       });
       break;
 
-    case 'full':
+    case 'full': {
       resetCourtsLocal();
       resetActivityTablesLocal();
-      users = [];
-      deletedUsers = state.users.length;
-      requiresLogout = true;
+      const keep = users.filter((u) => u.membershipTier === 'admin');
+      deletedUsers = users.length - keep.length;
+      const kept = keep.map(resetMemberStats);
+      const sessionId = state.currentUser?.id;
+      const stillHere = sessionId ? kept.find((u) => u.id === sessionId) : null;
+      requiresLogout = !stillHere;
       useAuthStore.setState({
-        users: [],
-        currentUser: null,
-        isAuthenticated: false,
+        users: kept,
+        currentUser: stillHere ?? null,
+        isAuthenticated: Boolean(stillHere),
         attendanceRecords: [],
-        credentials: {},
+        credentials: Object.fromEntries(
+          Object.entries(state.credentials).filter(([studentId]) =>
+            kept.some((u) => u.studentId === studentId)
+          )
+        ),
         peakResetDate: null,
         lastCleaningBonusMonth: null,
       });
       break;
+    }
   }
 
   persistAppState();
@@ -270,7 +279,19 @@ async function rehydrateSupabaseAfterReset(
   isAdmin: boolean
 ): Promise<{ requiresLogout: boolean; deletedUsers: number }> {
   if (scope === 'full') {
-    return { requiresLogout: true, deletedUsers: 0 };
+    const [{ fetchAllProfiles }, { fetchCourts }] = await Promise.all([
+      import('@/src/services/supabase/profiles'),
+      import('@/src/services/supabase/courts'),
+    ]);
+    const users = await fetchAllProfiles();
+    const sessionId = useAuthStore.getState().currentUser?.id ?? adminId;
+    const currentUser = sessionId ? users.find((u) => u.id === sessionId) ?? null : null;
+    useAuthStore.getState().hydrateAuth(users, [], sessionId, null, {}, null);
+    const courts = await fetchCourts();
+    if (courts.length) useCourtStore.getState().hydrateCourts(courts);
+    else useCourtStore.getState().hydrateCourts(createEmptyCourts());
+    resetActivityTablesLocal();
+    return { requiresLogout: !currentUser, deletedUsers: 0 };
   }
 
   const [

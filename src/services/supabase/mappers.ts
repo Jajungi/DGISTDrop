@@ -27,6 +27,7 @@ type DbProfile = {
   lesson_status: User['lessonStatus'];
   lesson_requested_at: string | null;
   is_coach?: boolean;
+  is_operator?: boolean;
   avatar_color: string;
   avatar_path: string | null;
   admin_note: string | null;
@@ -113,6 +114,7 @@ export function mapProfileRow(row: DbProfile): User {
     lessonStatus: row.lesson_status,
     lessonRequestedAt: row.lesson_requested_at ?? undefined,
     isCoach: row.is_coach ?? false,
+    isOperator: row.is_operator ?? false,
     avatarColor: row.avatar_color,
     avatarUri: publicAvatarUrl(row.avatar_path),
     adminNote: row.admin_note ?? undefined,

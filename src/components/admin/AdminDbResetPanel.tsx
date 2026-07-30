@@ -131,7 +131,7 @@ export function AdminDbResetPanel({ adminId }: AdminDbResetPanelProps) {
         showToast({
           type: 'info',
           title: '완전 초기화 완료',
-          message: '모든 계정이 삭제되어 로그아웃됩니다. 다시 회원가입해 주세요.',
+          message: '세션이 종료되어 로그아웃됩니다. 다시 로그인해 주세요.',
         });
         await logout();
         router.replace('/login');
@@ -141,8 +141,10 @@ export function AdminDbResetPanel({ adminId }: AdminDbResetPanelProps) {
       const extra = result.deletedUsers > 0 ? ` (${result.deletedUsers}개 계정 삭제)` : '';
       showToast({
         type: 'success',
-        title: '초기화 완료',
-        message: `${selectedOptions.length}개 작업 완료${extra}`,
+        title: hasFull ? '완전 초기화 완료' : '초기화 완료',
+        message: hasFull
+          ? `관리자 계정은 유지됐어요.${extra}`
+          : `${selectedOptions.length}개 작업 완료${extra}`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : '알 수 없는 오류';
@@ -257,7 +259,8 @@ export function AdminDbResetPanel({ adminId }: AdminDbResetPanelProps) {
                 </View>
                 {hasFull && (
                   <Text style={styles.fullWarn}>
-                    ⚠️ 완전 초기화가 포함되어 모든 계정(본인 포함)이 삭제됩니다.
+                    ⚠️ 완전 초기화가 포함되어 관리자 외 모든 계정이 삭제됩니다. 관리자(owner) 계정은
+                    유지됩니다.
                   </Text>
                 )}
                 <View style={styles.modalActions}>

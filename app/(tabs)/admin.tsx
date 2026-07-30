@@ -6,25 +6,29 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { AdminDashboard } from '@/src/components/admin/AdminDashboard';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
+import { isStaffUser } from '@/src/utils/staffAccess';
 import { colors, spacing, typography } from '@/src/theme';
 
 export default function AdminTabScreen() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const { isDesktop } = useLayoutMode();
 
-  if (!currentUser || currentUser.membershipTier !== 'admin') {
+  if (!isStaffUser(currentUser)) {
     return <Redirect href="/(tabs)" />;
   }
+
+  const roleLabel =
+    currentUser!.membershipTier === 'admin' ? '관리자' : '운영자';
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
       <PageContainer>
         <View style={[styles.header, isDesktop && styles.headerDesktop]}>
-          <Text style={[styles.title, isDesktop && styles.titleDesktop]}>관리자</Text>
-          <Text style={styles.subtitle}>{currentUser.name} · 운영 패널</Text>
+          <Text style={[styles.title, isDesktop && styles.titleDesktop]}>{roleLabel}</Text>
+          <Text style={styles.subtitle}>{currentUser!.name} · 운영 패널</Text>
         </View>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-          <AdminDashboard adminId={currentUser.id} />
+          <AdminDashboard adminId={currentUser!.id} />
         </ScrollView>
       </PageContainer>
     </SafeAreaView>

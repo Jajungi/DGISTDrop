@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   buildSlotMarks,
   rangeToSelectedIndices,
-  selectedIndicesToTimes,
+  rangeIndicesToTimes,
   formatSelectionSummary,
 } from '@/src/utils/timeSlots';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
@@ -25,6 +25,11 @@ export interface TimeRangeSliderProps {
   showDateRow?: boolean;
 }
 
+/**
+ * 연속 구간만 지원 (도착 일정 start~end).
+ * 드래그: 시작 칸~현재 칸으로 선택 범위를 통째로 교체.
+ * 탭(드래그 없음): 미선택 칸 → 그 칸만 선택 / 선택 칸 → 전체 해제.
+ */
 export function TimeRangeSlider({
   startHour,
   startMinute,
@@ -42,7 +47,6 @@ export function TimeRangeSlider({
     [startHour, startMinute, endHour, endMinute, stepMinutes]
   );
   const segmentCount = Math.max(0, marks.length - 1);
-  // 칸이 많으면 라벨을 한 칸 걸러(또는 더 넓게) 표시해 겹침 방지
   const labelStep = segmentCount > 10 ? 3 : segmentCount > 6 ? 2 : 1;
 
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(() =>
@@ -54,23 +58,27 @@ export function TimeRangeSlider({
     setSelectedIndices(rangeToSelectedIndices(marks, selectedStart, selectedEnd));
   }, [marks, selectedStart, selectedEnd]);
 
-  const applySelection = useCallback(
-    (next: Set<number>) => {
+  const applyRange = useCallback(
+    (lo: number, hi: number) => {
+      const next = new Set<number>();
+      for (let i = lo; i <= hi; i++) next.add(i);
       setSelectedIndices(next);
-      const times = selectedIndicesToTimes(marks, next);
-      onChange(times?.start ?? '', times?.end ?? '');
+      const times = rangeIndicesToTimes(marks, lo, hi);
+      onChange(times.start, times.end);
     },
     [marks, onChange]
   );
 
-  // 드래그 페인트 선택: 첫 칸 상태로 모드 고정 (선택칸에서 시작→해제, 미선택칸에서 시작→선택)
-  const trackRef = useRef<View>(null);
+  const clearSelection = useCallback(() => {
+    setSelectedIndices(new Set());
+    onChange('', '');
+  }, [onChange]);
+
   const trackWidthRef = useRef(0);
-  const paintModeRef = useRef<null | 'add' | 'remove'>(null);
-  const workingSetRef = useRef<Set<number>>(new Set());
-  const startLocationXRef = useRef(0);
+  const anchorRef = useRef(-1);
+  const startedSelectedRef = useRef(false);
   const hasDraggedRef = useRef(false);
-  const startIndexRef = useRef(-1);
+  const startLocationXRef = useRef(0);
   const DRAG_THRESHOLD = 10;
 
   const handleTrackLayout = useCallback((e: LayoutChangeEvent) => {
@@ -81,31 +89,11 @@ export function TimeRangeSlider({
     (locationX: number) => {
       const width = trackWidthRef.current;
       if (width <= 0 || segmentCount <= 0) return -1;
-      // 경계 오차로 옆 칸이 잡히지 않도록 중앙 기준으로 스냅
       const clamped = Math.max(0, Math.min(width - 0.001, locationX));
       const idx = Math.floor((clamped / width) * segmentCount);
       return Math.max(0, Math.min(segmentCount - 1, idx));
     },
     [segmentCount]
-  );
-
-  const paintAt = useCallback(
-    (index: number) => {
-      if (index < 0) return;
-      const set = workingSetRef.current;
-      const mode = paintModeRef.current;
-      if (mode === 'add') {
-        if (set.has(index)) return;
-        set.add(index);
-      } else if (mode === 'remove') {
-        if (!set.has(index)) return;
-        set.delete(index);
-      } else {
-        return;
-      }
-      applySelection(new Set(set));
-    },
-    [applySelection]
   );
 
   const handleGrant = useCallback(
@@ -114,35 +102,50 @@ export function TimeRangeSlider({
       const index = indexFromLocationX(locationX);
       if (index < 0) return;
       startLocationXRef.current = locationX;
-      startIndexRef.current = index;
+      anchorRef.current = index;
       hasDraggedRef.current = false;
-      workingSetRef.current = new Set(selectedIndices);
-      paintModeRef.current = selectedIndices.has(index) ? 'remove' : 'add';
-      paintAt(index);
+      startedSelectedRef.current = selectedIndices.has(index);
+      // 드래그 시작 전에는 즉시 반영하지 않음 (옆 칸 오인·연쇄 삭제 방지)
     },
-    [indexFromLocationX, paintAt, selectedIndices]
+    [indexFromLocationX, selectedIndices]
   );
 
   const handleMove = useCallback(
     (e: GestureResponderEvent) => {
       const { locationX } = e.nativeEvent;
+      const anchor = anchorRef.current;
+      if (anchor < 0) return;
       if (!hasDraggedRef.current) {
         if (Math.abs(locationX - startLocationXRef.current) < DRAG_THRESHOLD) return;
         hasDraggedRef.current = true;
       }
-      paintAt(indexFromLocationX(locationX));
+      const cur = indexFromLocationX(locationX);
+      if (cur < 0) return;
+      // 드래그는 항상 연속 구간으로 교체 (구멍·부분 삭제 없음)
+      applyRange(Math.min(anchor, cur), Math.max(anchor, cur));
     },
-    [indexFromLocationX, paintAt]
+    [indexFromLocationX, applyRange]
   );
 
   const handleRelease = useCallback(() => {
-    paintModeRef.current = null;
+    const anchor = anchorRef.current;
+    if (anchor < 0) {
+      hasDraggedRef.current = false;
+      return;
+    }
+    if (!hasDraggedRef.current) {
+      if (startedSelectedRef.current) {
+        clearSelection();
+      } else {
+        applyRange(anchor, anchor);
+      }
+    }
+    anchorRef.current = -1;
     hasDraggedRef.current = false;
-    startIndexRef.current = -1;
-  }, []);
+    startedSelectedRef.current = false;
+  }, [applyRange, clearSelection]);
 
   const isSelected = (index: number) => selectedIndices.has(index);
-
   const rangeSummary = formatSelectionSummary(marks, selectedIndices);
 
   return (
@@ -175,8 +178,6 @@ export function TimeRangeSlider({
           <View style={styles.sliderBody}>
             <View style={styles.labelsRow}>
               {marks.slice(0, -1).map((mark, index) => {
-                // 라벨이 겹치지 않도록 칸이 많으면 한 칸 걸러 표시하고,
-                // 우측 끝(별도 표시되는 종료 라벨) 근처 구간은 생략해 겹침 방지
                 const showLabel = index % labelStep === 0 && index / segmentCount < 0.85;
                 return (
                   <View key={`label-${mark}`} style={styles.labelCell}>
@@ -194,7 +195,6 @@ export function TimeRangeSlider({
             </View>
 
             <View
-              ref={trackRef}
               style={styles.trackRow}
               onLayout={handleTrackLayout}
               onStartShouldSetResponder={() => true}
@@ -234,7 +234,10 @@ export function TimeRangeSlider({
             {rangeSummary ? (
               <Text style={styles.rangeSummary}>{rangeSummary}</Text>
             ) : (
-              <Text style={styles.rangeHint}>칸을 탭하거나, 누른 채 좌우로 드래그해 선택·해제하세요</Text>
+              <Text style={styles.rangeHint}>
+                칸을 탭하거나, 누른 채 좌우로 드래그해 연속 구간을 선택하세요. 선택된 칸을 탭하면
+                해제됩니다.
+              </Text>
             )}
           </View>
         ) : null}

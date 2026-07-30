@@ -42,6 +42,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "playwright": "^1.62.0",
     "typescript": "~6.0.3",
     "ws": "^8.18.0"
   },
@@ -53,7 +54,8 @@
     "web": "expo start --web",
     "build:web": "expo export -p web && node scripts/cloudflare-fixup.mjs",
     "typecheck": "tsc --noEmit",
-    "setup:check": "node scripts/check-supabase-env.mjs"
+    "setup:check": "node scripts/check-supabase-env.mjs",
+    "capture:intro": "node scripts/capture-intro-screenshots.mjs"
   },
   "private": true
 }

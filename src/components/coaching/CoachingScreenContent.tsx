@@ -20,6 +20,7 @@ import { Button } from '@/src/components/ui/Button';
 import { COACH_COURT_ID } from '@/src/constants/court';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import { canManageCoachAnnouncement, canPostCoachAnnouncement } from '@/src/utils/coachAccess';
+import { formatLessonEtaLabel } from '@/src/utils/lessonEta';
 
 const QUEUE_STATUS: Record<string, string> = {
   waiting: '대기 중',
@@ -27,7 +28,7 @@ const QUEUE_STATUS: Record<string, string> = {
   active: '레슨 중',
 };
 
-export function CoachingScreenContent() {
+export function CoachingScreenContent({ embedded = false }: { embedded?: boolean }) {
   const currentUser = useAuthStore((s) => s.currentUser);
   const requestLessonAccess = useAuthStore((s) => s.requestLessonAccess);
   const joinQueue = useLessonStore((s) => s.joinQueue);
@@ -77,11 +78,24 @@ export function CoachingScreenContent() {
 
   const goToCoachCourt = () => {
     selectCourt(COACH_COURT_ID);
-    router.back();
+    if (!embedded) router.back();
   };
 
-  return (
-    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+  const body = (
+    <>
+      {embedded ? (
+        <Pressable
+          onPress={() => router.push('/coaching')}
+          style={styles.fullScreenLink}
+          accessibilityRole="link"
+          accessibilityLabel="코칭 전체 화면 열기"
+        >
+          <Ionicons name="expand-outline" size={16} color={colors.primary} />
+          <Text style={styles.fullScreenLinkText}>코칭 전체 화면</Text>
+          <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+        </Pressable>
+      ) : null}
+
       <Card style={styles.block}>
         <View style={styles.blockHeader}>
           <Ionicons name="megaphone-outline" size={18} color={colors.primary} />
@@ -196,10 +210,25 @@ export function CoachingScreenContent() {
 
                 {queueEntry.status === 'next' && (
                   <>
-                    <Text style={styles.nextHint}>
-                      지금 코치 코트({COACH_COURT_ID}번)를 예약할 수 있어요. 셔틀콕을 준비해 주세요!
+                    <Text style={styles.etaText}>
+                      {formatLessonEtaLabel(queueEntry, lessonQueue) ?? '곧 시작 · 준비해 주세요'}
                     </Text>
-                    <Button title="코치 코트로 이동" onPress={goToCoachCourt} size="sm" variant="secondary" />
+                    <Text style={styles.nextHint}>
+                      {embedded
+                        ? `지금 아래에서 코치 코트(${COACH_COURT_ID}번)를 예약할 수 있어요. 셔틀콕을 준비해 주세요!`
+                        : `지금 코치 코트(${COACH_COURT_ID}번)를 예약할 수 있어요. 셔틀콕을 준비해 주세요!`}
+                    </Text>
+                    {!embedded && (
+                      <Button title="코치 코트로 이동" onPress={goToCoachCourt} size="sm" variant="secondary" />
+                    )}
+                    {embedded && (
+                      <Button
+                        title="코칭 전체 화면"
+                        onPress={() => router.push('/coaching')}
+                        size="sm"
+                        variant="outline"
+                      />
+                    )}
                     <Button
                       title="알림 테스트"
                       onPress={() => notifyIfNext(currentUser.id)}
@@ -210,7 +239,12 @@ export function CoachingScreenContent() {
                 )}
 
                 {queueEntry.status === 'waiting' && (
-                  <Text style={styles.waitHint}>앞 순서 레슨이 끝나면 사이렌 알림이 울려요.</Text>
+                  <>
+                    <Text style={styles.etaText}>
+                      {formatLessonEtaLabel(queueEntry, lessonQueue)}
+                    </Text>
+                    <Text style={styles.waitHint}>앞 순서 레슨이 끝나면 사이렌 알림이 울려요.</Text>
+                  </>
                 )}
 
                 {queueEntry.status !== 'active' && (
@@ -230,12 +264,22 @@ export function CoachingScreenContent() {
             {activeQueue.length > 0 && (
               <View style={styles.publicQueue}>
                 <Text style={styles.publicTitle}>오늘 레슨 순서</Text>
-                {activeQueue.map((e) => (
+                {activeQueue.map((e) => {
+                  const eta =
+                    e.userId === currentUser.id
+                      ? formatLessonEtaLabel(e, lessonQueue)
+                      : e.status === 'waiting' || e.status === 'next'
+                        ? formatLessonEtaLabel(e, lessonQueue)
+                        : null;
+                  return (
                   <View key={e.id} style={styles.publicRow}>
                     <Text style={styles.publicPos}>{e.position}</Text>
-                    <Text style={[styles.publicName, e.userId === currentUser.id && styles.publicNameMe]}>
-                      {e.userName}{e.userId === currentUser.id ? ' (나)' : ''}
-                    </Text>
+                    <View style={styles.publicMeta}>
+                      <Text style={[styles.publicName, e.userId === currentUser.id && styles.publicNameMe]}>
+                        {e.userName}{e.userId === currentUser.id ? ' (나)' : ''}
+                      </Text>
+                      {eta ? <Text style={styles.publicEta}>{eta}</Text> : null}
+                    </View>
                     <Text
                       style={[
                         styles.publicStatus,
@@ -246,11 +290,12 @@ export function CoachingScreenContent() {
                       {QUEUE_STATUS[e.status]}
                     </Text>
                   </View>
-                ))}
+                  );
+                })}
               </View>
             )}
 
-            {coachCourt && (
+            {!embedded && coachCourt && (
               <View style={styles.courtHint}>
                 <Text style={styles.courtHintLabel}>코치 코트 현황</Text>
                 <Text style={styles.courtHintText}>
@@ -269,12 +314,39 @@ export function CoachingScreenContent() {
           </>
         )}
       </Card>
+    </>
+  );
+
+  if (embedded) {
+    return <View style={styles.embedded}>{body}</View>;
+  }
+
+  return (
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {body}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  embedded: { gap: spacing.md, marginBottom: spacing.md },
+  fullScreenLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.primaryLight,
+    ...Platform.select({ web: { cursor: 'pointer' as const } }),
+  },
+  fullScreenLinkText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+  },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   muted: { ...typography.body, color: colors.textMuted },
   block: { gap: spacing.sm },
@@ -319,6 +391,12 @@ const styles = StyleSheet.create({
   statusNext: { color: colors.error },
   statusActive: { color: colors.primary },
   nextHint: { ...typography.caption, color: colors.error, fontWeight: '600', lineHeight: 18 },
+  etaText: {
+    ...typography.bodyBold,
+    color: colors.primary,
+    fontSize: 15,
+    lineHeight: 20,
+  },
   waitHint: { ...typography.small, color: colors.textMuted, lineHeight: 18 },
   publicQueue: {
     borderTopWidth: 1,
@@ -329,8 +407,10 @@ const styles = StyleSheet.create({
   publicTitle: { ...typography.small, color: colors.textMuted, fontWeight: '600' },
   publicRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   publicPos: { ...typography.bodyBold, color: colors.primary, width: 24, textAlign: 'center' },
-  publicName: { ...typography.caption, color: colors.text, flex: 1 },
+  publicMeta: { flex: 1, gap: 1 },
+  publicName: { ...typography.caption, color: colors.text },
   publicNameMe: { fontWeight: '700' },
+  publicEta: { ...typography.small, color: colors.textMuted, fontSize: 11 },
   publicStatus: { ...typography.small, color: colors.textMuted },
   courtHint: {
     marginTop: spacing.sm,

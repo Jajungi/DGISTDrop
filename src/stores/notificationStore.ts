@@ -381,6 +381,20 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     }));
     syncMatchPatchRemote(matchId, patch);
     if (rated) syncMatchStatsRemote(matchId);
+
+    const participants = [...match.teamA, ...match.teamB];
+    for (const uid of participants) {
+      get().pushInbox({
+        type: 'system',
+        title: '경기 확정',
+        message: rated
+          ? `코트 ${match.courtId} 경기가 확정됐어요. Elo가 반영됩니다.`
+          : `코트 ${match.courtId} 경기가 확정됐어요.`,
+        targetUserId: uid,
+        courtId: match.courtId,
+      });
+    }
+
     recordAdminLogAsActor(adminId, {
       category: 'match',
       action: 'match.confirm',
@@ -411,6 +425,15 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       ),
     }));
     syncMatchPatchRemote(matchId, patch);
+    for (const uid of [...match.teamA, ...match.teamB]) {
+      get().pushInbox({
+        type: 'system',
+        title: '경기 취소',
+        message: `코트 ${match.courtId} 경기가 취소됐어요.`,
+        targetUserId: uid,
+        courtId: match.courtId,
+      });
+    }
     recordAdminLogAsActor(adminId, {
       category: 'match',
       action: 'match.cancel',
@@ -463,6 +486,15 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     }));
     syncMatchPatchRemote(matchId, patch);
     if (rated) syncMatchStatsRemote(matchId);
+    for (const uid of [...match.teamA, ...match.teamB]) {
+      get().pushInbox({
+        type: 'system',
+        title: '경기 무효',
+        message: `코트 ${match.courtId} 경기가 무효 처리됐어요.`,
+        targetUserId: uid,
+        courtId: match.courtId,
+      });
+    }
     recordAdminLogAsActor(adminId, {
       category: 'match',
       action: 'match.revoke',
@@ -710,6 +742,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       title: n.title,
       message: n.message,
       courtId: n.courtId,
+      joinRequestId: n.joinRequestId,
       targetUserId: n.targetUserId,
       read: false,
       createdAt: new Date().toISOString(),

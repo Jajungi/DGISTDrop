@@ -14,6 +14,7 @@ import { Button } from '@/src/components/ui/Button';
 import { TouchGuard } from '@/src/components/ui/TouchGuard';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useLessonStore } from '@/src/stores/lessonStore';
+import { CoachingScreenContent } from '@/src/components/coaching/CoachingScreenContent';
 import { colors, borderRadius, spacing, typography } from '@/src/theme';
 
 export interface CourtDetailContentProps {
@@ -205,7 +206,7 @@ export function CourtDetailContent({
             </View>
           )}
         </View>
-          {court.isCoachCourt && <Text style={styles.tag}>코치 코트</Text>}
+          {court.isCoachCourt && <Text style={styles.tag}>코칭</Text>}
         </View>
       )}
 
@@ -219,7 +220,7 @@ export function CourtDetailContent({
           {court.gameMode && court.status !== 'empty' && (
             <GameModeBadge mode={court.gameMode} nantaHalf={court.nantaHalf} compact />
           )}
-          {court.isCoachCourt && <Text style={styles.tag}>· 코치 코트</Text>}
+          {court.isCoachCourt && <Text style={styles.tag}>· 코칭</Text>}
         </View>
       )}
 
@@ -237,12 +238,14 @@ export function CourtDetailContent({
       </View>
       )}
 
+      {court.isCoachCourt && <CoachingScreenContent embedded />}
+
       {court.status === 'empty' && court.isCoachCourt && !coachReservable && (
         <View style={[styles.infoBlock, embedded && styles.infoBlockEmbedded]}>
           <Text style={styles.infoLine}>
             <Text style={styles.infoBold}>코치 코트</Text> · 예약할 수 없어요
           </Text>
-          <Text style={styles.infoSub}>레슨 권한 신청 후 대기 순서가 되면 코칭 화면에서 예약할 수 있어요.</Text>
+          <Text style={styles.infoSub}>레슨 권한 신청 후 대기 순서가 되면 이 화면에서 예약할 수 있어요.</Text>
         </View>
       )}
 

@@ -9,7 +9,9 @@ import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { useAuthGuard } from '@/src/hooks/useAuthGuard';
 import { useActivityClock } from '@/src/hooks/useActivityStatus';
 import { useAuthStore } from '@/src/stores/authStore';
+import { useCourtStore } from '@/src/stores/courtStore';
 import { useAdminAlertCount } from '@/src/hooks/useAdminAlerts';
+import { isStaffUser } from '@/src/utils/staffAccess';
 import { NAV_ITEMS, ADMIN_NAV_ITEM } from '@/src/constants/nav';
 import { View, Text } from 'react-native';
 import { colors } from '@/src/theme';
@@ -56,7 +58,7 @@ const TAB_SCREENS = [
 export default function TabLayout() {
   const { isDesktop, scale, isCompact } = useLayoutMode();
   const insets = useSafeAreaInsets();
-  const isAdmin = useAuthStore((s) => s.currentUser?.membershipTier === 'admin');
+  const isStaff = isStaffUser(useAuthStore((s) => s.currentUser));
   const isGuest = useAuthStore((s) => s.isGuestSession);
   useAuthGuard();
   useActivityClock();
@@ -94,12 +96,22 @@ export default function TabLayout() {
             tabBarIcon: ({ focused }) => <TabIcon name={item.icon} focused={focused} size={tabIconSize} />,
             tabBarAccessibilityLabel: item.label,
           }}
+          listeners={
+            name === 'index'
+              ? {
+                  tabPress: () => {
+                    const { selectedCourtId, selectCourt } = useCourtStore.getState();
+                    if (selectedCourtId != null) selectCourt(null);
+                  },
+                }
+              : undefined
+          }
         />
       ))}
       <Tabs.Screen
         name="admin"
         options={{
-          href: isAdmin ? undefined : null,
+          href: isStaff ? undefined : null,
           title: ADMIN_NAV_ITEM.tabLabel,
           tabBarIcon: ({ focused }) => <AdminTabIcon focused={focused} size={tabIconSize} />,
           tabBarAccessibilityLabel: ADMIN_NAV_ITEM.label,
