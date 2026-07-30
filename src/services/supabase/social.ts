@@ -258,7 +258,11 @@ export async function fetchTeamRooms(): Promise<TeamRoom[]> {
     .select('*')
     .neq('status', 'closed')
     .order('created_at', { ascending: false });
-  if (error) throw error;
+  if (error) {
+    // 마이그레이션 미적용·권한 오류 시 로비만 빈 목록으로 두고 앱은 계속 동작
+    if (__DEV__) console.warn('[fetchTeamRooms]', error.message, error.code);
+    return [];
+  }
   return (data as DbTeamRoom[]).map(mapTeamRoom);
 }
 

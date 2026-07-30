@@ -159,7 +159,12 @@ export function CourtExpandView({
   }, [containerSize, remeasureTarget]);
 
   useEffect(() => {
-    if (selectedCourtId == null) return;
+    if (selectedCourtId == null) {
+      // 다른 페이지 이동 등으로 selectCourt(null)만 된 경우 — progress가 1이면 그리드가 투명하게 남음
+      cancelAnimation(progress);
+      progress.value = 0;
+      return;
+    }
     measureAndExpand(containerSize.height, startExpand);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCourtId, measureAndExpand, startExpand]);
