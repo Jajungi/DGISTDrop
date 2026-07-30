@@ -3,21 +3,21 @@ import * as Notifications from 'expo-notifications';
 
 let initialized = false;
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
-
-/** 로컬 알림 권한 및 채널 설정 */
+/** 로컬 알림 권한 및 채널 설정 (웹에서는 no-op — push token listener 경고 방지) */
 export async function initLocalNotifications(): Promise<void> {
   if (Platform.OS === 'web' || initialized) return;
 
   try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;
     if (existing !== 'granted') {

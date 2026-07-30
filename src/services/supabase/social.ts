@@ -253,17 +253,32 @@ function mapTeamRoom(r: DbTeamRoom): TeamRoom {
 }
 
 export async function fetchTeamRooms(): Promise<TeamRoom[]> {
-  const { data, error } = await getSupabase()
+  const sb = getSupabase();
+  const { data, error } = await sb
     .from('team_rooms_public')
     .select('*')
     .neq('status', 'closed')
     .order('created_at', { ascending: false });
-  if (error) {
-    // 마이그레이션 미적용·권한 오류 시 로비만 빈 목록으로 두고 앱은 계속 동작
-    if (__DEV__) console.warn('[fetchTeamRooms]', error.message, error.code);
-    return [];
+  if (!error) {
+    return (data as DbTeamRoom[]).map(mapTeamRoom);
   }
-  return (data as DbTeamRoom[]).map(mapTeamRoom);
+
+  // 023 미적용 시: 비밀번호 제외 컬럼만 직접 조회 시도
+  const fallback = await sb
+    .from('team_rooms')
+    .select(
+      'id, host_id, host_name, title, min_rank, max_rank, members, min_members, max_members, status, created_at'
+    )
+    .neq('status', 'closed')
+    .order('created_at', { ascending: false });
+  if (!fallback.error && fallback.data) {
+    return (fallback.data as DbTeamRoom[]).map((r) =>
+      mapTeamRoom({ ...r, has_password: false })
+    );
+  }
+
+  if (__DEV__) console.warn('[fetchTeamRooms]', error.message, error.code);
+  return [];
 }
 
 export async function verifyTeamRoomPasswordRemote(
