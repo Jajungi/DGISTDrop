@@ -5,6 +5,7 @@ import { useNotificationStore } from '@/src/stores/notificationStore';
 import { Button } from '@/src/components/ui/Button';
 import { TimeRangeSlider } from '@/src/components/ui/TimeRangeSlider';
 import { ACTIVITY_SCHEDULE } from '@/src/constants';
+import { getActivitySchedule } from '@/src/stores/activityScheduleStore';
 import { formatCompactDayLabel, getTodayKey, isScheduleForToday } from '@/src/utils/dateFormat';
 import { colors, spacing, typography } from '@/src/theme';
 
@@ -18,8 +19,9 @@ export function ArrivalScheduleCard() {
 
   const activityBounds = useMemo(() => {
     const day = new Date().getDay();
-    const session = ACTIVITY_SCHEDULE.find((s) => s.day === day);
-    return session ?? ACTIVITY_SCHEDULE[0];
+    const sessions = getActivitySchedule();
+    const session = sessions.find((s) => s.day === day);
+    return session ?? sessions[0] ?? ACTIVITY_SCHEDULE[0];
   }, []);
 
   const savedForToday =

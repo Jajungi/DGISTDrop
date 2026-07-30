@@ -203,7 +203,8 @@ export interface EloHistoryPoint {
 }
 
 export interface ActivitySession {
-  day: 2 | 4;
+  /** 0=일 … 6=토 (Date.getDay) */
+  day: number;
   startHour: number;
   startMinute: number;
   endHour: number;

@@ -25,13 +25,15 @@ import { Avatar } from '@/src/components/ui/Avatar';
 import { RankBadge } from '@/src/components/ui/RankBadge';
 import { AdminLogPanel } from '@/src/components/admin/AdminLogPanel';
 import { MemberAdminPanel } from '@/src/components/admin/MemberAdminPanel';
-import { AdminOperationsPanel } from '@/src/components/admin/AdminOperationsPanel';
+import { AdminSettingsPanel } from '@/src/components/admin/AdminSettingsPanel';
+import { AdminSubTabs } from '@/src/components/admin/AdminSubTabs';
 import { AdminPointsPanel } from '@/src/components/admin/AdminPointsPanel';
 import { AdminDbResetPanel } from '@/src/components/admin/AdminDbResetPanel';
 import { GAME_MODE_CONFIG } from '@/src/constants/court';
 import { getEffectiveSchedule, getTodayKey, formatTodayLabel } from '@/src/utils/dateFormat';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import type { AdminLogCategory, User, Court, MatchResult } from '@/src/types';
+import type { AdminAlertSection } from '@/src/hooks/useAdminAlerts';
 
 const QUEUE_STATUS_LABEL: Record<string, string> = {
   waiting: '대기',
@@ -54,19 +56,9 @@ const LESSON_STATUS_LABEL: Record<string, string> = {
   rejected: '레슨 거절',
 };
 
-type AdminSection =
-  | 'overview'
-  | 'alerts'
-  | 'operations'
-  | 'members'
-  | 'matches'
-  | 'lessons'
-  | 'courts'
-  | 'attendance'
-  | 'social'
-  | 'points'
-  | 'logs'
-  | 'developer';
+type AdminGroup = 'home' | 'people' | 'live' | 'points' | 'settings' | 'logs' | 'developer';
+type PeopleSub = 'members' | 'attendance' | 'social';
+type LiveSub = 'courts' | 'matches' | 'lessons';
 
 interface AdminDashboardProps {
   adminId: string;
@@ -108,10 +100,22 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
   const adminAlerts = useAdminAlerts();
   const dismissAlert = useAdminAlertStore((s) => s.dismiss);
 
-  const [section, setSection] = useState<AdminSection>('overview');
+  const [group, setGroup] = useState<AdminGroup>('home');
+  const [peopleSub, setPeopleSub] = useState<PeopleSub>('members');
+  const [liveSub, setLiveSub] = useState<LiveSub>('courts');
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [logFilter, setLogFilter] = useState<AdminLogCategory | 'all'>('all');
+
+  const goAlertSection = (section: AdminAlertSection) => {
+    if (section === 'members' || section === 'social') {
+      setGroup('people');
+      setPeopleSub(section === 'social' ? 'social' : 'members');
+      return;
+    }
+    setGroup('live');
+    setLiveSub(section === 'lessons' ? 'lessons' : 'matches');
+  };
 
   const today = getTodayKey();
   const pendingMembers = users.filter((u) => u.memberStatus === 'pending');
@@ -153,51 +157,39 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
       ? currentUser.membershipTier === 'admin'
       : users.find((u) => u.id === adminId)?.membershipTier === 'admin';
 
-  const sections: { key: AdminSection; label: string; badge?: number }[] = [
-    { key: 'overview', label: '요약' },
-    { key: 'alerts', label: '알림', badge: adminAlerts.length || undefined },
-    { key: 'operations', label: '운영' },
-    { key: 'logs', label: '로그', badge: adminLogs.length ? undefined : undefined },
+  const groups: { key: AdminGroup; label: string; badge?: number }[] = [
+    { key: 'home', label: '홈', badge: adminAlerts.length || undefined },
     {
-      key: 'members',
-      label: '회원',
-      badge: (pendingMembers.length + suspendedMembers.length) || undefined,
+      key: 'people',
+      label: '사람',
+      badge:
+        (pendingMembers.length +
+          suspendedMembers.length +
+          pendingFriendRequests.length) || undefined,
     },
     {
-      key: 'attendance',
-      label: '출석',
-      badge: todayAttendance.length || undefined,
-    },
-    {
-      key: 'matches',
-      label: '경기',
-      badge: unconfirmedMatches.length || undefined,
-    },
-    {
-      key: 'lessons',
-      label: '레슨',
-      badge: (pendingLessonUsers.length + activeQueue.length) || undefined,
-    },
-    {
-      key: 'social',
-      label: '친구',
-      badge: pendingFriendRequests.length || undefined,
+      key: 'live',
+      label: '현장',
+      badge:
+        (unconfirmedMatches.length + pendingLessonUsers.length + activeQueue.length) ||
+        undefined,
     },
     { key: 'points', label: '포인트' },
-    { key: 'courts', label: '코트' },
-    ...(isAdminActor ? [{ key: 'developer' as AdminSection, label: '개발자' }] : []),
+    { key: 'settings', label: '설정' },
+    { key: 'logs', label: '로그' },
+    ...(isAdminActor ? [{ key: 'developer' as AdminGroup, label: '개발자' }] : []),
   ];
 
   return (
     <View style={styles.wrap}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
-        {sections.map((s) => (
+        {groups.map((s) => (
           <Pressable
             key={s.key}
-            onPress={() => setSection(s.key)}
-            style={[styles.tab, section === s.key && styles.tabActive]}
+            onPress={() => setGroup(s.key)}
+            style={[styles.tab, group === s.key && styles.tabActive]}
           >
-            <Text style={[styles.tabLabel, section === s.key && styles.tabLabelActive]}>
+            <Text style={[styles.tabLabel, group === s.key && styles.tabLabelActive]}>
               {s.label}
             </Text>
             {s.badge != null && s.badge > 0 && (
@@ -209,7 +201,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
         ))}
       </ScrollView>
 
-      {section === 'overview' && (
+      {group === 'home' && (
         <View style={styles.sectionBody}>
           <Text style={styles.dateHeading}>{formatTodayLabel()}</Text>
           <View style={styles.statGrid}>
@@ -230,47 +222,15 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
 
           <Card style={styles.block}>
             <View style={styles.blockHeader}>
-              <Text style={styles.blockTitle}>최근 활동 로그</Text>
-              <Pressable onPress={() => setSection('logs')}>
-                <Text style={styles.linkText}>전체 보기</Text>
-              </Pressable>
+              <Text style={styles.blockTitle}>확인 필요 ({adminAlerts.length})</Text>
             </View>
-            <AdminLogPanel
-              logs={adminLogs}
-              filter="all"
-              onFilterChange={() => {}}
-              compact
-              maxItems={5}
-              onViewAll={() => setSection('logs')}
-            />
-          </Card>
-
-          <Card style={styles.hintCard}>
-            <Text style={styles.hintTitle}>관리자 안내</Text>
-            <Text style={styles.hintText}>
-              회원·출석·경기·레슨·친구·포인트·코트·로그 탭에서 승인·거절·취소·철회·강제 반납 등
-              운영 작업을 할 수 있습니다. 출석 취소, 경기 확정 철회, 레슨 대기열 제거, 청소 인증
-              취소 등도 지원합니다. 모든 주요 작업은 활동 로그에 기록됩니다.
-            </Text>
-          </Card>
-        </View>
-      )}
-
-      {section === 'alerts' && (
-        <View style={styles.sectionBody}>
-          <Card style={styles.block}>
-            <View style={styles.blockHeader}>
-              <Text style={styles.blockTitle}>확인이 필요한 알림 ({adminAlerts.length})</Text>
-            </View>
-            {adminAlerts.length === 0 && (
-              <Text style={styles.empty}>새 알림이 없습니다</Text>
-            )}
+            {adminAlerts.length === 0 && <Text style={styles.empty}>새 알림이 없습니다</Text>}
             {adminAlerts.map((alert) => (
               <View key={alert.id} style={styles.alertCard}>
                 <Pressable
                   style={styles.alertBody}
                   onPress={() => {
-                    setSection(alert.section);
+                    goAlertSection(alert.section);
                     dismissAlert(alert.id);
                   }}
                   accessibilityRole="button"
@@ -295,12 +255,37 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
               </View>
             ))}
           </Card>
+
+          <Card style={styles.block}>
+            <View style={styles.blockHeader}>
+              <Text style={styles.blockTitle}>최근 활동 로그</Text>
+              <Pressable onPress={() => setGroup('logs')}>
+                <Text style={styles.linkText}>전체 보기</Text>
+              </Pressable>
+            </View>
+            <AdminLogPanel
+              logs={adminLogs}
+              filter="all"
+              onFilterChange={() => {}}
+              compact
+              maxItems={5}
+              onViewAll={() => setGroup('logs')}
+            />
+          </Card>
+
+          <Card style={styles.hintCard}>
+            <Text style={styles.hintTitle}>관리자 안내</Text>
+            <Text style={styles.hintText}>
+              사람(회원·출석·친구) · 현장(코트·경기·레슨) · 설정(활동 시간·공지)에서 운영 작업을
+              하세요. 주요 작업은 로그에 남습니다.
+            </Text>
+          </Card>
         </View>
       )}
 
-      {section === 'operations' && (
+      {group === 'settings' && (
         <View style={styles.sectionBody}>
-          <AdminOperationsPanel
+          <AdminSettingsPanel
             adminId={adminId}
             adminName={resolveUser(adminId)?.name ?? '관리자'}
             onToast={(type, message) => showToast({ type, title: '', message })}
@@ -308,7 +293,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
         </View>
       )}
 
-      {section === 'logs' && (
+      {group === 'logs' && (
         <View style={styles.sectionBody}>
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>활동 로그 ({adminLogs.length}건)</Text>
@@ -326,7 +311,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
         </View>
       )}
 
-      {section === 'developer' && isAdminActor && (
+      {group === 'developer' && isAdminActor && (
         <View style={styles.sectionBody}>
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>개발자 모드</Text>
@@ -349,17 +334,39 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
         </View>
       )}
 
-      {section === 'members' && (
+      {group === 'people' && (
         <View style={styles.sectionBody}>
+          <AdminSubTabs
+            active={peopleSub}
+            onChange={setPeopleSub}
+            items={[
+              {
+                key: 'members',
+                label: '회원',
+                badge: (pendingMembers.length + suspendedMembers.length) || undefined,
+              },
+              {
+                key: 'attendance',
+                label: '출석',
+                badge: todayAttendance.length || undefined,
+              },
+              {
+                key: 'social',
+                label: '친구',
+                badge: pendingFriendRequests.length || undefined,
+              },
+            ]}
+          />
+
+      {peopleSub === 'members' && (
           <MemberAdminPanel
             adminId={adminId}
             onToast={(type, message) => showToast({ type, title: '', message })}
           />
-        </View>
       )}
 
-      {section === 'attendance' && (
-        <View style={styles.sectionBody}>
+      {peopleSub === 'attendance' && (
+        <>
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>
               오늘 출석 ({formatTodayLabel()}) · {todayAttendance.length}명
@@ -459,11 +466,79 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
                 );
               })}
           </Card>
+        </>
+      )}
+
+      {peopleSub === 'social' && (
+          <Card style={styles.block}>
+            <Text style={styles.blockTitle}>친구 신청 대기 ({pendingFriendRequests.length})</Text>
+            {pendingFriendRequests.length === 0 && (
+              <Text style={styles.empty}>대기 중인 친구 신청이 없습니다</Text>
+            )}
+            {pendingFriendRequests.map((req) => {
+              const from = resolveUser(req.fromUserId);
+              const to = resolveUser(req.toUserId);
+              return (
+                <View key={req.id} style={styles.itemCard}>
+                  <Text style={styles.itemTitle}>
+                    {from?.name ?? req.fromUserId} → {to?.name ?? req.toUserId}
+                  </Text>
+                  <Text style={styles.itemSub}>
+                    {new Date(req.createdAt).toLocaleString('ko-KR')}
+                  </Text>
+                  <View style={styles.itemActions}>
+                    <Button
+                      title="신청 거절"
+                      onPress={() => {
+                        const r = adminDismissFriendRequest(req.id);
+                        if (r.success) {
+                          recordAdminLogAsActor(adminId, {
+                            category: 'social',
+                            action: 'friend.dismiss',
+                            message: `친구 신청 거절 (${from?.name} → ${to?.name})`,
+                            targetId: req.id,
+                          });
+                        }
+                        showToast({
+                          type: r.success ? 'info' : 'warning',
+                          title: '',
+                          message: r.message,
+                        });
+                      }}
+                      size="sm"
+                      variant="danger"
+                    />
+                  </View>
+                </View>
+              );
+            })}
+          </Card>
+      )}
         </View>
       )}
 
-      {section === 'matches' && (
+      {group === 'live' && (
         <View style={styles.sectionBody}>
+          <AdminSubTabs
+            active={liveSub}
+            onChange={setLiveSub}
+            items={[
+              { key: 'courts', label: '코트' },
+              {
+                key: 'matches',
+                label: '경기',
+                badge: unconfirmedMatches.length || undefined,
+              },
+              {
+                key: 'lessons',
+                label: '레슨',
+                badge: (pendingLessonUsers.length + activeQueue.length) || undefined,
+              },
+            ]}
+          />
+
+      {liveSub === 'matches' && (
+        <>
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>확정 대기 ({unconfirmedMatches.length})</Text>
             {unconfirmedMatches.length === 0 && (
@@ -556,11 +631,11 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
                 <MatchCard key={match.id} match={match} resolveUser={resolveUser} expanded={false} />
               ))}
           </Card>
-        </View>
+        </>
       )}
 
-      {section === 'lessons' && (
-        <View style={styles.sectionBody}>
+      {liveSub === 'lessons' && (
+        <>
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>레슨 권한 승인 대기 ({pendingLessonUsers.length})</Text>
             {pendingLessonUsers.length === 0 && (
@@ -744,68 +819,11 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
               </View>
             ))}
           </Card>
-        </View>
+        </>
       )}
 
-      {section === 'social' && (
-        <View style={styles.sectionBody}>
-          <Card style={styles.block}>
-            <Text style={styles.blockTitle}>친구 신청 대기 ({pendingFriendRequests.length})</Text>
-            {pendingFriendRequests.length === 0 && (
-              <Text style={styles.empty}>대기 중인 친구 신청이 없습니다</Text>
-            )}
-            {pendingFriendRequests.map((req) => {
-              const from = resolveUser(req.fromUserId);
-              const to = resolveUser(req.toUserId);
-              return (
-                <View key={req.id} style={styles.itemCard}>
-                  <Text style={styles.itemTitle}>
-                    {from?.name ?? req.fromUserId} → {to?.name ?? req.toUserId}
-                  </Text>
-                  <Text style={styles.itemSub}>
-                    {new Date(req.createdAt).toLocaleString('ko-KR')}
-                  </Text>
-                  <View style={styles.itemActions}>
-                    <Button
-                      title="신청 거절"
-                      onPress={() => {
-                        const r = adminDismissFriendRequest(req.id);
-                        if (r.success) {
-                          recordAdminLogAsActor(adminId, {
-                            category: 'social',
-                            action: 'friend.dismiss',
-                            message: `친구 신청 거절 (${from?.name} → ${to?.name})`,
-                            targetId: req.id,
-                          });
-                        }
-                        showToast({
-                          type: r.success ? 'info' : 'warning',
-                          title: '',
-                          message: r.message,
-                        });
-                      }}
-                      size="sm"
-                      variant="danger"
-                    />
-                  </View>
-                </View>
-              );
-            })}
-          </Card>
-        </View>
-      )}
-
-      {section === 'points' && (
-        <AdminPointsPanel
-          adminId={adminId}
-          onToast={(type, message) =>
-            showToast({ type, title: '', message })
-          }
-        />
-      )}
-
-      {section === 'courts' && (
-        <View style={styles.sectionBody}>
+      {liveSub === 'courts' && (
+        <>
           <View style={styles.statGrid}>
             <StatCard label="빈 코트" value={String(courtStats.empty)} />
             <StatCard label="예약" value={String(courtStats.reserved)} />
@@ -883,6 +901,19 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
               />
             ))}
           </Card>
+        </>
+      )}
+        </View>
+      )}
+
+      {group === 'points' && (
+        <View style={styles.sectionBody}>
+          <AdminPointsPanel
+            adminId={adminId}
+            onToast={(type, message) =>
+              showToast({ type, title: '', message })
+            }
+          />
         </View>
       )}
     </View>

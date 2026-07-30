@@ -13,7 +13,8 @@ import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCoachingStore } from '@/src/stores/coachingStore';
 import { useAdminLogStore } from '@/src/stores/adminLogStore';
 import { createEmptyCourts } from '@/src/services/courtService';
-import { fetchOpenRegistration } from '@/src/services/supabase/club';
+import { fetchOpenRegistration, fetchActivitySchedule } from '@/src/services/supabase/club';
+import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 
 let courtsUnsub: (() => void) | null = null;
 let profilesUnsub: (() => void) | null = null;
@@ -46,6 +47,15 @@ export async function initSupabaseApp(): Promise<boolean> {
   try {
     const open = await fetchOpenRegistration();
     useAppStore.setState({ openRegistration: open });
+  } catch {
+    /* keep default */
+  }
+
+  try {
+    const schedule = await fetchActivitySchedule();
+    if (schedule?.length) {
+      useActivityScheduleStore.getState().setScheduleLocal(schedule);
+    }
   } catch {
     /* keep default */
   }

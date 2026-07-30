@@ -3,6 +3,7 @@ import type { FriendRequest } from '@/src/types';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useFriendStore, type FriendState } from '@/src/stores/friendStore';
 import { ACTIVITY_SCHEDULE } from '@/src/constants';
+import { getActivitySchedule } from '@/src/stores/activityScheduleStore';
 import { buildFriendGroups, sortByScheduledArrival } from '@/src/utils/friendsPresence';
 
 const EMPTY_FRIEND_IDS: string[] = [];
@@ -10,7 +11,8 @@ const EMPTY_REQUESTS: FriendRequest[] = [];
 
 function getTodaySession() {
   const day = new Date().getDay();
-  return ACTIVITY_SCHEDULE.find((s) => s.day === day) ?? ACTIVITY_SCHEDULE[0];
+  const sessions = getActivitySchedule();
+  return sessions.find((s) => s.day === day) ?? sessions[0] ?? ACTIVITY_SCHEDULE[0];
 }
 
 function pad(n: number) {

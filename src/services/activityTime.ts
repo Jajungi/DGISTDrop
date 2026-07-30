@@ -1,47 +1,56 @@
-import { ACTIVITY_SCHEDULE } from '@/src/constants';
+import { getActivitySchedule } from '@/src/stores/activityScheduleStore';
+import type { ActivitySession } from '@/src/types';
+
+function schedule(): ActivitySession[] {
+  return getActivitySchedule();
+}
 
 export function isActivityTime(now: Date = new Date()): boolean {
   const day = now.getDay();
-  const session = ACTIVITY_SCHEDULE.find((s) => s.day === day);
-  if (!session) return false;
+  const sessions = schedule().filter((s) => s.day === day);
+  if (!sessions.length) return false;
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const startMinutes = session.startHour * 60 + session.startMinute;
-  const endMinutes = session.endHour * 60 + session.endMinute;
-
-  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  return sessions.some((session) => {
+    const startMinutes = session.startHour * 60 + session.startMinute;
+    const endMinutes = session.endHour * 60 + session.endMinute;
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  });
 }
 
 export function getNextActivityTime(now: Date = new Date()): Date | null {
   const candidates: Date[] = [];
+  const sessions = schedule();
 
   for (let offset = 0; offset < 7; offset++) {
     const checkDate = new Date(now);
     checkDate.setDate(checkDate.getDate() + offset);
     const day = checkDate.getDay();
-    const session = ACTIVITY_SCHEDULE.find((s) => s.day === day);
-    if (!session) continue;
-
-    const activityStart = new Date(checkDate);
-    activityStart.setHours(session.startHour, session.startMinute, 0, 0);
-
-    if (activityStart > now) {
-      candidates.push(activityStart);
+    for (const session of sessions.filter((s) => s.day === day)) {
+      const activityStart = new Date(checkDate);
+      activityStart.setHours(session.startHour, session.startMinute, 0, 0);
+      if (activityStart > now) candidates.push(activityStart);
     }
   }
 
-  return candidates.length > 0 ? candidates[0] : null;
+  candidates.sort((a, b) => a.getTime() - b.getTime());
+  return candidates[0] ?? null;
 }
 
 export function getActivityTimeRemaining(now: Date = new Date()): string | null {
   if (!isActivityTime(now)) return null;
 
   const day = now.getDay();
-  const session = ACTIVITY_SCHEDULE.find((s) => s.day === day);
-  if (!session) return null;
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const ends = schedule()
+    .filter((s) => s.day === day)
+    .map((s) => s.endHour * 60 + s.endMinute)
+    .filter((end) => end >= currentMinutes);
+  if (!ends.length) return null;
+  const endMinutes = Math.max(...ends);
 
   const endDate = new Date(now);
-  endDate.setHours(session.endHour, session.endMinute, 0, 0);
+  endDate.setHours(Math.floor(endMinutes / 60), endMinutes % 60, 0, 0);
 
   const diff = endDate.getTime() - now.getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));

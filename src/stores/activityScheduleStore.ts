@@ -1,0 +1,53 @@
+import { create } from 'zustand';
+import type { ActivitySession } from '@/src/types';
+import {
+  DEFAULT_ACTIVITY_SCHEDULE,
+  cloneSchedule,
+  normalizeSchedule,
+} from '@/src/utils/activitySchedule';
+import { isSupabaseEnabled } from '@/src/lib/supabase';
+
+interface ActivityScheduleState {
+  schedule: ActivitySession[];
+  setScheduleLocal: (sessions: ActivitySession[]) => void;
+  setSchedule: (
+    sessions: ActivitySession[]
+  ) => Promise<{ success: boolean; message: string }>;
+  resetToDefault: () => Promise<{ success: boolean; message: string }>;
+}
+
+export const useActivityScheduleStore = create<ActivityScheduleState>((set, get) => ({
+  schedule: cloneSchedule(DEFAULT_ACTIVITY_SCHEDULE),
+
+  setScheduleLocal: (sessions) => {
+    set({ schedule: normalizeSchedule(sessions) });
+  },
+
+  setSchedule: async (sessions) => {
+    const next = normalizeSchedule(sessions);
+    if (!next.length) {
+      return { success: false, message: '활동 요일을 하나 이상 남겨 주세요.' };
+    }
+    const prev = get().schedule;
+    set({ schedule: next });
+    if (isSupabaseEnabled()) {
+      try {
+        const { setActivityScheduleRemote } = await import('@/src/services/supabase/club');
+        await setActivityScheduleRemote(next);
+      } catch (err) {
+        set({ schedule: prev });
+        return {
+          success: false,
+          message: err instanceof Error ? err.message : '활동 시간 저장에 실패했어요.',
+        };
+      }
+    }
+    return { success: true, message: '활동 시간을 저장했어요.' };
+  },
+
+  resetToDefault: async () => get().setSchedule(cloneSchedule(DEFAULT_ACTIVITY_SCHEDULE)),
+}));
+
+export function getActivitySchedule(): ActivitySession[] {
+  return useActivityScheduleStore.getState().schedule;
+}
