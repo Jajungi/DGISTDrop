@@ -12,8 +12,11 @@ interface TeamRoomCardProps {
   onJoin: () => void;
   onLeave?: () => void;
   onReserveCourt?: () => void;
+  onAcceptJoin?: (requestId: string) => void;
+  onRejectJoin?: (requestId: string) => void;
   isMember: boolean;
   isHost: boolean;
+  hasPendingRequest?: boolean;
 }
 
 const STATUS_LABELS = {
@@ -28,10 +31,14 @@ export function TeamRoomCard({
   onJoin,
   onLeave,
   onReserveCourt,
+  onAcceptJoin,
+  onRejectJoin,
   isMember,
   isHost,
+  hasPendingRequest,
 }: TeamRoomCardProps) {
   const canReserve = isHost && room.status === 'ready' && room.members.length >= room.minMembers;
+  const joinRequests = room.joinRequests ?? [];
 
   return (
     <Card style={room.isHot ? [styles.card, styles.hotCard] : styles.card}>
@@ -69,6 +76,27 @@ export function TeamRoomCard({
         ))}
       </View>
 
+      {isHost && joinRequests.length > 0 && (
+        <View style={styles.requests}>
+          <Text style={styles.requestsTitle}>참가 신청 {joinRequests.length}</Text>
+          {joinRequests.map((req) => (
+            <View key={req.id} style={styles.requestRow}>
+              <Avatar name={req.name} color={req.avatarColor} size={28} />
+              <Text style={styles.requestName}>{req.name}</Text>
+              <RankBadge rank={req.rank} size="sm" />
+              <View style={styles.requestActions}>
+                {onAcceptJoin && (
+                  <Button title="수락" onPress={() => onAcceptJoin(req.id)} size="sm" />
+                )}
+                {onRejectJoin && (
+                  <Button title="거절" onPress={() => onRejectJoin(req.id)} size="sm" variant="ghost" />
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
       <View style={styles.footer}>
         <View style={styles.statusWrap}>
           <Text style={[styles.status, room.status === 'ready' && styles.readyStatus]}>
@@ -83,8 +111,11 @@ export function TeamRoomCard({
           {canReserve && onReserveCourt && (
             <Button title="코트 예약" onPress={onReserveCourt} size="sm" />
           )}
-          {!isMember && room.status !== 'reserved' && room.status !== 'closed' && (
-            <Button title="참여" onPress={onJoin} size="sm" />
+          {!isMember && !hasPendingRequest && room.status !== 'reserved' && room.status !== 'closed' && (
+            <Button title="참가 신청" onPress={onJoin} size="sm" />
+          )}
+          {!isMember && hasPendingRequest && (
+            <Text style={styles.memberLabel}>승인 대기</Text>
           )}
           {isMember && room.status !== 'reserved' && onLeave && (
             <Button title="나가기" onPress={onLeave} size="sm" variant="ghost" />
@@ -135,6 +166,21 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderStyle: 'dashed',
   },
+  requests: {
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    gap: spacing.sm,
+  },
+  requestsTitle: { ...typography.caption, color: colors.primary, fontWeight: '700' },
+  requestRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  requestName: { ...typography.body, color: colors.text, flex: 1, fontSize: 13 },
+  requestActions: { flexDirection: 'row', gap: 4 },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -233,6 +233,7 @@ type DbTeamRoom = {
   password?: string | null;
   has_password?: boolean;
   created_at: string;
+  join_requests?: TeamRoom['joinRequests'];
 };
 
 function mapTeamRoom(r: DbTeamRoom): TeamRoom {
@@ -249,7 +250,8 @@ function mapTeamRoom(r: DbTeamRoom): TeamRoom {
     status: r.status,
     createdAt: r.created_at,
     hasPassword: Boolean(r.has_password ?? r.password),
-  } as TeamRoom;
+    joinRequests: Array.isArray(r.join_requests) ? r.join_requests : [],
+  };
 }
 
 export async function fetchTeamRooms(): Promise<TeamRoom[]> {
@@ -267,13 +269,27 @@ export async function fetchTeamRooms(): Promise<TeamRoom[]> {
   const fallback = await sb
     .from('team_rooms')
     .select(
-      'id, host_id, host_name, title, min_rank, max_rank, members, min_members, max_members, status, created_at'
+      'id, host_id, host_name, title, min_rank, max_rank, members, min_members, max_members, status, created_at, join_requests'
     )
     .neq('status', 'closed')
     .order('created_at', { ascending: false });
   if (!fallback.error && fallback.data) {
     return (fallback.data as DbTeamRoom[]).map((r) =>
       mapTeamRoom({ ...r, has_password: false })
+    );
+  }
+
+  // join_requests 컬럼 없는 구버전
+  const legacy = await sb
+    .from('team_rooms')
+    .select(
+      'id, host_id, host_name, title, min_rank, max_rank, members, min_members, max_members, status, created_at'
+    )
+    .neq('status', 'closed')
+    .order('created_at', { ascending: false });
+  if (!legacy.error && legacy.data) {
+    return (legacy.data as DbTeamRoom[]).map((r) =>
+      mapTeamRoom({ ...r, has_password: false, join_requests: [] })
     );
   }
 
@@ -294,24 +310,31 @@ export async function verifyTeamRoomPasswordRemote(
 }
 
 export async function insertTeamRoomRemote(room: TeamRoom): Promise<string | null> {
+  const base = {
+    host_id: room.hostId,
+    host_name: room.hostName,
+    title: room.title,
+    min_rank: room.minRank ?? null,
+    max_rank: room.maxRank ?? null,
+    members: room.members,
+    min_members: room.minMembers,
+    max_members: room.maxMembers,
+    status: room.status,
+    password: (room as { password?: string }).password ?? null,
+  };
+  const withJoin = { ...base, join_requests: room.joinRequests ?? [] };
   const { data, error } = await getSupabase()
     .from('team_rooms')
-    .insert({
-      host_id: room.hostId,
-      host_name: room.hostName,
-      title: room.title,
-      min_rank: room.minRank ?? null,
-      max_rank: room.maxRank ?? null,
-      members: room.members,
-      min_members: room.minMembers,
-      max_members: room.maxMembers,
-      status: room.status,
-      password: (room as { password?: string }).password ?? null,
-    })
+    .insert(withJoin)
     .select('id')
     .single();
-  if (error) throw error;
-  return (data as { id: string })?.id ?? null;
+  if (!error) return (data as { id: string })?.id ?? null;
+  if (error.message?.includes('join_requests') || error.code === '42703') {
+    const retry = await getSupabase().from('team_rooms').insert(base).select('id').single();
+    if (retry.error) throw retry.error;
+    return (retry.data as { id: string })?.id ?? null;
+  }
+  throw error;
 }
 
 export async function updateTeamRoomRemote(
@@ -321,6 +344,7 @@ export async function updateTeamRoomRemote(
     status?: TeamRoom['status'];
     hostId?: string;
     hostName?: string;
+    joinRequests?: TeamRoom['joinRequests'];
   }
 ): Promise<void> {
   const dbPatch: Record<string, unknown> = {};
@@ -328,8 +352,19 @@ export async function updateTeamRoomRemote(
   if (patch.status !== undefined) dbPatch.status = patch.status;
   if (patch.hostId !== undefined) dbPatch.host_id = patch.hostId;
   if (patch.hostName !== undefined) dbPatch.host_name = patch.hostName;
+  if (patch.joinRequests !== undefined) dbPatch.join_requests = patch.joinRequests;
   const { error } = await getSupabase().from('team_rooms').update(dbPatch).eq('id', id);
-  if (error) throw error;
+  if (error) {
+    // 027 미적용: join_requests 빼고 재시도
+    if (patch.joinRequests !== undefined && (error.message?.includes('join_requests') || error.code === '42703')) {
+      const { join_requests: _jr, ...rest } = dbPatch;
+      if (Object.keys(rest).length === 0) return;
+      const retry = await getSupabase().from('team_rooms').update(rest).eq('id', id);
+      if (retry.error) throw retry.error;
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function deleteTeamRoomRemote(id: string): Promise<void> {

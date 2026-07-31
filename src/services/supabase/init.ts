@@ -13,10 +13,11 @@ import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCoachingStore } from '@/src/stores/coachingStore';
 import { useAdminLogStore } from '@/src/stores/adminLogStore';
 import { createEmptyCourts } from '@/src/services/courtService';
-import { fetchOpenRegistration, fetchActivitySchedule, fetchSiteOverlays, fetchClubEvents } from '@/src/services/supabase/club';
+import { fetchOpenRegistration, fetchActivitySchedule, fetchSiteOverlays, fetchClubEvents, fetchLobbyExpiry } from '@/src/services/supabase/club';
 import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { useSiteOverlayStore } from '@/src/stores/siteOverlayStore';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
+import { useLobbyExpiryStore } from '@/src/stores/lobbyExpiryStore';
 
 let courtsUnsub: (() => void) | null = null;
 let profilesUnsub: (() => void) | null = null;
@@ -78,6 +79,13 @@ export async function initSupabaseApp(): Promise<boolean> {
   try {
     const events = await fetchClubEvents();
     if (events) useClubEventStore.getState().setLocal(events);
+  } catch {
+    /* keep default */
+  }
+
+  try {
+    const expiry = await fetchLobbyExpiry();
+    if (expiry) useLobbyExpiryStore.getState().setLocal(expiry);
   } catch {
     /* keep default */
   }
@@ -194,6 +202,7 @@ function setupSocialSubscriptions(userId: string, isAdmin: boolean) {
         social.subscribeTeamRooms(async () => {
           try {
             useLobbyStore.getState().hydrateRooms(await social.fetchTeamRooms());
+            useLobbyStore.getState().expireStaleRooms();
           } catch {
             /* ignore */
           }
@@ -357,6 +366,7 @@ async function hydrateUserData(userId: string, isAdmin: boolean) {
   }
   if (roomRes.status === 'fulfilled') {
     useLobbyStore.getState().hydrateRooms(roomRes.value);
+    useLobbyStore.getState().expireStaleRooms();
   }
 }
 

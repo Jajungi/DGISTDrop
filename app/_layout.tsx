@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -30,9 +31,8 @@ import { initCrossTabSync } from '@/src/services/crossTabSync';
 import { initServerSync } from '@/src/services/serverSync';
 import { initSupabaseApp } from '@/src/services/supabase/init';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
-import { initLocalNotifications } from '@/src/services/localNotifications';
-import { registerPushTokenForUser } from '@/src/services/pushNotifications';
 import { useAuthStore } from '@/src/stores/authStore';
+import { useFriendArrivalWatch } from '@/src/hooks/useFriendArrivalWatch';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -43,6 +43,8 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  useFriendArrivalWatch();
+
   const [loaded, error] = useFonts({
     PlayfairDisplay_400Regular,
     PlayfairDisplay_600SemiBold,
@@ -66,15 +68,19 @@ export default function RootLayout() {
   }, [loaded, error]);
 
   useEffect(() => {
-    void initLocalNotifications();
+    if (Platform.OS === 'web') return;
+    void import('@/src/services/localNotifications').then((m) => m.initLocalNotifications());
   }, []);
 
   const currentUserId = useAuthStore((s) => s.currentUser?.id ?? null);
   const isGuestSession = useAuthStore((s) => s.isGuestSession);
 
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     if (currentUserId && !isGuestSession) {
-      void registerPushTokenForUser(currentUserId);
+      void import('@/src/services/pushNotifications').then((m) =>
+        m.registerPushTokenForUser(currentUserId)
+      );
     }
   }, [currentUserId, isGuestSession]);
 

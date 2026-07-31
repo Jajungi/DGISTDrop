@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Platform } from 'react-native';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
 import { useSiteOverlayStore } from '@/src/stores/siteOverlayStore';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
+import { useLobbyExpiryStore } from '@/src/stores/lobbyExpiryStore';
 import {
   clubEventKindLabel,
   newEventId,
   newOverlayId,
   todayLocalISODate,
 } from '@/src/utils/siteOps';
-import type { ClubEventKind, SiteOverlaySurface } from '@/src/types';
+import { lobbyExpiryLabel } from '@/src/utils/lobbyExpiry';
+import type { ClubEventKind, LobbyExpiryMode, SiteOverlaySurface } from '@/src/types';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 const SURFACES: { key: SiteOverlaySurface; label: string; hint: string }[] = [
@@ -31,6 +33,16 @@ export function AdminSiteOpsPanel({ onToast }: Props) {
   const events = useClubEventStore((s) => s.events);
   const upsertEvent = useClubEventStore((s) => s.upsert);
   const removeEvent = useClubEventStore((s) => s.remove);
+
+  const lobbyExpiry = useLobbyExpiryStore((s) => s.config);
+  const saveLobbyExpiry = useLobbyExpiryStore((s) => s.save);
+  const [expiryMode, setExpiryMode] = useState<LobbyExpiryMode>(lobbyExpiry.mode);
+  const [expiryHours, setExpiryHours] = useState(String(lobbyExpiry.hours));
+
+  useEffect(() => {
+    setExpiryMode(lobbyExpiry.mode);
+    setExpiryHours(String(lobbyExpiry.hours));
+  }, [lobbyExpiry.mode, lobbyExpiry.hours]);
 
   const [ovTitle, setOvTitle] = useState('');
   const [ovBody, setOvBody] = useState('');
@@ -285,6 +297,56 @@ export function AdminSiteOpsPanel({ onToast }: Props) {
             </View>
           </View>
         ))}
+      </Card>
+
+      <Card style={styles.block}>
+        <Text style={styles.blockTitle}>모집방 자동 종료</Text>
+        <Text style={styles.hint}>
+          오래 남은 모집방을 목록에서 정리합니다. 코트 예약까지 완료된 방(예약됨)은 유지됩니다.
+          현재: {lobbyExpiryLabel(lobbyExpiry)}
+        </Text>
+        <View style={styles.chipRow}>
+          {(
+            [
+              { key: 'hours' as const, label: '시간 단위' },
+              { key: 'end_of_day' as const, label: '등록 당일까지' },
+              { key: 'never' as const, label: '삭제 안 함' },
+            ] as const
+          ).map((opt) => (
+            <Pressable
+              key={opt.key}
+              onPress={() => setExpiryMode(opt.key)}
+              style={[styles.chip, expiryMode === opt.key && styles.chipOn]}
+            >
+              <Text style={[styles.chipText, expiryMode === opt.key && styles.chipTextOn]}>
+                {opt.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        {expiryMode === 'hours' && (
+          <View style={styles.dateField}>
+            <Text style={styles.fieldLabel}>생성 후 N시간 (1~168)</Text>
+            <TextInput
+              style={styles.input}
+              value={expiryHours}
+              onChangeText={setExpiryHours}
+              keyboardType="number-pad"
+              placeholder="6"
+              placeholderTextColor={colors.textMuted}
+            />
+          </View>
+        )}
+        <Button
+          title="만료 설정 저장"
+          size="sm"
+          fullWidth
+          onPress={async () => {
+            const hours = Math.max(1, Math.min(168, Number(expiryHours) || 6));
+            const r = await saveLobbyExpiry({ mode: expiryMode, hours });
+            onToast(r.success ? 'success' : 'warning', r.message);
+          }}
+        />
       </Card>
 
       <Card style={styles.block}>

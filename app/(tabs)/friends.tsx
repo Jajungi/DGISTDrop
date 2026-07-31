@@ -7,6 +7,7 @@ import { FriendsListPanel } from '@/src/components/friends/FriendsListPanel';
 import { FriendSchedulePanel } from '@/src/components/friends/FriendSchedulePanel';
 import { FriendRequestsPanel } from '@/src/components/friends/FriendRequestsPanel';
 import { FriendSearchPanel } from '@/src/components/friends/FriendSearchPanel';
+import { PartnerSuggestPanel } from '@/src/components/friends/PartnerSuggestPanel';
 import { ActivityNoticeBanner } from '@/src/components/guide/ActivityNoticeBanner';
 import { ClubEventBanner } from '@/src/components/guide/ClubEventBanner';
 import { useSearchStore } from '@/src/stores/searchStore';
@@ -53,6 +54,7 @@ export default function FriendsScreen() {
           {tab === 'friends' && !searchQuery.trim() ? (
             <>
               <FriendRequestsPanel incoming={incomingRequests} outgoing={outgoingRequests} />
+              <PartnerSuggestPanel />
               <FriendsListPanel
                 onlineFriends={onlineFriends}
                 offlineFriends={offlineFriends}

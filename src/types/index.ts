@@ -152,6 +152,17 @@ export interface TeamRoom {
   /** 설정 시 참여 시 비밀번호 필요 (목록 조회 시에는 hasPassword만 노출) */
   password?: string;
   hasPassword?: boolean;
+  /** 참가 승인 대기 */
+  joinRequests: TeamRoomJoinRequest[];
+}
+
+export interface TeamRoomJoinRequest {
+  id: string;
+  userId: string;
+  name: string;
+  rank: RankTier;
+  avatarColor: string;
+  requestedAt: string;
 }
 
 export interface TeamMember {
@@ -159,6 +170,15 @@ export interface TeamMember {
   name: string;
   rank: RankTier;
   avatarColor: string;
+}
+
+/** 모집방 자동 종료 정책 (관리자 설정) */
+export type LobbyExpiryMode = 'hours' | 'end_of_day' | 'never';
+
+export interface LobbyExpiryConfig {
+  mode: LobbyExpiryMode;
+  /** mode === 'hours' 일 때 생성 후 N시간 */
+  hours: number;
 }
 
 export interface MatchResult {
@@ -316,6 +336,8 @@ export interface AppNotification {
   courtId?: number;
   /** 합류 요청 원탭 수락용 */
   joinRequestId?: string;
+  /** 모집방 참가 신청 / 초대 */
+  roomId?: string;
   /** 수신 대상 (없으면 브로드캐스트 — 레거시) */
   targetUserId?: string;
 }

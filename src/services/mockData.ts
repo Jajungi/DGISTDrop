@@ -280,6 +280,8 @@ export const MOCK_TEAM_ROOMS: TeamRoom[] = [
     createdAt: new Date().toISOString(),
     isHot: true,
     password: '1234',
+    hasPassword: true,
+    joinRequests: [],
   },
   {
     id: 'room-2',
@@ -295,6 +297,7 @@ export const MOCK_TEAM_ROOMS: TeamRoom[] = [
     maxMembers: 4,
     status: 'ready',
     createdAt: new Date().toISOString(),
+    joinRequests: [],
   },
   {
     id: 'room-3',
@@ -313,6 +316,7 @@ export const MOCK_TEAM_ROOMS: TeamRoom[] = [
     status: 'open',
     createdAt: new Date().toISOString(),
     isHot: true,
+    joinRequests: [],
   },
 ];
 

@@ -1,13 +1,21 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
 
 let initialized = false;
 
-/** 로컬 알림 권한 및 채널 설정 (웹에서는 no-op — push token listener 경고 방지) */
+/** 웹에서는 expo-notifications를 로드하지 않음 (push token listener 경고 방지) */
+async function loadNotifications() {
+  if (Platform.OS === 'web') return null;
+  return import('expo-notifications');
+}
+
+/** 로컬 알림 권한 및 채널 설정 (웹에서는 no-op) */
 export async function initLocalNotifications(): Promise<void> {
   if (Platform.OS === 'web' || initialized) return;
 
   try {
+    const Notifications = await loadNotifications();
+    if (!Notifications) return;
+
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,
@@ -56,6 +64,9 @@ export async function pushLocalNotification(
   if (Platform.OS === 'web') return;
 
   try {
+    const Notifications = await loadNotifications();
+    if (!Notifications) return;
+
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') return;
 

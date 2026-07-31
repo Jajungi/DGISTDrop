@@ -1,12 +1,15 @@
 import { create } from 'zustand';
-import type { TeamRoom, TeamMember } from '@/src/types';
+import type { TeamRoom, TeamMember, TeamRoomJoinRequest } from '@/src/types';
 import { MOCK_TEAM_ROOMS } from '@/src/services/mockData';
 import { isRankEligible } from '@/src/services/elo';
 import type { RankTier } from '@/src/types';
 import { saveRooms } from '@/src/services/persistence';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { runWhenRemoteId } from '@/src/utils/localId';
+import { filterExpiredLobbyRooms } from '@/src/utils/lobbyExpiry';
 import { useAuthStore } from './authStore';
+import { useNotificationStore } from './notificationStore';
+import { useLobbyExpiryStore } from './lobbyExpiryStore';
 import { isGuestUser } from '@/src/utils/guestAccess';
 
 function remoteRoom(
@@ -23,6 +26,10 @@ function remoteRoom(
   );
 }
 
+function withJoinRequests(room: TeamRoom): TeamRoom {
+  return { ...room, joinRequests: room.joinRequests ?? [] };
+}
+
 interface LobbyState {
   rooms: TeamRoom[];
   createRoom: (params: {
@@ -35,19 +42,41 @@ interface LobbyState {
     maxRank?: RankTier;
     password?: string;
   }) => { success: boolean; message: string };
+  /** @deprecated 승인제 — requestJoinRoom 사용 */
   joinRoom: (
     roomId: string,
     member: TeamMember,
     password?: string
   ) => { success: boolean; message: string };
-  verifyAndJoinRoom: (
+  requestJoinRoom: (
     roomId: string,
     member: TeamMember,
     password?: string
   ) => Promise<{ success: boolean; message: string }>;
+  acceptJoinRequest: (
+    roomId: string,
+    requestId: string,
+    actorId: string
+  ) => { success: boolean; message: string };
+  rejectJoinRequest: (
+    roomId: string,
+    requestId: string,
+    actorId: string
+  ) => { success: boolean; message: string };
+  /** 방장 초대 — 상대가 수락하면 바로 입장 (승인 생략) */
+  inviteFriendToRoom: (
+    roomId: string,
+    hostId: string,
+    friendId: string
+  ) => { success: boolean; message: string };
+  acceptInvite: (
+    roomId: string,
+    userId: string
+  ) => { success: boolean; message: string };
   leaveRoom: (roomId: string, userId: string) => void;
   markRoomReserved: (roomId: string, courtId: number) => void;
   adminCloseRoom: (roomId: string) => { success: boolean; message: string };
+  expireStaleRooms: () => number;
   hydrateRooms: (rooms: TeamRoom[]) => void;
 }
 
@@ -56,10 +85,20 @@ function persistRooms(rooms: TeamRoom[]) {
   saveRooms(rooms).catch(() => {});
 }
 
-export const useLobbyStore = create<LobbyState>((set, get) => ({
-  rooms: MOCK_TEAM_ROOMS,
+function addMemberToRoom(room: TeamRoom, member: TeamMember): TeamRoom {
+  const members = [...room.members, member];
+  return {
+    ...room,
+    members,
+    joinRequests: (room.joinRequests ?? []).filter((r) => r.userId !== member.userId),
+    status: members.length >= room.minMembers ? ('ready' as const) : room.status,
+  };
+}
 
-  hydrateRooms: (rooms) => set({ rooms }),
+export const useLobbyStore = create<LobbyState>((set, get) => ({
+  rooms: MOCK_TEAM_ROOMS.map(withJoinRequests),
+
+  hydrateRooms: (rooms) => set({ rooms: rooms.map(withJoinRequests) }),
 
   createRoom: (params) => {
     const host = useAuthStore.getState().users.find((u) => u.id === params.hostId);
@@ -91,6 +130,7 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
       createdAt: new Date().toISOString(),
       password: params.password || undefined,
       hasPassword: Boolean(params.password),
+      joinRequests: [],
     };
     const rooms = [newRoom, ...get().rooms];
     set({ rooms });
@@ -112,12 +152,9 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
     return { success: true, message: '모집방이 생성되었어요.' };
   },
 
-  joinRoom: (roomId, member, password) => {
+  joinRoom: (roomId, member, _password) => {
     const room = get().rooms.find((r) => r.id === roomId);
     if (!room) return { success: false, message: '방을 찾을 수 없어요.' };
-    if (room.hasPassword && !password) {
-      return { success: false, message: '비밀번호가 필요해요.' };
-    }
     if (room.members.length >= room.maxMembers) {
       return { success: false, message: '방이 가득 찼어요.' };
     }
@@ -128,44 +165,222 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
       return { success: false, message: '이미 참여 중이에요.' };
     }
 
-    const rooms = get().rooms.map((r) => {
-      if (r.id !== roomId) return r;
-      const members = [...r.members, member];
-      return {
-        ...r,
-        members,
-        status: members.length >= r.minMembers ? ('ready' as const) : r.status,
-      };
-    });
+    const rooms = get().rooms.map((r) =>
+      r.id === roomId ? addMemberToRoom(withJoinRequests(r), member) : r
+    );
     set({ rooms });
     persistRooms(rooms);
     const updated = rooms.find((r) => r.id === roomId);
     if (updated) {
       remoteRoom(roomId, (id, m) =>
-        m.updateTeamRoomRemote(id, { members: updated.members, status: updated.status })
+        m.updateTeamRoomRemote(id, {
+          members: updated.members,
+          status: updated.status,
+          joinRequests: updated.joinRequests,
+        })
       );
     }
     return { success: true, message: '방에 참여했어요!' };
   },
 
-  verifyAndJoinRoom: async (roomId, member, password) => {
+  requestJoinRoom: async (roomId, member, password) => {
     const room = get().rooms.find((r) => r.id === roomId);
     if (!room) return { success: false, message: '방을 찾을 수 없어요.' };
+    if (room.status === 'reserved' || room.status === 'closed') {
+      return { success: false, message: '참여할 수 없는 방이에요.' };
+    }
+    if (room.members.length >= room.maxMembers) {
+      return { success: false, message: '방이 가득 찼어요.' };
+    }
+    if (!isRankEligible(member.rank, room.minRank, room.maxRank)) {
+      return { success: false, message: '랭크 조건에 맞지 않아요.' };
+    }
+    if (room.members.some((m) => m.userId === member.userId)) {
+      return { success: false, message: '이미 참여 중이에요.' };
+    }
+    const requests = room.joinRequests ?? [];
+    if (requests.some((r) => r.userId === member.userId)) {
+      return { success: false, message: '이미 참가 신청했어요. 방장 승인을 기다려 주세요.' };
+    }
 
     if (room.hasPassword) {
       if (!isSupabaseEnabled()) {
-        return get().joinRoom(roomId, member, password);
-      }
-      try {
-        const { verifyTeamRoomPasswordRemote } = await import('@/src/services/supabase/social');
-        const ok = await verifyTeamRoomPasswordRemote(roomId, password);
-        if (!ok) return { success: false, message: '비밀번호가 일치하지 않아요.' };
-      } catch {
-        return { success: false, message: '비밀번호 확인에 실패했어요.' };
+        if (!password || password !== room.password) {
+          return { success: false, message: '비밀번호가 일치하지 않아요.' };
+        }
+      } else {
+        try {
+          const { verifyTeamRoomPasswordRemote } = await import('@/src/services/supabase/social');
+          const ok = await verifyTeamRoomPasswordRemote(roomId, password);
+          if (!ok) return { success: false, message: '비밀번호가 일치하지 않아요.' };
+        } catch {
+          return { success: false, message: '비밀번호 확인에 실패했어요.' };
+        }
       }
     }
 
-    return get().joinRoom(roomId, member, password);
+    const request: TeamRoomJoinRequest = {
+      id: `lr-${Date.now()}`,
+      userId: member.userId,
+      name: member.name,
+      rank: member.rank,
+      avatarColor: member.avatarColor,
+      requestedAt: new Date().toISOString(),
+    };
+
+    const rooms = get().rooms.map((r) =>
+      r.id === roomId
+        ? { ...withJoinRequests(r), joinRequests: [...(r.joinRequests ?? []), request] }
+        : r
+    );
+    set({ rooms });
+    persistRooms(rooms);
+    const updated = rooms.find((r) => r.id === roomId);
+    if (updated) {
+      remoteRoom(roomId, (id, m) =>
+        m.updateTeamRoomRemote(id, { joinRequests: updated.joinRequests })
+      );
+    }
+
+    useNotificationStore.getState().pushInbox({
+      type: 'join',
+      title: '모집방 참가 신청',
+      message: `${member.name}님이 「${room.title}」 참가를 신청했어요`,
+      targetUserId: room.hostId,
+      roomId,
+      joinRequestId: request.id,
+    });
+
+    return { success: true, message: '참가 신청을 보냈어요. 방장 승인을 기다려 주세요.' };
+  },
+
+  acceptJoinRequest: (roomId, requestId, actorId) => {
+    const room = get().rooms.find((r) => r.id === roomId);
+    if (!room) return { success: false, message: '방을 찾을 수 없어요.' };
+    if (room.hostId !== actorId) {
+      return { success: false, message: '방장만 승인할 수 있어요.' };
+    }
+    const request = (room.joinRequests ?? []).find((r) => r.id === requestId);
+    if (!request) return { success: false, message: '신청을 찾을 수 없어요.' };
+    if (room.members.length >= room.maxMembers) {
+      return { success: false, message: '방이 가득 찼어요.' };
+    }
+
+    const member: TeamMember = {
+      userId: request.userId,
+      name: request.name,
+      rank: request.rank,
+      avatarColor: request.avatarColor,
+    };
+    const result = get().joinRoom(roomId, member);
+    if (result.success) {
+      useNotificationStore.getState().pushInbox({
+        type: 'join',
+        title: '모집방 참가 승인',
+        message: `「${room.title}」 참가가 승인됐어요.`,
+        targetUserId: request.userId,
+        roomId,
+      });
+    }
+    return result;
+  },
+
+  rejectJoinRequest: (roomId, requestId, actorId) => {
+    const room = get().rooms.find((r) => r.id === roomId);
+    if (!room) return { success: false, message: '방을 찾을 수 없어요.' };
+    if (room.hostId !== actorId) {
+      return { success: false, message: '방장만 거절할 수 있어요.' };
+    }
+    const request = (room.joinRequests ?? []).find((r) => r.id === requestId);
+    if (!request) return { success: false, message: '신청을 찾을 수 없어요.' };
+
+    const rooms = get().rooms.map((r) =>
+      r.id === roomId
+        ? {
+            ...withJoinRequests(r),
+            joinRequests: (r.joinRequests ?? []).filter((x) => x.id !== requestId),
+          }
+        : r
+    );
+    set({ rooms });
+    persistRooms(rooms);
+    const updated = rooms.find((r) => r.id === roomId);
+    if (updated) {
+      remoteRoom(roomId, (id, m) =>
+        m.updateTeamRoomRemote(id, { joinRequests: updated.joinRequests })
+      );
+    }
+    useNotificationStore.getState().pushInbox({
+      type: 'join',
+      title: '모집방 참가 거절',
+      message: `「${room.title}」 참가가 거절됐어요.`,
+      targetUserId: request.userId,
+      roomId,
+    });
+    return { success: true, message: `${request.name}님 신청을 거절했어요.` };
+  },
+
+  inviteFriendToRoom: (roomId, hostId, friendId) => {
+    const room = get().rooms.find((r) => r.id === roomId);
+    if (!room) return { success: false, message: '방을 찾을 수 없어요.' };
+    if (room.hostId !== hostId && !room.members.some((m) => m.userId === hostId)) {
+      return { success: false, message: '참여 중인 모집방에서만 초대할 수 있어요.' };
+    }
+    if (room.status === 'reserved' || room.status === 'closed') {
+      return { success: false, message: '초대할 수 없는 방이에요.' };
+    }
+    if (room.members.some((m) => m.userId === friendId)) {
+      return { success: false, message: '이미 방에 있는 친구예요.' };
+    }
+    if (room.members.length >= room.maxMembers) {
+      return { success: false, message: '방이 가득 찼어요.' };
+    }
+
+    const friend = useAuthStore.getState().users.find((u) => u.id === friendId);
+    if (!friend) return { success: false, message: '친구를 찾을 수 없어요.' };
+    if (!isRankEligible(friend.rank, room.minRank, room.maxRank)) {
+      return { success: false, message: '친구 랭크가 방 조건에 맞지 않아요.' };
+    }
+
+    const inviter = useAuthStore.getState().users.find((u) => u.id === hostId);
+    useNotificationStore.getState().pushInbox({
+      type: 'friend',
+      title: '모집방 초대',
+      message: `${inviter?.name ?? '친구'}님이 「${room.title}」에 초대했어요. 알림에서 수락하면 바로 참여해요.`,
+      targetUserId: friendId,
+      roomId,
+    });
+    return { success: true, message: `${friend.name}님에게 초대를 보냈어요.` };
+  },
+
+  acceptInvite: (roomId, userId) => {
+    const room = get().rooms.find((r) => r.id === roomId);
+    if (!room) return { success: false, message: '방을 찾을 수 없어요. 이미 종료됐을 수 있어요.' };
+    const user = useAuthStore.getState().users.find((u) => u.id === userId);
+    if (!user) return { success: false, message: '사용자를 찾을 수 없어요.' };
+    if (room.members.some((m) => m.userId === userId)) {
+      return { success: true, message: '이미 참여 중이에요.' };
+    }
+    if (!isRankEligible(user.rank, room.minRank, room.maxRank)) {
+      return { success: false, message: '랭크 조건에 맞지 않아요.' };
+    }
+    const member: TeamMember = {
+      userId: user.id,
+      name: user.name,
+      rank: user.rank,
+      avatarColor: user.avatarColor,
+    };
+    const result = get().joinRoom(roomId, member);
+    if (result.success) {
+      useNotificationStore.getState().pushInbox({
+        type: 'friend',
+        title: '초대 수락',
+        message: `${user.name}님이 「${room.title}」 초대를 수락했어요.`,
+        targetUserId: room.hostId,
+        roomId,
+      });
+    }
+    return result;
   },
 
   leaveRoom: (roomId, userId) => {
@@ -176,7 +391,7 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
         if (members.length === 0) return null;
         const isHost = r.hostId === userId;
         return {
-          ...r,
+          ...withJoinRequests(r),
           hostId: isHost ? members[0].userId : r.hostId,
           hostName: isHost ? members[0].name : r.hostName,
           members,
@@ -197,6 +412,7 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
           status: remaining.status,
           hostId: remaining.hostId,
           hostName: remaining.hostName,
+          joinRequests: remaining.joinRequests,
         })
       );
     }
@@ -219,5 +435,17 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
     persistRooms(rooms);
     remoteRoom(roomId, (id, m) => m.deleteTeamRoomRemote(id));
     return { success: true, message: `「${room.title}」 모집방을 종료했어요.` };
+  },
+
+  expireStaleRooms: () => {
+    const config = useLobbyExpiryStore.getState().config;
+    const { kept, expired } = filterExpiredLobbyRooms(get().rooms, config);
+    if (!expired.length) return 0;
+    set({ rooms: kept });
+    persistRooms(kept);
+    expired.forEach((room) => {
+      remoteRoom(room.id, (id, m) => m.deleteTeamRoomRemote(id));
+    });
+    return expired.length;
   },
 }));

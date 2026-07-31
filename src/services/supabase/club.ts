@@ -1,7 +1,8 @@
 import { getSupabase, isSupabaseEnabled } from '@/src/lib/supabase';
-import type { ActivitySession, ClubEvent, SiteOverlay } from '@/src/types';
+import type { ActivitySession, ClubEvent, LobbyExpiryConfig, SiteOverlay } from '@/src/types';
 import { normalizeSchedule } from '@/src/utils/activitySchedule';
 import { normalizeClubEvents, normalizeOverlays } from '@/src/utils/siteOps';
+import { normalizeLobbyExpiry } from '@/src/utils/lobbyExpiry';
 
 function isMissingColumnError(message: string | undefined): boolean {
   if (!message) return false;
@@ -127,3 +128,37 @@ export async function setClubEventsRemote(events: ClubEvent[]): Promise<boolean>
   }
   return Boolean(data ?? true);
 }
+
+export async function fetchLobbyExpiry(): Promise<LobbyExpiryConfig | null> {
+  if (!isSupabaseEnabled()) return null;
+  const { data, error } = await getSupabase()
+    .from('club_metadata')
+    .select('lobby_expiry')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error) {
+    if (__DEV__ && !isMissingColumnError(error.message)) {
+      console.warn('[club] fetchLobbyExpiry', error.message);
+    }
+    return null;
+  }
+  const raw = (data as { lobby_expiry?: unknown } | null)?.lobby_expiry;
+  if (raw == null) return null;
+  return normalizeLobbyExpiry(raw);
+}
+
+export async function setLobbyExpiryRemote(config: LobbyExpiryConfig): Promise<boolean> {
+  const { data, error } = await getSupabase().rpc('rpc_set_lobby_expiry', {
+    p_expiry: config,
+  });
+  if (error) {
+    if (isMissingColumnError(error.message) || error.message?.includes('rpc_set_lobby_expiry')) {
+      throw new Error(
+        '모집방 만료 DB 설정이 아직 없어요. Supabase에서 027_lobby_join_expiry.sql 을 실행해 주세요.'
+      );
+    }
+    throw error;
+  }
+  return Boolean(data ?? true);
+}
+

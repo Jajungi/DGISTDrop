@@ -11,10 +11,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCourtStore } from '@/src/stores/courtStore';
+import { useLobbyStore } from '@/src/stores/lobbyStore';
 import { useAuthStore } from '@/src/stores/authStore';
 import type { AppNotification } from '@/src/types';
 import { colors, spacing, typography, borderRadius, shadows } from '@/src/theme';
 import { formatLessonEtaLabel } from '@/src/utils/lessonEta';
+import { router } from 'expo-router';
 
 const INITIAL_VISIBLE = 5;
 const LIST_COLLAPSED_MAX = 280;
@@ -59,6 +61,10 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
   const courts = useCourtStore((s) => s.courts);
   const acceptJoin = useCourtStore((s) => s.acceptJoin);
   const rejectJoin = useCourtStore((s) => s.rejectJoin);
+  const rooms = useLobbyStore((s) => s.rooms);
+  const acceptLobbyJoin = useLobbyStore((s) => s.acceptJoinRequest);
+  const rejectLobbyJoin = useLobbyStore((s) => s.rejectJoinRequest);
+  const acceptInvite = useLobbyStore((s) => s.acceptInvite);
   const currentUser = useAuthStore((s) => s.currentUser);
   const lessonQueue = useLessonStore((s) => s.lessonQueue);
   const [expanded, setExpanded] = useState(false);
@@ -92,8 +98,23 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
         });
       });
     });
+    rooms.forEach((room) => {
+      if (room.hostId !== currentUser.id) return;
+      (room.joinRequests ?? []).forEach((req) => {
+        items.push({
+          id: `lobby-join-live-${req.id}`,
+          type: 'join',
+          title: '모집방 참가 신청',
+          message: `${req.name}님이 「${room.title}」 참가를 신청했어요`,
+          read: false,
+          createdAt: req.requestedAt,
+          roomId: room.id,
+          joinRequestId: req.id,
+        });
+      });
+    });
     return items;
-  }, [courts, currentUser]);
+  }, [courts, rooms, currentUser]);
 
   const coachAlerts = useMemo(() => {
     if (!currentUser) return [];
@@ -118,9 +139,10 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
   const all = useMemo(() => {
     const liveIds = new Set(liveJoin.map((n) => n.joinRequestId).filter(Boolean));
     const inboxDeduped = inbox.filter((n) => {
-      if (n.type !== 'join' || n.title !== '참가 요청') return true;
-      const rid = resolveJoinRequestId(n, courts);
-      if (rid && liveIds.has(rid)) return false;
+      if (n.type === 'join' && (n.title === '참가 요청' || n.title === '모집방 참가 신청')) {
+        const rid = n.joinRequestId ?? resolveJoinRequestId(n, courts);
+        if (rid && liveIds.has(rid)) return false;
+      }
       return true;
     });
     return [...liveJoin, ...coachAlerts, ...inboxDeduped].sort(
@@ -132,6 +154,16 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
   const hasMore = all.length > INITIAL_VISIBLE;
 
   const handleAccept = (item: AppNotification) => {
+    if (item.roomId && item.joinRequestId && currentUser) {
+      const result = acceptLobbyJoin(item.roomId, item.joinRequestId, currentUser.id);
+      showToast({
+        type: result.success ? 'success' : 'warning',
+        title: '',
+        message: result.message,
+      });
+      markRead(item.id);
+      return;
+    }
     if (item.courtId == null) return;
     const requestId = resolveJoinRequestId(item, courts);
     if (!requestId) {
@@ -148,6 +180,16 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
   };
 
   const handleReject = (item: AppNotification) => {
+    if (item.roomId && item.joinRequestId && currentUser) {
+      const result = rejectLobbyJoin(item.roomId, item.joinRequestId, currentUser.id);
+      showToast({
+        type: result.success ? 'info' : 'warning',
+        title: '',
+        message: result.message,
+      });
+      markRead(item.id);
+      return;
+    }
     if (item.courtId == null) return;
     const requestId = resolveJoinRequestId(item, courts);
     if (!requestId) {
@@ -157,6 +199,21 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
     rejectJoin(item.courtId, requestId);
     showToast({ type: 'info', title: '', message: '합류 요청을 거절했어요.' });
     markRead(item.id);
+  };
+
+  const handleAcceptInvite = (item: AppNotification) => {
+    if (!currentUser || !item.roomId) return;
+    const result = acceptInvite(item.roomId, currentUser.id);
+    showToast({
+      type: result.success ? 'success' : 'warning',
+      title: '',
+      message: result.message,
+    });
+    markRead(item.id);
+    if (result.success) {
+      onClose();
+      router.push('/lobby');
+    }
   };
 
   return (
@@ -184,11 +241,18 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
           <Text style={styles.empty}>새 알림이 없어요</Text>
         ) : (
           visible.map((item) => {
-            const canActJoin =
+            const canActCourtJoin =
               item.type === 'join' &&
               item.title === '참가 요청' &&
               item.courtId != null &&
               Boolean(resolveJoinRequestId(item, courts));
+            const canActLobbyJoin =
+              item.type === 'join' &&
+              item.title === '모집방 참가 신청' &&
+              !!item.roomId &&
+              !!item.joinRequestId;
+            const canActInvite =
+              item.type === 'friend' && item.title === '모집방 초대' && !!item.roomId;
 
             return (
               <View
@@ -209,13 +273,13 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
                     <Text style={styles.rowTime}>{formatTime(item.createdAt)}</Text>
                   </View>
                 </Pressable>
-                {canActJoin && (
+                {(canActCourtJoin || canActLobbyJoin) && (
                   <View style={styles.actions}>
                     <Pressable
                       onPress={() => handleAccept(item)}
                       style={[styles.actionBtn, styles.acceptBtn]}
                       accessibilityRole="button"
-                      accessibilityLabel="합류 수락"
+                      accessibilityLabel="수락"
                     >
                       <Text style={styles.acceptText}>수락</Text>
                     </Pressable>
@@ -223,9 +287,21 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
                       onPress={() => handleReject(item)}
                       style={[styles.actionBtn, styles.rejectBtn]}
                       accessibilityRole="button"
-                      accessibilityLabel="합류 거절"
+                      accessibilityLabel="거절"
                     >
                       <Text style={styles.rejectText}>거절</Text>
+                    </Pressable>
+                  </View>
+                )}
+                {canActInvite && (
+                  <View style={styles.actions}>
+                    <Pressable
+                      onPress={() => handleAcceptInvite(item)}
+                      style={[styles.actionBtn, styles.acceptBtn]}
+                      accessibilityRole="button"
+                      accessibilityLabel="초대 수락"
+                    >
+                      <Text style={styles.acceptText}>수락</Text>
                     </Pressable>
                   </View>
                 )}
