@@ -1,0 +1,43 @@
+# Supabase Free 유휴 pause(약 7일) 완화용 가벼운 ping.
+# Pause를 공식으로 막는 방법은 Pro 플랜이며, 이 워크플로는 best-effort 입니다.
+#
+# GitHub → Settings → Secrets and variables → Actions 에 추가:
+#   SUPABASE_URL      = https://xxxx.supabase.co
+#   SUPABASE_ANON_KEY = eyJ... (anon public key)
+
+name: Supabase keepalive
+
+on:
+  schedule:
+    # 매월 1·4·7…일 03:00 UTC (약 3일 간격)
+    - cron: '0 3 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping Supabase REST
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "Missing secrets: SUPABASE_URL and/or SUPABASE_ANON_KEY"
+            exit 1
+          fi
+          URL="${SUPABASE_URL%/}/rest/v1/club_metadata?select=id&limit=1"
+          HTTP=$(curl -sS -o /tmp/keepalive.json -w "%{http_code}" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            -H "Accept: application/json" \
+            "$URL")
+          echo "HTTP $HTTP"
+          head -c 200 /tmp/keepalive.json || true
+          echo
+          case "$HTTP" in
+            200|206) echo "keepalive ok" ;;
+            *) echo "keepalive failed"; exit 1 ;;
+          esac
