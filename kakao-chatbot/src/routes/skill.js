@@ -58,7 +58,7 @@ router.post('/attend', async (req, res) => {
   }
 
   // 사이트 회원과 카카오 아이디 매칭 확인
-  const { data: matchedProfile, error: profileError } = await supabase
+  const { data: foundByKakaoId, error: profileError } = await supabase
     .from('profiles')
     .select('id, name, student_id')
     .eq('kakao_id', kakaoUserId)
@@ -73,10 +73,35 @@ router.post('/attend', async (req, res) => {
     );
   }
 
+  let matchedProfile = foundByKakaoId;
+
+  // 편의 자동연결: 이름이 정확히 일치하고 대상이 1명이며 kakao_id가 비어있으면 자동 등록
+  if (!matchedProfile) {
+    const { data: byName, error: byNameError } = await supabase
+      .from('profiles')
+      .select('id, name, student_id, kakao_id')
+      .eq('name', username);
+
+    if (!byNameError && byName && byName.length === 1 && !byName[0].kakao_id) {
+      const candidate = byName[0];
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ kakao_id: kakaoUserId })
+        .eq('id', candidate.id);
+      if (!updateError) {
+        matchedProfile = {
+          id: candidate.id,
+          name: candidate.name,
+          student_id: candidate.student_id,
+        };
+      }
+    }
+  }
+
   if (!matchedProfile) {
     return res.json(
       simpleText(
-        `등록되지 않은 카카오 아이디입니다.\n사이트 회원가입 후 프로필에서 카카오 아이디를 등록해 주세요.\n${signupUrl}`,
+        `등록되지 않은 카카오 아이디입니다.\n프로필의 카카오 아이디에 아래 값을 입력해 주세요:\n${kakaoUserId}\n\n사이트: ${signupUrl}`,
         CHANNEL_MENU
       )
     );

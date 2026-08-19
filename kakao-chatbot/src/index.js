@@ -5,6 +5,7 @@ const { supabase } = require('./supabase');
 const { sendActivityMessage } = require('./kakao-api');
 const skillRouter = require('./routes/skill');
 const settingsRouter = require('./routes/settings');
+const groupBotRouter = require('./routes/group-bot');
 
 const app = express();
 app.use(express.json());
@@ -23,6 +24,8 @@ app.use('/api/skill', skillRouter);
 
 // 관리자 설정 API
 app.use('/api/settings', settingsRouter);
+// 메신저봇R 단톡 API
+app.use('/api/group-bot', groupBotRouter);
 
 // 헬스체크
 app.get('/health', async (req, res) => {
