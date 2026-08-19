@@ -23,8 +23,10 @@ function simpleText(text, quickReplies) {
 // 단톡 공지용은 오픈빌더 채널메시지에서 "참여/채널이동" 2버튼으로 구성하고,
 // 스킬 응답은 채널 내 후속 처리 중심으로 유지한다.
 const CHANNEL_MENU = [
+  { action: 'message', label: '참석 ✋', messageText: '참석' },
   { action: 'message', label: '현황 확인 📊', messageText: '현황' },
   { action: 'message', label: '참석 취소 ❌', messageText: '취소' },
+  { action: 'webLink', label: '사이트 열기 🌐', webLinkUrl: SITE_STATUS_URL },
 ];
 
 // 로비(파트너 모집방) 조회 헬퍼
