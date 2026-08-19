@@ -29,6 +29,7 @@ import { AdminSettingsPanel } from '@/src/components/admin/AdminSettingsPanel';
 import { AdminSubTabs } from '@/src/components/admin/AdminSubTabs';
 import { AdminPointsPanel } from '@/src/components/admin/AdminPointsPanel';
 import { AdminDbResetPanel } from '@/src/components/admin/AdminDbResetPanel';
+import { AdminChatbotPanel } from '@/src/components/admin/AdminChatbotPanel';
 import { GAME_MODE_CONFIG } from '@/src/constants/court';
 import { getEffectiveSchedule, getTodayKey, formatTodayLabel } from '@/src/utils/dateFormat';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
@@ -56,7 +57,7 @@ const LESSON_STATUS_LABEL: Record<string, string> = {
   rejected: '레슨 거절',
 };
 
-type AdminGroup = 'home' | 'people' | 'live' | 'points' | 'settings' | 'logs' | 'developer';
+type AdminGroup = 'home' | 'people' | 'live' | 'points' | 'chatbot' | 'settings' | 'logs' | 'developer';
 type PeopleSub = 'members' | 'attendance' | 'social';
 type LiveSub = 'courts' | 'matches' | 'lessons';
 
@@ -176,6 +177,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
     },
     { key: 'points', label: '포인트' },
     { key: 'settings', label: '설정' },
+    { key: 'chatbot', label: '챗봇' },
     { key: 'logs', label: '로그' },
     ...(isAdminActor ? [{ key: 'developer' as AdminGroup, label: '개발자' }] : []),
   ];
@@ -903,6 +905,15 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
           </Card>
         </>
       )}
+        </View>
+      )}
+
+      {group === 'chatbot' && (
+        <View style={styles.sectionBody}>
+          <AdminChatbotPanel
+            adminId={adminId}
+            onToast={(type, message) => showToast({ type, title: '', message })}
+          />
         </View>
       )}
 
