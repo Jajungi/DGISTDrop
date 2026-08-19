@@ -25,6 +25,15 @@ const CHANNEL_MENU = [
   { action: 'message', label: '취소 ❌', messageText: '취소' },
 ];
 
+// 로비(파트너 모집방) 조회 헬퍼
+async function getOpenLobbyRooms() {
+  const { data } = await supabase
+    .from('team_rooms')
+    .select('id, host_name, title, members, status')
+    .eq('status', 'open');
+  return data || [];
+}
+
 // ──────────────────────────────────────────────
 // 스킬 1: 참석 등록
 // ──────────────────────────────────────────────
@@ -67,57 +76,30 @@ router.post('/status', async (req, res) => {
     .eq('date', today);
 
   const attendees = all?.filter(a => a.status === 'attending') || [];
-  const seekers = all?.filter(a => a.status === 'seeking_partner') || [];
-  const total = all?.length || 0;
+  const total = attendees.length;
+
+  // 로비(파트너 모집방) 열린 방 조회
+  const lobbyRooms = await getOpenLobbyRooms();
 
   let text = `📍 S1 체육관 현황\n━━━━━━━━━━━━━━━\n`;
-  text += `👥 총 ${total}명\n\n`;
+  text += `👥 참석 ${total}명\n`;
 
-  if (attendees.length > 0) {
-    text += `✅ 참석 (${attendees.length}명)\n`;
+  if (total > 0) {
     text += attendees.map(a => `  • ${a.nickname}`).join('\n');
+  } else {
+    text += `  아직 없어요`;
   }
 
-  if (seekers.length > 0) {
-    text += `\n\n🔍 파트너 구하는 중 (${seekers.length}명)\n`;
-    text += seekers.map(s => `  • ${s.nickname}`).join('\n');
-  }
-
-  if (total === 0) {
-    text += `아직 등록한 사람이 없어요.`;
+  if (lobbyRooms.length > 0) {
+    text += `\n\n🔍 파트너 모집 중 (${lobbyRooms.length}방)\n`;
+    text += lobbyRooms.map(r => `  • ${r.title} (${r.host_name})`).join('\n');
   }
 
   text += `\n━━━━━━━━━━━━━━━`;
 
-  // 현황에서는 파트너 구하기 버튼도 추가
-  const statusMenu = [
-    { action: 'message', label: '참석 ✋', messageText: '참석' },
-    { action: 'message', label: '파트너 구해요 🙋', messageText: '파트너' },
-    { action: 'message', label: '취소 ❌', messageText: '취소' },
-  ];
-
-  res.json(simpleText(text, statusMenu));
+  res.json(simpleText(text, CHANNEL_MENU));
 });
 
-// ──────────────────────────────────────────────
-// 스킬 3: 파트너 구하기 (현황에서 접근)
-// ──────────────────────────────────────────────
-router.post('/seek-partner', async (req, res) => {
-  const kakaoUserId = req.body.userRequest?.user?.id;
-  const username = req.body.userRequest?.user?.properties?.nickname || '익명';
-  const today = new Date().toISOString().split('T')[0];
-
-  await supabase
-    .from('kakao_attendance')
-    .upsert({
-      kakao_user_id: kakaoUserId,
-      nickname: username,
-      date: today,
-      status: 'seeking_partner'
-    }, { onConflict: 'kakao_user_id,date' });
-
-  res.json(simpleText(`🙋 ${username}님 파트너 구하는 중!\n현황에서 확인할 수 있어요.`, CHANNEL_MENU));
-});
 
 // ──────────────────────────────────────────────
 // 스킬 4: 참석 취소
