@@ -2,6 +2,9 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const router = express.Router();
 
+// 채널 링크 (오픈빌더 배포 후 실제 채널 URL로 교체)
+const CHANNEL_URL = process.env.KAKAO_CHANNEL_URL || 'https://pf.kakao.com/_YOUR_CHANNEL';
+
 /**
  * 카카오 i 오픈빌더 스킬 응답 포맷 헬퍼
  */
@@ -18,46 +21,23 @@ function simpleText(text, quickReplies) {
   return response;
 }
 
-const DEFAULT_QUICK_REPLIES = [
-  { action: 'block', label: '참석 ✋', blockId: 'ATTEND_BLOCK_ID' },
-  { action: 'block', label: '현황 📊', blockId: 'STATUS_BLOCK_ID' },
-  { action: 'block', label: '파트너 🙋', blockId: 'SEEK_BLOCK_ID' },
-  { action: 'block', label: '취소 ❌', blockId: 'CANCEL_BLOCK_ID' },
-];
-
-const MENU_QUICK_REPLIES = [
+// 채널 1:1 채팅에서 보여줄 메뉴 버튼
+const CHANNEL_MENU = [
   { action: 'message', label: '참석 ✋', messageText: '참석' },
   { action: 'message', label: '현황 📊', messageText: '현황' },
   { action: 'message', label: '파트너 🙋', messageText: '파트너' },
   { action: 'message', label: '취소 ❌', messageText: '취소' },
 ];
 
-function cardWithButtons(title, description, buttons) {
-  return {
-    version: '2.0',
-    template: {
-      outputs: [{
-        basicCard: {
-          title,
-          description,
-          buttons
-        }
-      }]
-    }
-  };
-}
-
 // ──────────────────────────────────────────────
-// 스킬 1: 참석 버튼 (오픈빌더 블록에서 호출)
+// 스킬: 참석 등록
 // ──────────────────────────────────────────────
 router.post('/attend', async (req, res) => {
   const userRequest = req.body.userRequest;
   const kakaoUserId = userRequest?.user?.id;
   const username = userRequest?.user?.properties?.nickname || '익명';
-
   const today = new Date().toISOString().split('T')[0];
 
-  // Supabase에 참석 기록
   const { error } = await supabase
     .from('kakao_attendance')
     .upsert({
@@ -71,73 +51,55 @@ router.post('/attend', async (req, res) => {
     return res.json(simpleText('참석 등록 중 오류가 발생했어요 😢'));
   }
 
-  // 현재 참석자 수 조회
   const { count } = await supabase
     .from('kakao_attendance')
     .select('*', { count: 'exact', head: true })
     .eq('date', today)
     .eq('status', 'attending');
 
-  res.json(simpleText(`✅ ${username}님 참석 등록 완료!\n현재 참석 예정: ${count}명 🏸`, MENU_QUICK_REPLIES));
+  res.json(simpleText(`✅ ${username}님 참석!\n현재 ${count}명 참석 예정 🏸`, CHANNEL_MENU));
 });
 
 // ──────────────────────────────────────────────
-// 스킬 2: 현재 현황 조회 (실시간 상태)
+// 스킬: 현황 조회 (채널 1:1에서만 사용)
 // ──────────────────────────────────────────────
 router.post('/status', async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
 
-  // 참석자 목록
   const { data: attendees } = await supabase
     .from('kakao_attendance')
     .select('nickname, status')
     .eq('date', today)
     .eq('status', 'attending');
 
-  // 파트너 구하는 사람
   const { data: seekers } = await supabase
     .from('kakao_attendance')
     .select('nickname')
     .eq('date', today)
     .eq('status', 'seeking_partner');
 
-  const attendeeList = attendees?.map(a => a.nickname).join(', ') || '없음';
-  const seekerList = seekers?.map(s => s.nickname).join(', ') || '없음';
   const totalCount = attendees?.length || 0;
+  const seekerCount = seekers?.length || 0;
 
-  const statusText = [
-    `📍 S1 체육관 현황 (${today})`,
-    `━━━━━━━━━━━━━━━━━━`,
-    `👥 참석 인원: ${totalCount}명`,
-    `📋 참석자: ${attendeeList}`,
-    ``,
-    `🔍 파트너 구하는 중:`,
-    `${seekerList}`,
-    `━━━━━━━━━━━━━━━━━━`,
-  ].join('\n');
+  let statusText = `📍 S1 체육관 현황\n━━━━━━━━━━━━━━━\n`;
+  statusText += `👥 참석: ${totalCount}명\n`;
 
-  const response = {
-    version: '2.0',
-    template: {
-      outputs: [{
-        basicCard: {
-          title: 'S1 체육관 현황',
-          description: statusText,
-          buttons: [
-            { action: 'message', label: '참석할게요! ✋', messageText: '참석' },
-            { action: 'message', label: '파트너 구해요 🙋', messageText: '파트너' },
-            { action: 'message', label: '취소할게요 ❌', messageText: '취소' }
-          ]
-        }
-      }],
-      quickReplies: MENU_QUICK_REPLIES
-    }
-  };
-  res.json(response);
+  if (totalCount > 0) {
+    statusText += attendees.map((a, i) => `  ${i + 1}. ${a.nickname}`).join('\n');
+  }
+
+  if (seekerCount > 0) {
+    statusText += `\n\n🔍 파트너 구하는 중 (${seekerCount}명)\n`;
+    statusText += seekers.map((s, i) => `  ${i + 1}. ${s.nickname}`).join('\n');
+  }
+
+  statusText += `\n━━━━━━━━━━━━━━━`;
+
+  res.json(simpleText(statusText, CHANNEL_MENU));
 });
 
 // ──────────────────────────────────────────────
-// 스킬 3: 파트너 구하기
+// 스킬: 파트너 구하기
 // ──────────────────────────────────────────────
 router.post('/seek-partner', async (req, res) => {
   const kakaoUserId = req.body.userRequest?.user?.id;
@@ -153,11 +115,11 @@ router.post('/seek-partner', async (req, res) => {
       status: 'seeking_partner'
     }, { onConflict: 'kakao_user_id,date' });
 
-  res.json(simpleText(`🙋 ${username}님이 파트너를 구하고 있어요!\n다른 분들이 현황에서 확인할 수 있습니다.`, MENU_QUICK_REPLIES));
+  res.json(simpleText(`🙋 ${username}님 파트너 구하는 중!\n채널에서 현황을 확인해보세요.`, CHANNEL_MENU));
 });
 
 // ──────────────────────────────────────────────
-// 스킬 4: 참석 취소
+// 스킬: 참석 취소
 // ──────────────────────────────────────────────
 router.post('/cancel', async (req, res) => {
   const kakaoUserId = req.body.userRequest?.user?.id;
@@ -170,7 +132,7 @@ router.post('/cancel', async (req, res) => {
     .eq('kakao_user_id', kakaoUserId)
     .eq('date', today);
 
-  res.json(simpleText(`❌ ${username}님 참석 취소되었습니다.`, MENU_QUICK_REPLIES));
+  res.json(simpleText(`❌ ${username}님 참석 취소됨`, CHANNEL_MENU));
 });
 
 module.exports = router;
