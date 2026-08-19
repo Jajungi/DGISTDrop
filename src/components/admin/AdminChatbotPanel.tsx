@@ -70,6 +70,7 @@ interface MessageLog {
 
 interface Attendee {
   id: string;
+  kakao_user_id?: string;
   nickname: string;
   status: string;
   created_at: string;
@@ -103,6 +104,8 @@ export function AdminChatbotPanel({ adminId, onToast }: AdminChatbotPanelProps) 
 
   // 더미 참석자 추가/제거
   const [dummyCount, setDummyCount] = useState(5);
+  const [dummyKakaoId, setDummyKakaoId] = useState('');
+  const [dummyName, setDummyName] = useState('');
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -236,12 +239,40 @@ export function AdminChatbotPanel({ adminId, onToast }: AdminChatbotPanelProps) 
     for (let i = 1; i <= clamped; i++) {
       newAttendees.push({
         id: String(i),
+        kakao_user_id: `dummy-${i}`,
         nickname: `사람${i}`,
         status: i % 3 === 0 ? 'seeking_partner' : 'attending',
         created_at: new Date(Date.now() - (clamped - i) * 120000).toISOString(),
       });
     }
     setAttendees(newAttendees);
+  };
+
+  const addDummyApplication = () => {
+    const kakaoId = dummyKakaoId.trim();
+    const name = dummyName.trim();
+    if (!kakaoId || !name) {
+      onToast('warning', '카톡 아이디와 이름을 입력하세요');
+      return;
+    }
+    const exists = attendees.some((a) => (a.kakao_user_id ?? a.id) === kakaoId);
+    if (exists) {
+      onToast('warning', '이미 신청했습니다! (중복 아이디)');
+      return;
+    }
+    setAttendees((prev) => [
+      ...prev,
+      {
+        id: `dummy-${Date.now()}`,
+        kakao_user_id: kakaoId,
+        nickname: name,
+        status: 'attending',
+        created_at: new Date().toISOString(),
+      },
+    ]);
+    setDummyKakaoId('');
+    setDummyName('');
+    onToast('success', `${name} 신청 추가됨`);
   };
 
   const attendingCount = attendees.filter((a) => a.status === 'attending').length;
@@ -370,6 +401,27 @@ export function AdminChatbotPanel({ adminId, onToast }: AdminChatbotPanelProps) 
                   <Text style={styles.dummyCountText}>{dummyCount}명</Text>
                   <Button title="+" onPress={() => updateDummyCount(dummyCount + 1)} size="sm" variant="outline" />
                 </View>
+                <View style={styles.gap} />
+                <Text style={styles.hint}>신청 테스트 (아이디 구분)</Text>
+                <View style={styles.inputRow}>
+                  <TextInput
+                    style={styles.input}
+                    value={dummyKakaoId}
+                    onChangeText={setDummyKakaoId}
+                    placeholder="카톡 아이디 (예: user123)"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </View>
+                <View style={styles.inputRow}>
+                  <TextInput
+                    style={styles.input}
+                    value={dummyName}
+                    onChangeText={setDummyName}
+                    placeholder="이름 (예: 홍길동)"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </View>
+                <Button title="신청 추가" onPress={addDummyApplication} size="sm" variant="secondary" />
               </>
             )}
           </Card>

@@ -53,13 +53,16 @@ async function uriToBlob(uri: string): Promise<Blob> {
 
 export async function syncProfilePatch(
   userId: string,
-  patch: Partial<Pick<User, 'scheduleDate' | 'scheduledStart' | 'scheduledEnd' | 'isAtGym'>>
+  patch: Partial<
+    Pick<User, 'scheduleDate' | 'scheduledStart' | 'scheduledEnd' | 'isAtGym' | 'kakaoId'>
+  >
 ): Promise<void> {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if ('scheduleDate' in patch) row.schedule_date = patch.scheduleDate ?? null;
   if ('scheduledStart' in patch) row.scheduled_start = patch.scheduledStart ?? null;
   if ('scheduledEnd' in patch) row.scheduled_end = patch.scheduledEnd ?? null;
   if ('isAtGym' in patch) row.is_at_gym = patch.isAtGym ?? false;
+  if ('kakaoId' in patch) row.kakao_id = patch.kakaoId?.trim() || null;
 
   const { error } = await getSupabase().from('profiles').update(row).eq('id', userId);
   if (error) throw error;

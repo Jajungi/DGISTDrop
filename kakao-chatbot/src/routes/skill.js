@@ -2,6 +2,7 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const router = express.Router();
 const CHANNEL_1TO1_URL = process.env.KAKAO_CHANNEL_URL || 'https://pf.kakao.com/_YOUR_CHANNEL/chat';
+const SITE_STATUS_URL = process.env.SITE_STATUS_URL || 'https://dgistdrop.onrender.com';
 
 /**
  * 카카오 i 오픈빌더 스킬 응답 포맷 헬퍼
@@ -19,11 +20,11 @@ function simpleText(text, quickReplies) {
   return response;
 }
 
-// 채널 1:1 채팅 메뉴 버튼 (3개)
+// 단톡 공지용은 오픈빌더 채널메시지에서 "참여/채널이동" 2버튼으로 구성하고,
+// 스킬 응답은 채널 내 후속 처리 중심으로 유지한다.
 const CHANNEL_MENU = [
-  { action: 'message', label: '참석 ✋', messageText: '참석' },
-  { action: 'message', label: '현황 📊', messageText: '현황' },
-  { action: 'message', label: '취소 ❌', messageText: '취소' },
+  { action: 'message', label: '현황 확인 📊', messageText: '현황' },
+  { action: 'message', label: '참석 취소 ❌', messageText: '취소' },
 ];
 
 // 로비(파트너 모집방) 조회 헬퍼
@@ -41,13 +42,66 @@ async function getOpenLobbyRooms() {
 router.post('/attend', async (req, res) => {
   const userRequest = req.body.userRequest;
   const kakaoUserId = userRequest?.user?.id;
+  const username = userRequest?.user?.properties?.nickname || '익명';
   const today = new Date().toISOString().split('T')[0];
+  const signupUrl = SITE_STATUS_URL;
+
+  if (!kakaoUserId) {
+    return res.json(
+      simpleText(
+        `카카오 사용자 식별에 실패했어요.\n1:1 채널에서 다시 시도해 주세요.\n${CHANNEL_1TO1_URL}`,
+        CHANNEL_MENU
+      )
+    );
+  }
+
+  // 사이트 회원과 카카오 아이디 매칭 확인
+  const { data: matchedProfile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, name, student_id')
+    .eq('kakao_id', kakaoUserId)
+    .maybeSingle();
+
+  if (profileError) {
+    return res.json(
+      simpleText(
+        `회원 조회 중 오류가 발생했어요.\n잠시 후 다시 시도해 주세요.`,
+        CHANNEL_MENU
+      )
+    );
+  }
+
+  if (!matchedProfile) {
+    return res.json(
+      simpleText(
+        `등록되지 않은 카카오 아이디입니다.\n사이트 회원가입 후 프로필에서 카카오 아이디를 등록해 주세요.\n${signupUrl}`,
+        CHANNEL_MENU
+      )
+    );
+  }
+
+  // 같은 사람이 같은 날 중복 신청하면 차단
+  const { data: existing } = await supabase
+    .from('kakao_attendance')
+    .select('id, status')
+    .eq('kakao_user_id', kakaoUserId)
+    .eq('date', today)
+    .maybeSingle();
+
+  if (existing && existing.status === 'attending') {
+    return res.json(
+      simpleText(
+        `이미 신청했습니다! ✅\n참여 확인/취소는 1:1 채널에서 해주세요.\n${CHANNEL_1TO1_URL}`,
+        CHANNEL_MENU
+      )
+    );
+  }
 
   const { error } = await supabase
     .from('kakao_attendance')
     .upsert({
       kakao_user_id: kakaoUserId,
-      nickname: username,
+      nickname: matchedProfile?.name || username,
       date: today,
       status: 'attending'
     }, { onConflict: 'kakao_user_id,date' });
@@ -56,10 +110,12 @@ router.post('/attend', async (req, res) => {
     return res.json(simpleText('참석 등록 중 오류가 발생했어요 😢'));
   }
 
-  res.json(simpleText(
-    `✅ 참석 등록 완료\n상세 현황/참여자 확인은 1:1 채널에서 해주세요.\n${CHANNEL_1TO1_URL}`,
-    CHANNEL_MENU
-  ));
+  res.json(
+    simpleText(
+      `✅ ${matchedProfile.name}님 참석 등록 완료\n참여 확인/취소는 1:1 채널에서 해주세요.\n${CHANNEL_1TO1_URL}`,
+      CHANNEL_MENU
+    )
+  );
 });
 
 // ──────────────────────────────────────────────
@@ -94,9 +150,7 @@ router.post('/status', async (req, res) => {
   }
 
   text += `\n━━━━━━━━━━━━━━━`;
-  text += `\n상세 현황: ${SITE_STATUS_URL}`;
-
-  res.json(simpleText(text, CHANNEL_MENU));
+  res.json(simpleText(`${text}\n상세 현황: ${SITE_STATUS_URL}`, CHANNEL_MENU));
 });
 
 
@@ -105,7 +159,19 @@ router.post('/status', async (req, res) => {
 // ──────────────────────────────────────────────
 router.post('/cancel', async (req, res) => {
   const kakaoUserId = req.body.userRequest?.user?.id;
+  const username = req.body.userRequest?.user?.properties?.nickname || '익명';
   const today = new Date().toISOString().split('T')[0];
+
+  const { data: existing } = await supabase
+    .from('kakao_attendance')
+    .select('id')
+    .eq('kakao_user_id', kakaoUserId)
+    .eq('date', today)
+    .maybeSingle();
+
+  if (!existing) {
+    return res.json(simpleText(`취소할 신청 내역이 없어요.\n참여는 단톡방 버튼으로 신청해주세요.`, CHANNEL_MENU));
+  }
 
   await supabase
     .from('kakao_attendance')
@@ -114,7 +180,7 @@ router.post('/cancel', async (req, res) => {
     .eq('date', today);
 
   res.json(simpleText(
-    `✅ 참석 취소 완료\n상세 현황/참여자 확인은 1:1 채널에서 해주세요.\n${CHANNEL_1TO1_URL}`,
+    `✅ ${username}님 참석 취소 완료\n참여 확인/재신청은 1:1 채널에서 해주세요.\n${CHANNEL_1TO1_URL}`,
     CHANNEL_MENU
   ));
 });

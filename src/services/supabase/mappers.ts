@@ -7,6 +7,7 @@ import { getSupabase } from '@/src/lib/supabase';
 type DbProfile = {
   id: string;
   student_id: string;
+  kakao_id?: string | null;
   name: string;
   nickname: string;
   email: string;
@@ -95,6 +96,7 @@ export function mapProfileRow(row: DbProfile): User {
   return {
     id: row.id,
     studentId: row.student_id,
+    kakaoId: row.kakao_id ?? undefined,
     name: row.name,
     nickname: row.nickname || row.name,
     email: row.email,

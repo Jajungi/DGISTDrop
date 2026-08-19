@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, View, Text, StyleSheet, TextInput, Pressable, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -58,6 +58,11 @@ export default function ProfileScreen() {
   const [deleteConfirmCode, setDeleteConfirmCode] = useState('');
   const [deleteCodeInput, setDeleteCodeInput] = useState('');
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [kakaoIdInput, setKakaoIdInput] = useState('');
+
+  useEffect(() => {
+    setKakaoIdInput(currentUser?.kakaoId ?? '');
+  }, [currentUser?.kakaoId]);
 
   const closeDeleteFlow = () => {
     setDeleteStep('idle');
@@ -326,6 +331,36 @@ export default function ProfileScreen() {
             <Text style={styles.statHint}>전적 보기</Text>
           </Pressable>
         </View>
+
+        <Card style={styles.section}>
+          <Text style={styles.sectionTitle}>카카오 챗봇 연동</Text>
+          <Text style={styles.sectionHint}>
+            단톡방 참석 버튼과 내 계정을 정확히 연결하려면 카카오 아이디를 입력해 주세요.
+          </Text>
+          <TextInput
+            style={styles.input}
+            value={kakaoIdInput}
+            onChangeText={setKakaoIdInput}
+            placeholder="카카오 아이디 입력"
+            autoCapitalize="none"
+          />
+          <Button
+            title="카카오 아이디 저장"
+            onPress={() => {
+              void (async () => {
+                const result = await updateUserProfile(currentUser.id, { kakaoId: kakaoIdInput });
+                showToast({
+                  type: result.success ? 'success' : 'warning',
+                  title: '',
+                  message: result.message,
+                });
+              })();
+            }}
+            fullWidth
+            variant="outline"
+            style={{ marginTop: spacing.sm }}
+          />
+        </Card>
 
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>오늘 도착 일정</Text>
