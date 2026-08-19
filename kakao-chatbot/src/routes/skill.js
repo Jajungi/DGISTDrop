@@ -1,6 +1,7 @@
 const express = require('express');
 const { supabase } = require('../supabase');
 const router = express.Router();
+const CHANNEL_1TO1_URL = process.env.KAKAO_CHANNEL_URL || 'https://pf.kakao.com/_YOUR_CHANNEL/chat';
 
 /**
  * 카카오 i 오픈빌더 스킬 응답 포맷 헬퍼
@@ -40,7 +41,6 @@ async function getOpenLobbyRooms() {
 router.post('/attend', async (req, res) => {
   const userRequest = req.body.userRequest;
   const kakaoUserId = userRequest?.user?.id;
-  const username = userRequest?.user?.properties?.nickname || '익명';
   const today = new Date().toISOString().split('T')[0];
 
   const { error } = await supabase
@@ -56,12 +56,10 @@ router.post('/attend', async (req, res) => {
     return res.json(simpleText('참석 등록 중 오류가 발생했어요 😢'));
   }
 
-  const { count } = await supabase
-    .from('kakao_attendance')
-    .select('*', { count: 'exact', head: true })
-    .eq('date', today);
-
-  res.json(simpleText(`✅ ${username}님 참석!\n현재 ${count}명 등록 🏸`, CHANNEL_MENU));
+  res.json(simpleText(
+    `✅ 참석 등록 완료\n상세 현황/참여자 확인은 1:1 채널에서 해주세요.\n${CHANNEL_1TO1_URL}`,
+    CHANNEL_MENU
+  ));
 });
 
 // ──────────────────────────────────────────────
@@ -96,6 +94,7 @@ router.post('/status', async (req, res) => {
   }
 
   text += `\n━━━━━━━━━━━━━━━`;
+  text += `\n상세 현황: ${SITE_STATUS_URL}`;
 
   res.json(simpleText(text, CHANNEL_MENU));
 });
@@ -106,7 +105,6 @@ router.post('/status', async (req, res) => {
 // ──────────────────────────────────────────────
 router.post('/cancel', async (req, res) => {
   const kakaoUserId = req.body.userRequest?.user?.id;
-  const username = req.body.userRequest?.user?.properties?.nickname || '익명';
   const today = new Date().toISOString().split('T')[0];
 
   await supabase
@@ -115,7 +113,10 @@ router.post('/cancel', async (req, res) => {
     .eq('kakao_user_id', kakaoUserId)
     .eq('date', today);
 
-  res.json(simpleText(`❌ ${username}님 참석 취소됨`, CHANNEL_MENU));
+  res.json(simpleText(
+    `✅ 참석 취소 완료\n상세 현황/참여자 확인은 1:1 채널에서 해주세요.\n${CHANNEL_1TO1_URL}`,
+    CHANNEL_MENU
+  ));
 });
 
 module.exports = router;
