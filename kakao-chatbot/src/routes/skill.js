@@ -5,14 +5,32 @@ const router = express.Router();
 /**
  * 카카오 i 오픈빌더 스킬 응답 포맷 헬퍼
  */
-function simpleText(text) {
-  return {
+function simpleText(text, quickReplies) {
+  const response = {
     version: '2.0',
     template: {
       outputs: [{ simpleText: { text } }]
     }
   };
+  if (quickReplies) {
+    response.template.quickReplies = quickReplies;
+  }
+  return response;
 }
+
+const DEFAULT_QUICK_REPLIES = [
+  { action: 'block', label: '참석 ✋', blockId: 'ATTEND_BLOCK_ID' },
+  { action: 'block', label: '현황 📊', blockId: 'STATUS_BLOCK_ID' },
+  { action: 'block', label: '파트너 🙋', blockId: 'SEEK_BLOCK_ID' },
+  { action: 'block', label: '취소 ❌', blockId: 'CANCEL_BLOCK_ID' },
+];
+
+const MENU_QUICK_REPLIES = [
+  { action: 'message', label: '참석 ✋', messageText: '참석' },
+  { action: 'message', label: '현황 📊', messageText: '현황' },
+  { action: 'message', label: '파트너 🙋', messageText: '파트너' },
+  { action: 'message', label: '취소 ❌', messageText: '취소' },
+];
 
 function cardWithButtons(title, description, buttons) {
   return {
@@ -60,7 +78,7 @@ router.post('/attend', async (req, res) => {
     .eq('date', today)
     .eq('status', 'attending');
 
-  res.json(simpleText(`✅ ${username}님 참석 등록 완료!\n현재 참석 예정: ${count}명 🏸`));
+  res.json(simpleText(`✅ ${username}님 참석 등록 완료!\n현재 참석 예정: ${count}명 🏸`, MENU_QUICK_REPLIES));
 });
 
 // ──────────────────────────────────────────────
@@ -98,15 +116,24 @@ router.post('/status', async (req, res) => {
     `━━━━━━━━━━━━━━━━━━`,
   ].join('\n');
 
-  res.json(cardWithButtons(
-    'S1 체육관 현황',
-    statusText,
-    [
-      { action: 'block', label: '참석할게요! ✋', blockId: 'ATTEND_BLOCK_ID' },
-      { action: 'block', label: '파트너 구해요 🙋', blockId: 'SEEK_PARTNER_BLOCK_ID' },
-      { action: 'block', label: '취소할게요 ❌', blockId: 'CANCEL_BLOCK_ID' }
-    ]
-  ));
+  const response = {
+    version: '2.0',
+    template: {
+      outputs: [{
+        basicCard: {
+          title: 'S1 체육관 현황',
+          description: statusText,
+          buttons: [
+            { action: 'message', label: '참석할게요! ✋', messageText: '참석' },
+            { action: 'message', label: '파트너 구해요 🙋', messageText: '파트너' },
+            { action: 'message', label: '취소할게요 ❌', messageText: '취소' }
+          ]
+        }
+      }],
+      quickReplies: MENU_QUICK_REPLIES
+    }
+  };
+  res.json(response);
 });
 
 // ──────────────────────────────────────────────
@@ -126,7 +153,7 @@ router.post('/seek-partner', async (req, res) => {
       status: 'seeking_partner'
     }, { onConflict: 'kakao_user_id,date' });
 
-  res.json(simpleText(`🙋 ${username}님이 파트너를 구하고 있어요!\n다른 분들이 현황에서 확인할 수 있습니다.`));
+  res.json(simpleText(`🙋 ${username}님이 파트너를 구하고 있어요!\n다른 분들이 현황에서 확인할 수 있습니다.`, MENU_QUICK_REPLIES));
 });
 
 // ──────────────────────────────────────────────
@@ -143,7 +170,7 @@ router.post('/cancel', async (req, res) => {
     .eq('kakao_user_id', kakaoUserId)
     .eq('date', today);
 
-  res.json(simpleText(`❌ ${username}님 참석 취소되었습니다.`));
+  res.json(simpleText(`❌ ${username}님 참석 취소되었습니다.`, MENU_QUICK_REPLIES));
 });
 
 module.exports = router;
