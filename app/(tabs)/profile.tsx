@@ -286,6 +286,43 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <Card style={styles.section}>
+          <Text style={styles.sectionTitle}>카카오 챗봇 연동</Text>
+          {!currentUser.kakaoId ? (
+            <View style={styles.kakaoWarningBox}>
+              <Text style={styles.kakaoWarningText}>
+                카카오 아이디가 아직 등록되지 않았어요. 등록해야 단톡방 참석 버튼과 계정이 정확히 매칭됩니다.
+              </Text>
+            </View>
+          ) : null}
+          <Text style={styles.sectionHint}>
+            단톡방 참여 버튼 매칭용 카카오 아이디를 입력/수정하세요.
+          </Text>
+          <TextInput
+            style={styles.input}
+            value={kakaoIdInput}
+            onChangeText={setKakaoIdInput}
+            placeholder="카카오 아이디 입력"
+            autoCapitalize="none"
+          />
+          <Button
+            title="카카오 아이디 저장"
+            onPress={() => {
+              void (async () => {
+                const result = await updateUserProfile(currentUser.id, { kakaoId: kakaoIdInput });
+                showToast({
+                  type: result.success ? 'success' : 'warning',
+                  title: '',
+                  message: result.message,
+                });
+              })();
+            }}
+            fullWidth
+            variant="outline"
+            style={{ marginTop: spacing.sm }}
+          />
+        </Card>
+
         <View style={[styles.statsGrid, isMobile && styles.statsGridMobile]}>
           <Pressable
             onPress={() => setShowRanking(true)}
@@ -331,36 +368,6 @@ export default function ProfileScreen() {
             <Text style={styles.statHint}>전적 보기</Text>
           </Pressable>
         </View>
-
-        <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>카카오 챗봇 연동</Text>
-          <Text style={styles.sectionHint}>
-            단톡방 참석 버튼과 내 계정을 정확히 연결하려면 카카오 아이디를 입력해 주세요.
-          </Text>
-          <TextInput
-            style={styles.input}
-            value={kakaoIdInput}
-            onChangeText={setKakaoIdInput}
-            placeholder="카카오 아이디 입력"
-            autoCapitalize="none"
-          />
-          <Button
-            title="카카오 아이디 저장"
-            onPress={() => {
-              void (async () => {
-                const result = await updateUserProfile(currentUser.id, { kakaoId: kakaoIdInput });
-                showToast({
-                  type: result.success ? 'success' : 'warning',
-                  title: '',
-                  message: result.message,
-                });
-              })();
-            }}
-            fullWidth
-            variant="outline"
-            style={{ marginTop: spacing.sm }}
-          />
-        </Card>
 
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>오늘 도착 일정</Text>
@@ -679,6 +686,19 @@ const styles = StyleSheet.create({
   chartCard: { flex: 1, minWidth: 0 },
   sectionTitle: { ...typography.bodyBold, color: colors.text, marginBottom: spacing.md, fontSize: 16 },
   sectionHint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.sm },
+  kakaoWarningBox: {
+    backgroundColor: '#FFF4E5',
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: '#FFD8A8',
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  kakaoWarningText: {
+    ...typography.caption,
+    color: '#92400E',
+    lineHeight: 18,
+  },
   serviceActions: { gap: spacing.sm, marginTop: spacing.md },
   scheduleHint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.sm },
   scheduleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
