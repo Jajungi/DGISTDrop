@@ -123,20 +123,17 @@ export function AdminChatbotPanel({ adminId, onToast }: AdminChatbotPanelProps) 
         setEditDays(s.activity_days);
         setEditCancelMsg(s.cancel_message);
         setServerOnline(true);
-        setUseDummy(false);
       } else {
         setServerOnline(false);
-        setUseDummy(true);
       }
 
       if (logsRes?.ok) setLogs(await logsRes.json());
-      if (attendeesRes?.ok) {
+      if (attendeesRes?.ok && !useDummy) {
         const data = await attendeesRes.json();
         if (data.length > 0) setAttendees(data);
       }
     } catch {
       setServerOnline(false);
-      setUseDummy(true);
     }
     setLoading(false);
   }, []);
@@ -355,18 +352,27 @@ export function AdminChatbotPanel({ adminId, onToast }: AdminChatbotPanelProps) 
             )}
           </Card>
 
-          {/* 더미 테스트 컨트롤 */}
-          {useDummy && (
-            <Card style={styles.block}>
-              <Text style={styles.blockTitle}>🧪 테스트 컨트롤</Text>
-              <Text style={styles.hint}>더미 참석자 수를 조절해서 UI를 테스트하세요</Text>
-              <View style={styles.dummyControl}>
-                <Button title="-" onPress={() => updateDummyCount(dummyCount - 1)} size="sm" variant="outline" />
-                <Text style={styles.dummyCountText}>{dummyCount}명</Text>
-                <Button title="+" onPress={() => updateDummyCount(dummyCount + 1)} size="sm" variant="outline" />
-              </View>
-            </Card>
-          )}
+          {/* 테스트 모드 컨트롤 */}
+          <Card style={styles.block}>
+            <View style={styles.blockHeader}>
+              <Text style={styles.blockTitle}>🧪 테스트 모드</Text>
+              <Pressable style={styles.toggleRow} onPress={() => setUseDummy(!useDummy)}>
+                <View style={[styles.toggle, useDummy && styles.toggleOn]}>
+                  <View style={[styles.toggleKnob, useDummy && styles.toggleKnobOn]} />
+                </View>
+              </Pressable>
+            </View>
+            {useDummy && (
+              <>
+                <Text style={styles.hint}>더미 참석자 수를 조절해서 UI 테스트</Text>
+                <View style={styles.dummyControl}>
+                  <Button title="-" onPress={() => updateDummyCount(dummyCount - 1)} size="sm" variant="outline" />
+                  <Text style={styles.dummyCountText}>{dummyCount}명</Text>
+                  <Button title="+" onPress={() => updateDummyCount(dummyCount + 1)} size="sm" variant="outline" />
+                </View>
+              </>
+            )}
+          </Card>
 
           {/* 빠른 작업 */}
           <Card style={styles.block}>
