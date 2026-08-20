@@ -1692,8 +1692,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   checkGeoFence: () => {
     const { demoMode, location } = get();
     if (demoMode) return true;
-    const user = useAuthStore.getState().currentUser;
-    if (user?.membershipTier === 'admin' || user?.isOperator) return true;
     if (!location) return false;
     return isWithinGymFence(location);
   },

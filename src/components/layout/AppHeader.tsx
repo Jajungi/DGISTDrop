@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, Platform, Switch } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore, useAppStore } from '@/src/stores/authStore';
@@ -9,6 +9,7 @@ import { useCourtStore } from '@/src/stores/courtStore';
 import { useShellStore } from '@/src/stores/shellStore';
 import { useSearchStore } from '@/src/stores/searchStore';
 import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
+import { isStaffUser } from '@/src/utils/staffAccess';
 import { Avatar } from '@/src/components/ui/Avatar';
 import { NotificationPanel } from './NotificationPanel';
 import { DropBrand } from './DropBrand';
@@ -26,6 +27,8 @@ export function AppHeader() {
   const attendanceRecords = useAuthStore((s) => s.attendanceRecords);
   const checkIn = useAuthStore((s) => s.checkIn);
   const isAtGym = useAppStore((s) => s.isAtGym);
+  const demoMode = useAppStore((s) => s.demoMode);
+  const setDemoMode = useAppStore((s) => s.setDemoMode);
   const checkGeoFence = useAppStore((s) => s.checkGeoFence);
   const showToast = useNotificationStore((s) => s.showToast);
   const inbox = useNotificationStore((s) => s.inbox);
@@ -153,6 +156,18 @@ export function AppHeader() {
       </View>
 
       <View style={[styles.right, isMobile && styles.rightMobile]}>
+        {isStaffUser(currentUser) && (
+          <View style={styles.demoToggle}>
+            <Switch
+              value={demoMode}
+              onValueChange={setDemoMode}
+              trackColor={{ false: colors.borderSubtle, true: colors.primaryLight }}
+              thumbColor={demoMode ? colors.primary : colors.textMuted}
+              style={styles.demoSwitch}
+            />
+            {!isMobile && <Text style={styles.demoLabel}>데모</Text>}
+          </View>
+        )}
         <Pressable
           style={[styles.actionBtn, isMobile && styles.actionBtnMobile, todayRecord && styles.actionBtnDone]}
           onPress={handleCheckIn}
@@ -317,6 +332,20 @@ const styles = StyleSheet.create({
   rightMobile: {
     gap: 4,
     flexShrink: 0,
+  },
+  demoToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginRight: 4,
+  },
+  demoSwitch: {
+    transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }],
+  },
+  demoLabel: {
+    ...typography.small,
+    fontSize: 10,
+    color: colors.textMuted,
   },
   actionBtn: {
     flexDirection: 'row',
