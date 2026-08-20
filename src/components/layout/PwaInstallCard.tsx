@@ -7,10 +7,10 @@ import {
   canPromptPwaInstall,
   ensurePwaServiceWorker,
   promptPwaInstall,
-  shouldShowAndroidInstallGuide,
+  shouldShowPwaInstallGuide,
   subscribePwaInstallAvailability,
 } from '@/src/services/pwaInstall';
-import { isStandalonePwa } from '@/src/utils/clientDevice';
+import { detectClientDevice, isStandalonePwa } from '@/src/utils/clientDevice';
 
 interface PwaInstallCardProps {
   /** 로그인 화면처럼 더 짧게 */
@@ -22,16 +22,18 @@ export function PwaInstallCard({ compact = false, onToast }: PwaInstallCardProps
   const [canPrompt, setCanPrompt] = useState(false);
   const [busy, setBusy] = useState(false);
   const [visible, setVisible] = useState(false);
+  const device = detectClientDevice();
+  const isIos = device === 'ios';
+  const isAndroid = device === 'android';
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     void ensurePwaServiceWorker();
-    setVisible(shouldShowAndroidInstallGuide() || (!isStandalonePwa() && canPromptPwaInstall()));
+    setVisible(shouldShowPwaInstallGuide());
     setCanPrompt(canPromptPwaInstall());
     return subscribePwaInstallAvailability(() => {
       setCanPrompt(canPromptPwaInstall());
-      setVisible(shouldShowAndroidInstallGuide() || canPromptPwaInstall());
-      if (isStandalonePwa()) setVisible(false);
+      setVisible(shouldShowPwaInstallGuide());
     });
   }, []);
 
@@ -47,7 +49,9 @@ export function PwaInstallCard({ compact = false, onToast }: PwaInstallCardProps
       } else if (result === 'unavailable') {
         onToast?.(
           'info',
-          'Chrome 메뉴(⋮) → [앱 설치] 또는 [홈 화면에 추가]를 눌러 주세요.'
+          isIos
+            ? 'Safari 하단 [공유] → [홈 화면에 추가]를 눌러 주세요.'
+            : 'Chrome 메뉴(⋮) → [앱 설치] 또는 [홈 화면에 추가]를 눌러 주세요.'
         );
       }
     } finally {
@@ -55,22 +59,41 @@ export function PwaInstallCard({ compact = false, onToast }: PwaInstallCardProps
     }
   };
 
+  const title = isIos ? '홈 화면에 추가 (iPhone)' : '홈 화면에 앱처럼 설치';
+  const body = isIos
+    ? compact
+      ? 'Safari에서 [공유 → 홈 화면에 추가]한 뒤, 생긴 Drop 아이콘으로 여세요. 알림도 그 아이콘에서만 켤 수 있어요.'
+      : 'iPhone은 Safari에서 홈 화면에 추가해야 앱처럼 쓰고 푸시도 받을 수 있습니다. Safari 탭 안에서는 알림이 오지 않습니다.'
+    : compact
+      ? '지금은 Play 스토어 대신 Chrome에서 Drop을 홈 화면에 추가해 쓰세요. 알림도 여기서 켤 수 있어요.'
+      : 'Android에서는 Chrome으로 이 사이트를 연 뒤 [앱 설치] 또는 [홈 화면에 추가]하면 됩니다. Play 스토어 앱은 나중에 다시 준비할 예정입니다.';
+
+  const steps = isIos
+    ? [
+        '1. Safari로 https://dgistdrop.pages.dev 열기',
+        '2. 하단 [공유] → [홈 화면에 추가]',
+        '3. 생긴 Drop 아이콘으로 열고 알림 허용',
+      ]
+    : [
+        '1. Chrome으로 https://dgistdrop.pages.dev 열기',
+        '2. 메뉴(⋮) → [앱 설치] 또는 [홈 화면에 추가]',
+        '3. 생긴 Drop 아이콘으로 열고 알림 허용',
+      ];
+
   return (
     <Card style={styles.card}>
-      <Text style={styles.title}>홈 화면에 앱처럼 설치</Text>
-      <Text style={styles.body}>
-        {compact
-          ? '지금은 Play 스토어 대신 Chrome에서 Drop을 홈 화면에 추가해 쓰세요. 알림도 여기서 켤 수 있어요.'
-          : 'Android에서는 Chrome으로 이 사이트를 연 뒤 [앱 설치] 또는 [홈 화면에 추가]하면 됩니다. Play 스토어 앱은 나중에 다시 준비할 예정입니다.'}
-      </Text>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.body}>{body}</Text>
       {!compact && (
         <View style={styles.steps}>
-          <Text style={styles.step}>1. Chrome으로 https://dgistdrop.pages.dev 열기</Text>
-          <Text style={styles.step}>2. 메뉴(⋮) → [앱 설치] 또는 [홈 화면에 추가]</Text>
-          <Text style={styles.step}>3. 생긴 Drop 아이콘으로 열고 알림 허용</Text>
+          {steps.map((step) => (
+            <Text key={step} style={styles.step}>
+              {step}
+            </Text>
+          ))}
         </View>
       )}
-      {canPrompt ? (
+      {isAndroid && canPrompt ? (
         <Button
           title={busy ? '설치 중...' : '앱 설치'}
           onPress={() => void install()}
@@ -80,7 +103,9 @@ export function PwaInstallCard({ compact = false, onToast }: PwaInstallCardProps
         />
       ) : (
         <Text style={styles.hint}>
-          설치 버튼이 안 보이면 Chrome 주소창 메뉴(⋮)에서 [앱 설치] / [홈 화면에 추가]를 직접 누르세요.
+          {isIos
+            ? 'Safari 하단 [공유] 버튼 → [홈 화면에 추가]를 직접 누르세요. (iPhone은 앱 내 설치 버튼이 없습니다)'
+            : '설치 버튼이 안 보이면 Chrome 메뉴(⋮)에서 [앱 설치] / [홈 화면에 추가]를 직접 누르세요.'}
         </Text>
       )}
     </Card>

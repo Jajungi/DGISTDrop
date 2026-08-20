@@ -6,20 +6,25 @@
 
 ---
 
-## 0. Android 웹앱 설치 (현재 권장)
+## 0. 웹앱 설치 (현재 권장 · Android + iOS)
 
-사용자 안내:
-
+### Android (Chrome)
 1. Chrome으로 `https://dgistdrop.pages.dev` 열기
 2. 메뉴(⋮) → **앱 설치** 또는 **홈 화면에 추가**
 3. 홈 화면 Drop 아이콘으로 실행
 4. 설정에서 알림 허용
 
+### iPhone (Safari)
+1. Safari로 `https://dgistdrop.pages.dev` 열기
+2. 하단 **공유** → **홈 화면에 추가**
+3. 생긴 Drop 아이콘으로 실행 (탭이 아님)
+4. 설정에서 알림 허용 — Safari 탭 안에서는 푸시 불가
+
 앱 UI:
 
-- 로그인 화면: 설치 안내 카드
-- 설정: 설치 안내 카드 + 알림 설정
-- 이용 안내: Android용 홈 화면 추가 항목
+- 로그인 화면: 기기별 설치 안내 카드
+- 설정: 기기별 설치 안내 카드 + 알림 설정
+- 이용 안내: Android / iPhone 홈 화면 추가 항목
 
 기술:
 

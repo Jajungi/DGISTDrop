@@ -66,8 +66,15 @@ export async function promptPwaInstall(): Promise<'accepted' | 'dismissed' | 'un
   return outcome;
 }
 
-export function shouldShowAndroidInstallGuide(): boolean {
+/** Android Chrome / iPhone Safari — 이미 홈 화면 앱으로 연 경우는 숨김 */
+export function shouldShowPwaInstallGuide(): boolean {
   if (Platform.OS !== 'web') return false;
   if (isStandalonePwa()) return false;
-  return detectClientDevice() === 'android';
+  const device = detectClientDevice();
+  return device === 'android' || device === 'ios';
+}
+
+/** @deprecated use shouldShowPwaInstallGuide */
+export function shouldShowAndroidInstallGuide(): boolean {
+  return shouldShowPwaInstallGuide() && detectClientDevice() === 'android';
 }
