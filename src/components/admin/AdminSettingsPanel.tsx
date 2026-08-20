@@ -1,6 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Platform } from 'react-native';
-import { AdminClosureCalendar, type BannerPrefill } from '@/src/components/admin/AdminClosureCalendar';
+import { AdminClosureCalendar } from '@/src/components/admin/AdminClosureCalendar';
 import { AdminNoticesPanel } from '@/src/components/admin/AdminNoticesPanel';
 import { AdminJoinInfoPanel } from '@/src/components/admin/AdminJoinInfoPanel';
 import { AdminSubTabs } from '@/src/components/admin/AdminSubTabs';
@@ -27,7 +27,6 @@ export function AdminSettingsPanel({ adminId, adminName, onToast }: AdminSetting
   const setSchedule = useActivityScheduleStore((s) => s.setSchedule);
 
   const [sub, setSub] = useState<SettingsSub>('schedule');
-  const [bannerPrefill, setBannerPrefill] = useState<BannerPrefill | null>(null);
   const [draft, setDraft] = useState<ActivitySession[]>(() => cloneSchedule(schedule));
   const [dirty, setDirty] = useState(false);
   const [startInputs, setStartInputs] = useState(() =>
@@ -45,8 +44,6 @@ export function AdminSettingsPanel({ adminId, adminName, onToast }: AdminSetting
     setDirty(true);
   };
 
-  const clearBannerPrefill = useCallback(() => setBannerPrefill(null), []);
-
   return (
     <View style={styles.wrap}>
       <AdminSubTabs
@@ -60,23 +57,13 @@ export function AdminSettingsPanel({ adminId, adminName, onToast }: AdminSetting
         ]}
       />
 
-      {sub === 'calendar' && (
-        <AdminClosureCalendar
-          onToast={onToast}
-          onGoToBannerNotice={(prefill) => {
-            setBannerPrefill(prefill);
-            setSub('notices');
-          }}
-        />
-      )}
+      {sub === 'calendar' && <AdminClosureCalendar onToast={onToast} />}
 
       {sub === 'notices' && (
         <AdminNoticesPanel
           adminId={adminId}
           adminName={adminName}
           onToast={onToast}
-          bannerPrefill={bannerPrefill}
-          onBannerPrefillConsumed={clearBannerPrefill}
         />
       )}
 

@@ -135,12 +135,17 @@ export interface ClubEvent {
   dateEnd: string;
   active: boolean;
   /**
-   * 휴관 전용: 등록 직후가 아니라 해당일(기간이면 매일) KST 시각에 푸시.
+   * 홈 등 ClubEventBanner 노출. undefined/true = 표시, false = 일정만(활동 규칙) 적용.
+   */
+  showBanner?: boolean;
+  /**
+   * 휴관·추가 활동일: 등록 직후가 아니라 해당일 KST 시각에 푸시.
+   * 휴관은 time 사용, 추가 활동일은 활동 자동 알림 시각(notify_time)을 따름.
    * enabled=false 또는 없으면 푸시 없음.
    */
   pushNotify?: {
     enabled: boolean;
-    /** HH:MM (KST) */
+    /** HH:MM (KST) — 휴관 예약 시각 / 추가 활동일은 표시용 스냅샷 */
     time: string;
     /** 이미 발송한 날짜 YYYY-MM-DD */
     sentDates?: string[];

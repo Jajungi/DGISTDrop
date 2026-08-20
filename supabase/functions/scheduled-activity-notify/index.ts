@@ -1,6 +1,6 @@
 // Supabase Edge Function: scheduled-activity-notify
 // Supabase Cron으로 5분마다 호출 (KST)
-// 1) 활동일 자동 알림  2) 휴관 당일 예약 푸시
+// 1) 휴관 당일 예약 푸시  2) 추가 활동일 활동알림 시각 푸시  3) 정기 활동일 자동 알림
 //
 // Cron 예: */5 * * * *  (Dashboard → Edge Functions → Schedules)
 
@@ -65,6 +65,14 @@ function formatHHMM(h: number, m: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+function earliestActivityTime(schedule: ActivitySession[]): string {
+  if (!schedule.length) return '18:30';
+  const sorted = [...schedule].sort(
+    (a, b) => a.startHour * 60 + a.startMinute - (b.startHour * 60 + b.startMinute)
+  );
+  return formatHHMM(sorted[0].startHour, sorted[0].startMinute);
+}
+
 async function broadcast(
   title: string,
   message: string,
@@ -79,6 +87,10 @@ async function broadcast(
     body: JSON.stringify({ title, message, type }),
   });
   return broadcastRes.json();
+}
+
+function isActiveOn(ev: ClubEventRow, date: string): boolean {
+  return ev.active !== false && ev.dateStart <= date && ev.dateEnd >= date;
 }
 
 Deno.serve(async (req) => {
@@ -99,15 +111,17 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (metaErr) throw metaErr;
 
-    // ---------- 휴관 당일 예약 푸시 ----------
+    const settings = (meta?.push_notify_settings ?? {}) as PushSettings;
+    const schedule = (meta?.activity_schedule ?? []) as ActivitySession[];
     const events = (Array.isArray(meta?.club_events) ? meta.club_events : []) as ClubEventRow[];
     let eventsChanged = false;
     const closureSent: string[] = [];
+    const extraSent: string[] = [];
 
+    // ---------- 휴관 당일 예약 푸시 ----------
     for (const ev of events) {
-      if (ev.kind !== 'closure' || ev.active === false) continue;
+      if (ev.kind !== 'closure' || !isActiveOn(ev, now.date)) continue;
       if (!ev.pushNotify?.enabled) continue;
-      if (ev.dateStart > now.date || ev.dateEnd < now.date) continue;
 
       const notifyMinutes = parseHHMM(ev.pushNotify.time ?? '09:00');
       if (notifyMinutes == null) continue;
@@ -136,6 +150,50 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---------- 추가 활동일: 활동 자동 알림 시각에 발송 ----------
+    const activityNotifyMinutes = parseHHMM(settings.notify_time ?? '18:00');
+    if (activityNotifyMinutes != null && Math.abs(now.minutes - activityNotifyMinutes) <= 4) {
+      const activityTime = earliestActivityTime(
+        schedule.filter((s) => s.day === now.day).length
+          ? schedule.filter((s) => s.day === now.day)
+          : schedule
+      );
+
+      for (const ev of events) {
+        if (ev.kind !== 'extra' || !isActiveOn(ev, now.date)) continue;
+        if (!ev.pushNotify?.enabled) continue;
+
+        const sent = Array.isArray(ev.pushNotify.sentDates) ? ev.pushNotify.sentDates : [];
+        if (sent.includes(now.date)) continue;
+
+        let title = 'Drop 활동 알림';
+        let message: string;
+        if (settings.cancel_today) {
+          message = settings.cancel_message ?? '❌ 오늘 활동이 취소되었습니다.';
+        } else {
+          message = (settings.message_template ?? '🏸 오늘 {time}부터 활동 있습니다!')
+            .replace('{time}', activityTime);
+          if (ev.title?.trim()) {
+            title = `Drop 활동 알림 · ${ev.title.trim()}`;
+          }
+        }
+
+        try {
+          await broadcast(title, message, 'activity');
+          ev.pushNotify = {
+            ...ev.pushNotify,
+            enabled: true,
+            time: settings.notify_time ?? '18:00',
+            sentDates: [...sent, now.date],
+          };
+          eventsChanged = true;
+          extraSent.push(ev.id);
+        } catch (err) {
+          results.extraError = String(err);
+        }
+      }
+    }
+
     if (eventsChanged) {
       await supabase
         .from('club_metadata')
@@ -143,11 +201,9 @@ Deno.serve(async (req) => {
         .eq('id', 1);
     }
     results.closurePush = { sent: closureSent.length, ids: closureSent };
+    results.extraPush = { sent: extraSent.length, ids: extraSent };
 
-    // ---------- 활동일 자동 알림 ----------
-    const settings = (meta?.push_notify_settings ?? {}) as PushSettings;
-    const schedule = (meta?.activity_schedule ?? []) as ActivitySession[];
-
+    // ---------- 정기 활동일 자동 알림 ----------
     if (!settings.enabled || !settings.auto_notify_enabled) {
       results.activity = { skipped: 'disabled' };
       return new Response(JSON.stringify(results), {
@@ -156,22 +212,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (settings.last_auto_sent_date === now.date) {
-      results.activity = { skipped: 'already_sent_today' };
+    if (settings.last_auto_sent_date === now.date || extraSent.length > 0) {
+      results.activity = {
+        skipped: extraSent.length > 0 ? 'extra_sent_today' : 'already_sent_today',
+      };
       return new Response(JSON.stringify(results), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // 오늘 휴관이면 활동 알림 스킵
-    const closedToday = events.some(
-      (e) =>
-        e.kind === 'closure' &&
-        e.active !== false &&
-        e.dateStart <= now.date &&
-        e.dateEnd >= now.date
-    );
+    const closedToday = events.some((e) => e.kind === 'closure' && isActiveOn(e, now.date));
     if (closedToday) {
       results.activity = { skipped: 'closure_today' };
       return new Response(JSON.stringify(results), {
@@ -189,14 +240,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    const notifyMinutes = parseHHMM(settings.notify_time ?? '18:00');
-    if (notifyMinutes == null) {
+    if (activityNotifyMinutes == null) {
       return new Response(JSON.stringify({ ...results, error: 'invalid notify_time' }), {
         status: 400,
       });
     }
 
-    if (Math.abs(now.minutes - notifyMinutes) > 4) {
+    if (Math.abs(now.minutes - activityNotifyMinutes) > 4) {
       results.activity = { skipped: 'not_notify_time' };
       return new Response(JSON.stringify(results), {
         status: 200,
@@ -204,11 +254,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const firstSession = todaySessions.sort(
-      (a, b) => a.startHour * 60 + a.startMinute - (b.startHour * 60 + b.startMinute)
-    )[0];
-    const activityTime = formatHHMM(firstSession.startHour, firstSession.startMinute);
-
+    const activityTime = earliestActivityTime(todaySessions);
     let title = 'Drop 활동 알림';
     let message: string;
 

@@ -13,7 +13,7 @@ export function isClubEventActiveOn(event: ClubEvent, dateISO = todayLocalISODat
 }
 
 export function getActiveClubEvents(events: ClubEvent[], dateISO = todayLocalISODate()): ClubEvent[] {
-  return events.filter((e) => isClubEventActiveOn(e, dateISO));
+  return events.filter((e) => isClubEventActiveOn(e, dateISO) && e.showBanner !== false);
 }
 
 export function clubEventKindLabel(kind: ClubEvent['kind']): string {
@@ -129,6 +129,7 @@ export function normalizeClubEvents(raw: unknown): ClubEvent[] {
         dateStart,
         dateEnd: dateEnd < dateStart ? dateStart : dateEnd,
         active: o.active !== false,
+        showBanner: o.showBanner !== false,
         pushNotify,
       } satisfies ClubEvent;
     })

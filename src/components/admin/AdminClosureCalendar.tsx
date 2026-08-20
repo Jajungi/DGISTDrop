@@ -1,11 +1,10 @@
-﻿import React, { useCallback, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   TextInput,
-  Alert,
   Platform,
   Modal,
   ScrollView,
@@ -19,7 +18,10 @@ import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { newEventId, todayLocalISODate } from '@/src/utils/siteOps';
 import { getKoreanHolidayName, getKoreanHolidaysForYear } from '@/src/utils/koreanHolidays';
-import { invokeBroadcastPush } from '@/src/services/supabase/pushSettings';
+import {
+  DEFAULT_PUSH_SETTINGS,
+  fetchPushNotifySettings,
+} from '@/src/services/supabase/pushSettings';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import type { ClubEvent, ClubEventKind } from '@/src/types';
 
@@ -92,10 +94,11 @@ export interface BannerPrefill {
 
 interface Props {
   onToast: (type: 'success' | 'info' | 'warning', message: string) => void;
-  onGoToBannerNotice: (prefill: BannerPrefill) => void;
+  /** @deprecated 달력에서 배너 여부를 직접 고르므로 선택 사항 */
+  onGoToBannerNotice?: (prefill: BannerPrefill) => void;
 }
 
-export function AdminClosureCalendar({ onToast, onGoToBannerNotice }: Props) {
+export function AdminClosureCalendar({ onToast }: Props) {
   const schedule = useActivityScheduleStore((s) => s.schedule);
   const events = useClubEventStore((s) => s.events);
   const upsertEvent = useClubEventStore((s) => s.upsert);
@@ -189,7 +192,15 @@ export function AdminClosureCalendar({ onToast, onGoToBannerNotice }: Props) {
   const [body, setBody] = useState('');
   const [sendPush, setSendPush] = useState(true);
   const [pushTime, setPushTime] = useState('09:00');
+  const [activityNotifyTime, setActivityNotifyTime] = useState(DEFAULT_PUSH_SETTINGS.notify_time);
+  const [showBanner, setShowBanner] = useState(true);
   const [existingId, setExistingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetchPushNotifySettings()
+      .then((s) => setActivityNotifyTime(s.notify_time || DEFAULT_PUSH_SETTINGS.notify_time))
+      .catch(() => {});
+  }, []);
 
   const autoKindForDate = (date: Date, existing?: ClubEvent): PaintMode => {
     if (existing?.kind === 'closure' || existing?.kind === 'extra') {
@@ -210,26 +221,26 @@ export function AdminClosureCalendar({ onToast, onGoToBannerNotice }: Props) {
       setReason('');
       setTitle(existing.title);
       setBody(existing.body ?? '');
+      setShowBanner(existing.showBanner !== false);
+      setSendPush(existing.pushNotify?.enabled === true);
       if (kind === 'closure') {
-        setSendPush(existing.pushNotify?.enabled === true);
         setPushTime(existing.pushNotify?.time ?? '09:00');
       } else {
-        setSendPush(false);
-        setPushTime('09:00');
+        setPushTime(activityNotifyTime);
       }
     } else {
       setExistingId(null);
       setReason('');
+      setShowBanner(true);
+      setSendPush(true);
       if (kind === 'closure') {
         setTitle(buildClosureTitle(''));
         setBody(buildClosureBody('', dateISO));
-        setSendPush(true);
         setPushTime('09:00');
       } else {
         setTitle(buildExtraTitle(''));
         setBody(buildExtraBody('', dateISO));
-        setSendPush(false);
-        setPushTime('09:00');
+        setPushTime(activityNotifyTime);
       }
     }
     setEditorOpen(true);
@@ -253,21 +264,6 @@ export function AdminClosureCalendar({ onToast, onGoToBannerNotice }: Props) {
     }
   };
 
-  const askGoToBanner = (prefill: BannerPrefill) => {
-    if (prefill.kind !== 'closure') return;
-    const go = () => onGoToBannerNotice(prefill);
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      if (window.confirm('휴관 배너 공지 화면으로 이동할까요? 문구를 이어서 수정할 수 있어요.')) {
-        go();
-      }
-      return;
-    }
-    Alert.alert('배너 공지', '휴관 배너 공지 화면으로 이동할까요?', [
-      { text: '나중에', style: 'cancel' },
-      { text: '이동', onPress: go },
-    ]);
-  };
-
   const saveEvent = async () => {
     if (!title.trim()) {
       onToast('warning', '제목을 입력해 주세요.');
@@ -281,6 +277,7 @@ export function AdminClosureCalendar({ onToast, onGoToBannerNotice }: Props) {
     }
 
     const timeNorm = (() => {
+      if (editKind === 'extra') return activityNotifyTime;
       const tm = /^(\d{1,2}):(\d{2})$/.exec(pushTime.trim());
       if (!tm) return '09:00';
       const h = Math.min(23, Math.max(0, Number(tm[1])));
@@ -301,44 +298,29 @@ export function AdminClosureCalendar({ onToast, onGoToBannerNotice }: Props) {
       dateStart: editDate,
       dateEnd: editDate,
       active: true,
-      ...(editKind === 'closure'
-        ? {
-            pushNotify: {
-              enabled: sendPush,
-              time: timeNorm,
-              sentDates: prevSent,
-            },
-          }
-        : {}),
+      showBanner,
+      pushNotify: {
+        enabled: sendPush,
+        time: timeNorm,
+        sentDates: prevSent,
+      },
     };
     const r = await upsertEvent(event);
     onToast(r.success ? 'success' : 'warning', r.message);
     if (!r.success) return;
 
-    if (editKind === 'closure' && sendPush) {
-      onToast('info', `당일 ${timeNorm}에 휴관 푸시가 예약됐어요. (바로 발송되지 않아요)`);
-    } else if (editKind === 'extra' && sendPush) {
-      try {
-        const push = await invokeBroadcastPush({
-          title: `[추가 활동일] ${event.title}`,
-          message: event.body || `${editDate} 추가 활동일이 등록되었습니다.`,
-          type: 'notice',
-        });
-        onToast('info', `푸시 ${push.sent}명에게 발송됨`);
-      } catch (err) {
-        onToast('warning', err instanceof Error ? err.message : '푸시 발송 실패');
+    if (sendPush) {
+      if (editKind === 'closure') {
+        onToast('info', `당일 ${timeNorm}에 휴관 푸시가 예약됐어요. (바로 발송되지 않아요)`);
+      } else {
+        onToast(
+          'info',
+          `추가 활동일 당일 ${activityNotifyTime}(활동 알림 시각)에 푸시가 예약됐어요.`
+        );
       }
     }
 
     setEditorOpen(false);
-    askGoToBanner({
-      title: event.title,
-      body: event.body ?? '',
-      dateStart: editDate,
-      dateEnd: editDate,
-      eventId: event.id,
-      kind: event.kind,
-    });
   };
 
   const cancelEvent = async () => {
@@ -461,8 +443,11 @@ export function AdminClosureCalendar({ onToast, onGoToBannerNotice }: Props) {
               </Text>
               <Text style={[styles.listMeta, e.kind === 'extra' && styles.listMetaExtra]}>
                 {e.dateStart === e.dateEnd ? e.dateStart : `${e.dateStart} ~ ${e.dateEnd}`}
-                {e.kind === 'closure' && e.pushNotify?.enabled
-                  ? ` · 당일 ${e.pushNotify.time} 푸시`
+                {e.showBanner !== false ? ' · 배너' : ' · 배너 없음'}
+                {e.pushNotify?.enabled
+                  ? e.kind === 'extra'
+                    ? ` · 활동알림 ${e.pushNotify.time || activityNotifyTime} 푸시`
+                    : ` · 당일 ${e.pushNotify.time} 푸시`
                   : ''}
               </Text>
             </View>
@@ -515,6 +500,19 @@ export function AdminClosureCalendar({ onToast, onGoToBannerNotice }: Props) {
               placeholderTextColor={colors.textMuted}
             />
             <Pressable
+              onPress={() => setShowBanner((v) => !v)}
+              style={styles.switchRow}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: showBanner }}
+            >
+              <Text style={styles.switchLabel}>
+                {showBanner ? '홈 배너 공지 표시' : '배너 공지 안 함 (일정만)'}
+              </Text>
+              <View style={[styles.switchTrack, showBanner && styles.switchTrackOn]}>
+                <View style={[styles.switchKnob, showBanner && styles.switchKnobOn]} />
+              </View>
+            </Pressable>
+            <Pressable
               onPress={() => setSendPush((v) => !v)}
               style={styles.switchRow}
               accessibilityRole="switch"
@@ -524,9 +522,9 @@ export function AdminClosureCalendar({ onToast, onGoToBannerNotice }: Props) {
                 {editKind === 'closure'
                   ? sendPush
                     ? '당일 푸시 예약 (바로 안 보냄)'
-                    : '푸시 안 보냄 (배너만)'
+                    : '푸시 안 보냄'
                   : sendPush
-                    ? '지금 푸시 보내기'
+                    ? `활동 알림 시각(${activityNotifyTime})에 푸시`
                     : '푸시 안 보냄'}
               </Text>
               <View style={[styles.switchTrack, sendPush && styles.switchTrackOn]}>
@@ -549,6 +547,12 @@ export function AdminClosureCalendar({ onToast, onGoToBannerNotice }: Props) {
                   필요)
                 </Text>
               </View>
+            )}
+            {editKind === 'extra' && sendPush && (
+              <Text style={styles.hint}>
+                바로 보내지 않고, 알림 설정의 활동 자동 알림 시각({activityNotifyTime})에 일반 활동일과
+                같은 방식으로 발송됩니다. 시각 변경은 [알림 → 알림 설정]에서 하세요.
+              </Text>
             )}
             <View style={styles.modalActions}>
               {existingId ? (
