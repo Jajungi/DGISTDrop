@@ -73,7 +73,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
         title: '홈 화면에 추가 (Android Chrome)',
         forDevices: ['android'],
         content:
-          'Chrome에서 Drop 사이트를 연 뒤 메뉴(⋮) → [홈 화면에 추가] 또는 [앱 설치]를 선택하세요. 이 브라우저에서 알림만 허용해도 받을 수 있고, 바로가기가 더 편합니다.',
+          '지금은 Play 스토어 대신 웹앱을 씁니다. 1) Chrome으로 Drop 사이트 열기 → 2) 메뉴(⋮) → [앱 설치] 또는 [홈 화면에 추가] → 3) 생긴 Drop 아이콘으로 접속 → 4) 설정에서 [알림 켜기]. 로그인 화면·설정에도 설치 안내가 있습니다.',
       },
       {
         title: 'PC에서 알림 켜기',

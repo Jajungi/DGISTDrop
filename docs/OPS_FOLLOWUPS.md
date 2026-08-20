@@ -2,9 +2,36 @@
 
 배포 후 바로 막히는 일은 아니지만, 나중에 정리하면 좋은 항목들을 모아 둔 문서입니다.
 
+**현재 배포 방식 (2026-08):** Play 내부 테스트 설치는 미뤄 두고, Android·iOS 모두 **브라우저 웹앱(홈 화면 추가 / 앱 설치)** 으로 쓰는 것을 기본으로 합니다. 사이트: `https://dgistdrop.pages.dev`
+
+---
+
+## 0. Android 웹앱 설치 (현재 권장)
+
+사용자 안내:
+
+1. Chrome으로 `https://dgistdrop.pages.dev` 열기
+2. 메뉴(⋮) → **앱 설치** 또는 **홈 화면에 추가**
+3. 홈 화면 Drop 아이콘으로 실행
+4. 설정에서 알림 허용
+
+앱 UI:
+
+- 로그인 화면: 설치 안내 카드
+- 설정: 설치 안내 카드 + 알림 설정
+- 이용 안내: Android용 홈 화면 추가 항목
+
+기술:
+
+- `public/manifest.json`
+- `public/sw.js` (fetch 핸들러 포함 — Chrome 설치 조건)
+- `src/services/pwaInstall.ts` (early SW 등록 + `beforeinstallprompt`)
+
 ---
 
 ## 1. Google Play 경고 후속 처리
+
+> 상태: **보류**. 웹앱으로 먼저 운영하고, Play 설치가 필요할 때 다시 진행.
 
 ### 1-1. 내부 테스트 테스터 미지정 경고
 

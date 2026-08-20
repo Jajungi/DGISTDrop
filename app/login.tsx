@@ -28,6 +28,7 @@ import { isSupabaseEnvConfigured, getSupabaseSetupHint } from '@/src/lib/supabas
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import { SiteOverlayHost } from '@/src/components/site/SiteOverlayHost';
 import { markPostLoginOverlay } from '@/src/components/site/SiteOverlayHost';
+import { PwaInstallCard } from '@/src/components/layout/PwaInstallCard';
 
 type Mode = 'login' | 'register' | 'guest';
 
@@ -165,6 +166,11 @@ export default function LoginScreen() {
               {SCHOOL_NAME} {CLUB_NAME} · S1 체육관
             </Text>
           </View>
+
+          <PwaInstallCard
+            compact
+            onToast={(type, message) => showToast({ type, title: '', message })}
+          />
 
           <View style={styles.tabs}>
             <Pressable

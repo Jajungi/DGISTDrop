@@ -1,4 +1,17 @@
-/* Drop PWA service worker — 웹 푸시 수신 (iOS Safari 16.4+ 홈 화면 추가 필요) */
+/* Drop PWA service worker — 웹 푸시 + Android/Chrome 앱 설치 조건 */
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+/** Chrome “앱 설치” 조건: fetch 핸들러 존재. 네트워크 우선, 실패 시 그대로 둠 */
+self.addEventListener('fetch', (event) => {
+  event.respondWith(fetch(event.request));
+});
+
 self.addEventListener('push', (event) => {
   let payload = { title: 'Drop', body: '새 알림이 있습니다.' };
   try {

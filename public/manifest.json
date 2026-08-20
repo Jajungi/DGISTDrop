@@ -1,13 +1,17 @@
 {
+  "id": "/",
   "name": "Drop",
   "short_name": "Drop",
   "description": "DGIST 배드민턴 동아리 Drop — 코트 예약·출석·매칭·포인트",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#F3F8F6",
   "theme_color": "#1B4332",
   "orientation": "any",
   "lang": "ko",
+  "categories": ["sports"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.png",

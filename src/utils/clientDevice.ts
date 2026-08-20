@@ -89,19 +89,20 @@ export function getPushGuideCopy(device = detectClientDevice()): PushGuideCopy {
       device,
       deviceLabel: 'Android',
       summary: standalone
-        ? '홈 화면 바로가기로 열려 있어요. 알림을 허용하면 브라우저를 안 봐도 푸시가 옵니다.'
-        : '이 Chrome에서 알림을 허용하면 받을 수 있어요. 더 편하게 쓰려면 메뉴에서 홈 화면에 추가하세요.',
+        ? '홈 화면 앱으로 열려 있어요. 알림을 허용하면 브라우저를 안 봐도 푸시가 옵니다.'
+        : 'Chrome에서 알림을 허용하세요. 더 편하게 쓰려면 메뉴에서 [앱 설치] 또는 [홈 화면에 추가]하세요.',
       guideBody:
-        'Chrome에서 알림을 허용하면 웹 푸시를 받을 수 있습니다. 메뉴(⋮) → [홈 화면에 추가] 또는 [앱 설치]를 하면 바로가기로도 받을 수 있습니다. Play Store 앱이 있으면 앱에서 켜는 편이 더 안정적입니다.',
-      howToTitle: '알림 · 홈 화면 추가',
+        '지금은 Play 스토어 앱 대신 웹앱을 씁니다. Chrome으로 Drop 사이트를 연 뒤 메뉴(⋮) → [앱 설치] 또는 [홈 화면에 추가]하세요. 같은 Chrome에서 알림만 허용해도 푸시를 받을 수 있습니다.',
+      howToTitle: 'Android에서 앱처럼 설치',
       steps: [
-        '이 화면에서 [알림 켜기]를 누르고 허용하세요.',
-        '더 편하게 쓰려면 Chrome 메뉴(⋮) → [홈 화면에 추가] 또는 [앱 설치]를 하세요.',
-        'Play Store에 Drop 앱이 있으면 앱에서 알림을 켜도 됩니다.',
+        'Chrome으로 https://dgistdrop.pages.dev 를 여세요.',
+        '메뉴(⋮) → [앱 설치] 또는 [홈 화면에 추가]를 누르세요.',
+        '홈 화면에 생긴 Drop 아이콘으로 다시 여세요.',
+        '설정에서 [알림 켜기]를 누르고 허용하세요.',
       ],
       gateTitle: '알림을 받아 볼까요?',
       gateBody:
-        '활동일 저녁·레슨·공지 푸시를 받으려면 알림을 허용해 주세요. Chrome 메뉴에서 홈 화면에 추가하면 더 잘 옵니다. 나중에 설정에서 종류별로 끌 수 있어요.',
+        '활동일 저녁·레슨·공지 푸시를 받으려면 알림을 허용해 주세요. Chrome 메뉴에서 홈 화면에 추가하면 앱처럼 쓸 수 있어요. 나중에 설정에서 종류별로 끌 수 있어요.',
       canRequestPermission: true,
       needsHomeScreen: false,
     };

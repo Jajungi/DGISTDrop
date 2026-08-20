@@ -33,6 +33,7 @@ import { initSupabaseApp } from '@/src/services/supabase/init';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { useFriendArrivalWatch } from '@/src/hooks/useFriendArrivalWatch';
 import { PushPermissionGate } from '@/src/components/profile/PushPermissionGate';
+import { ensurePwaServiceWorker } from '@/src/services/pwaInstall';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -68,7 +69,10 @@ export default function RootLayout() {
   }, [loaded, error]);
 
   useEffect(() => {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'web') {
+      void ensurePwaServiceWorker();
+      return;
+    }
     void import('@/src/services/localNotifications').then((m) => m.initLocalNotifications());
   }, []);
 

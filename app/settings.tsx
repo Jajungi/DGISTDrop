@@ -5,6 +5,7 @@ import { PageContainer } from '@/src/components/layout/PageContainer';
 import { Card } from '@/src/components/ui/Card';
 import { Avatar } from '@/src/components/ui/Avatar';
 import { PushNotificationCard } from '@/src/components/profile/PushNotificationCard';
+import { PwaInstallCard } from '@/src/components/layout/PwaInstallCard';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useFriendStore } from '@/src/stores/friendStore';
 import { useFriendPrefsStore } from '@/src/stores/friendPrefsStore';
@@ -63,6 +64,9 @@ export default function SettingsScreen() {
       <Stack.Screen options={{ title: '설정', headerShown: true }} />
       <PageContainer>
         <ScrollView contentContainerStyle={styles.content}>
+          <PwaInstallCard
+            onToast={(type, message) => showToast({ type, title: '', message })}
+          />
           <PushNotificationCard
             userId={currentUser.id}
             onToast={(type, message) => showToast({ type, title: '', message })}
