@@ -5,7 +5,7 @@ import {
   POINT_SPEND,
   RANK_RESERVATION_DISCOUNT,
 } from '@/src/constants/points';
-import { RANK_ORDER, RANK_THRESHOLDS, CENTER_COURTS } from '@/src/constants';
+import { isEloFeaturesEnabled } from '@/src/stores/featureFlagsStore';
 import type { MembershipTier, RankTier } from '@/src/types';
 
 export function getRankFromElo(elo: number): RankTier {
@@ -31,11 +31,13 @@ export function getAttendancePoints(membershipTier: MembershipTier): number {
 /** Gold+ 랭크 티어 할인 적용 — 일반 20p / 중앙 30p 기준 */
 export function getReservationCost(rank: RankTier, isCenterCourt = false): number {
   const base = isCenterCourt ? POINT_SPEND.COURT_CENTER : POINT_SPEND.COURT_GENERAL;
+  if (!isEloFeaturesEnabled()) return base;
   const discount = RANK_RESERVATION_DISCOUNT[rank] ?? 0;
   return Math.max(1, Math.round(base * (1 - discount)));
 }
 
 export function getRankDiscountPercent(rank: RankTier): number {
+  if (!isEloFeaturesEnabled()) return 0;
   return Math.round((RANK_RESERVATION_DISCOUNT[rank] ?? 0) * 100);
 }
 

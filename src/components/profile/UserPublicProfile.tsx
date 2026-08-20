@@ -8,6 +8,7 @@ import { getWinRate } from '@/src/services/points';
 import { formatArrivalLabel, formatScheduleRange } from '@/src/utils/friendsPresence';
 import { getEffectiveSchedule } from '@/src/utils/dateFormat';
 import { RANK_THRESHOLDS } from '@/src/constants';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 interface UserPublicProfileProps {
@@ -17,6 +18,7 @@ interface UserPublicProfileProps {
 export function UserPublicProfile({ user }: UserPublicProfileProps) {
   const winRate = getWinRate(user.wins, user.losses);
   const rankLabel = RANK_THRESHOLDS[user.rank]?.label ?? user.rank;
+  const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
   const arrival = formatArrivalLabel(user);
   const schedule = formatScheduleRange(user);
 
@@ -28,9 +30,11 @@ export function UserPublicProfile({ user }: UserPublicProfileProps) {
           <Text style={styles.displayName}>{user.name}</Text>
           <View style={styles.badges}>
             <RankBadge rank={user.rank} size="lg" />
+            {eloOn ? (
             <View style={styles.rankPill}>
               <Text style={styles.rankPillText}>{rankLabel}</Text>
             </View>
+            ) : null}
           </View>
           {user.isAtGym ? (
             <Text style={styles.atGym}>지금 체육관</Text>
@@ -46,10 +50,12 @@ export function UserPublicProfile({ user }: UserPublicProfileProps) {
       </View>
 
       <View style={styles.statsGrid}>
+        {eloOn ? (
         <Card style={styles.statCard}>
           <Text style={styles.statValue}>{user.elo}</Text>
           <Text style={styles.statLabel}>Elo</Text>
         </Card>
+        ) : null}
         <Card style={styles.statCard}>
           <Text style={styles.statValue}>{winRate}%</Text>
           <Text style={styles.statLabel}>승률</Text>

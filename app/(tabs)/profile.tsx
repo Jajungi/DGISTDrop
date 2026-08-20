@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ScrollView, View, Text, StyleSheet, TextInput, Pressable, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore, useAppStore } from '@/src/stores/authStore';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { useGeoLocation } from '@/src/hooks/useGeoLocation';
 import { getWinRate } from '@/src/services/points';
@@ -42,6 +44,7 @@ export default function ProfileScreen() {
   const showToast = useNotificationStore((s) => s.showToast);
   const { isMobile, isNarrow, scale, scaledTypography, scaledSpacing } = useLayoutMode();
   const isGuest = useAuthStore((s) => s.isGuestSession);
+  const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
   useGeoLocation();
 
   const [showCleaning, setShowCleaning] = useState(false);
@@ -58,11 +61,6 @@ export default function ProfileScreen() {
   const [deleteConfirmCode, setDeleteConfirmCode] = useState('');
   const [deleteCodeInput, setDeleteCodeInput] = useState('');
   const [deletingAccount, setDeletingAccount] = useState(false);
-  const [kakaoIdInput, setKakaoIdInput] = useState('');
-
-  useEffect(() => {
-    setKakaoIdInput(currentUser?.kakaoId ?? '');
-  }, [currentUser?.kakaoId]);
 
   const closeDeleteFlow = () => {
     setDeleteStep('idle');
@@ -276,7 +274,7 @@ export default function ProfileScreen() {
               {currentUser.studentId}
             </Text>
             <View style={styles.badges}>
-              <RankBadge rank={currentUser.rank} size="lg" />
+              {eloOn ? <RankBadge rank={currentUser.rank} size="lg" /> : null}
               <View style={styles.tierBadge}>
                 <Text style={styles.tierText}>
                   {currentUser.membershipTier === 'full' ? '정회원' : currentUser.membershipTier === 'associate' ? '준회원' : '비회원'}
@@ -284,46 +282,19 @@ export default function ProfileScreen() {
               </View>
             </View>
           </View>
+          <Pressable
+            onPress={() => router.push('/settings')}
+            style={styles.settingsBtn}
+            accessibilityRole="button"
+            accessibilityLabel="설정"
+          >
+            <Ionicons name="settings-outline" size={22} color={colors.primary} />
+            <Text style={styles.settingsBtnText}>설정</Text>
+          </Pressable>
         </View>
 
-        <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>카카오 챗봇 연동</Text>
-          {!currentUser.kakaoId ? (
-            <View style={styles.kakaoWarningBox}>
-              <Text style={styles.kakaoWarningText}>
-                카카오 아이디가 아직 등록되지 않았어요. 등록해야 단톡방 참석 버튼과 계정이 정확히 매칭됩니다.
-              </Text>
-            </View>
-          ) : null}
-          <Text style={styles.sectionHint}>
-            단톡방 참여 버튼 매칭용 카카오 아이디를 입력/수정하세요.
-          </Text>
-          <TextInput
-            style={styles.input}
-            value={kakaoIdInput}
-            onChangeText={setKakaoIdInput}
-            placeholder="카카오 아이디 입력"
-            autoCapitalize="none"
-          />
-          <Button
-            title="카카오 아이디 저장"
-            onPress={() => {
-              void (async () => {
-                const result = await updateUserProfile(currentUser.id, { kakaoId: kakaoIdInput });
-                showToast({
-                  type: result.success ? 'success' : 'warning',
-                  title: '',
-                  message: result.message,
-                });
-              })();
-            }}
-            fullWidth
-            variant="outline"
-            style={{ marginTop: spacing.sm }}
-          />
-        </Card>
-
         <View style={[styles.statsGrid, isMobile && styles.statsGridMobile]}>
+          {eloOn ? (
           <Pressable
             onPress={() => setShowRanking(true)}
             style={({ pressed }) => [
@@ -337,6 +308,7 @@ export default function ProfileScreen() {
             <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Elo</Text>
             <Text style={styles.statHint}>순위표 보기</Text>
           </Pressable>
+          ) : null}
           <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Text style={[styles.statValue, isMobile && statValueMobile(scaledTypography)]}>{hasGameStats ? `${winRate}%` : '—'}</Text>
             <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>승률</Text>
@@ -383,9 +355,11 @@ export default function ProfileScreen() {
         </Card>
 
         <View style={[styles.chartsRow, isNarrow && styles.chartsCol]}>
+          {eloOn ? (
           <Card style={[styles.section, styles.chartCard]}>
             <EloChart data={[]} height={280} />
           </Card>
+          ) : null}
           <Card style={[styles.section, styles.chartCard]}>
             <HourlyHeadcountChart cellHeight={48} />
           </Card>
@@ -475,7 +449,7 @@ export default function ProfileScreen() {
         />
       )}
 
-      {showRanking && (
+      {showRanking && eloOn && (
         <EloRankingSheet
           visible={showRanking}
           currentUserId={currentUser.id}
@@ -644,6 +618,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   profileInfo: { flex: 1, justifyContent: 'center' },
+  settingsBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    ...Platform.select({ web: { cursor: 'pointer' as const } }),
+  },
+  settingsBtnText: { ...typography.small, color: colors.primary, fontWeight: '700' },
   name: { ...typography.h2, color: colors.text },
   studentId: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
   badges: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
@@ -686,19 +669,6 @@ const styles = StyleSheet.create({
   chartCard: { flex: 1, minWidth: 0 },
   sectionTitle: { ...typography.bodyBold, color: colors.text, marginBottom: spacing.md, fontSize: 16 },
   sectionHint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.sm },
-  kakaoWarningBox: {
-    backgroundColor: '#FFF4E5',
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: '#FFD8A8',
-    padding: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  kakaoWarningText: {
-    ...typography.caption,
-    color: '#92400E',
-    lineHeight: 18,
-  },
   serviceActions: { gap: spacing.sm, marginTop: spacing.md },
   scheduleHint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.sm },
   scheduleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

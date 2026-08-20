@@ -12,6 +12,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { useFriendStore } from '@/src/stores/friendStore';
 import { useFriendPrefsStore } from '@/src/stores/friendPrefsStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { colors, spacing, typography } from '@/src/theme';
 
 interface FriendRowProps {
@@ -26,6 +27,7 @@ export function FriendRow({ user, compact = false }: FriendRowProps) {
   const isArrivalNotifyOn = useFriendPrefsStore((s) => s.isArrivalNotifyOn);
   const setArrivalNotify = useFriendPrefsStore((s) => s.setArrivalNotify);
   const showToast = useNotificationStore((s) => s.showToast);
+  const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const arrival = formatArrivalLabel(user);
@@ -55,7 +57,7 @@ export function FriendRow({ user, compact = false }: FriendRowProps) {
           <View style={styles.body}>
             <View style={styles.nameRow}>
               <Text style={styles.name}>{user.name}</Text>
-              <Text style={styles.rank}>{rankLabel}</Text>
+              {eloOn ? <Text style={styles.rank}>{rankLabel}</Text> : null}
             </View>
             {arrival ? (
               <Text style={styles.arrival}>{arrival}</Text>

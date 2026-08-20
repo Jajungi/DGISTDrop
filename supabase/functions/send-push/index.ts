@@ -9,11 +9,15 @@
 //   (선택) supabase secrets set EXPO_ACCESS_TOKEN=xxxx
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { buildPushPayload } from 'https://esm.sh/@block65/webcrypto-web-push@1.0.2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const PUSH_WEBHOOK_SECRET = Deno.env.get('PUSH_WEBHOOK_SECRET');
 const EXPO_ACCESS_TOKEN = Deno.env.get('EXPO_ACCESS_TOKEN');
+const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY') ?? '';
+const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY') ?? '';
+const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:drop@dgist.ac.kr';
 
 interface Payload {
   user_id?: string;
@@ -21,6 +25,42 @@ interface Payload {
   message?: string;
   kind?: string;
   record?: { user_id?: string; title?: string; message?: string; kind?: string };
+}
+
+function isExpoToken(token: string): boolean {
+  return token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[');
+}
+
+function isWebSubscription(token: string): boolean {
+  return token.startsWith('{') && token.includes('"endpoint"');
+}
+
+async function sendWeb(tokens: string[], title: string, body: string) {
+  if (!tokens.length || !VAPID_PUBLIC || !VAPID_PRIVATE) return 0;
+  const vapid = {
+    subject: VAPID_SUBJECT,
+    publicKey: VAPID_PUBLIC,
+    privateKey: VAPID_PRIVATE,
+  };
+  let sent = 0;
+  for (const token of tokens) {
+    try {
+      const sub = JSON.parse(token) as {
+        endpoint: string;
+        keys: { p256dh: string; auth: string };
+      };
+      const payload = await buildPushPayload(
+        { data: JSON.stringify({ title, body }), options: { ttl: 3600 } },
+        sub,
+        vapid
+      );
+      const res = await fetch(sub.endpoint, payload);
+      if (res.status >= 200 && res.status < 300) sent += 1;
+    } catch (err) {
+      console.warn('[send-push web]', err);
+    }
+  }
+  return sent;
 }
 
 function isAuthorized(req: Request): boolean {
@@ -50,6 +90,21 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const kind = rec.kind ?? 'system';
+
+    if (kind === 'coach') {
+      const { data: pref } = await supabase
+        .from('user_notification_prefs')
+        .select('lesson_turn')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (pref && (pref as { lesson_turn?: boolean }).lesson_turn === false) {
+        return new Response(JSON.stringify({ sent: 0, skipped: 'lesson_turn_off' }), {
+          status: 200,
+        });
+      }
+    }
+
     const { data: tokens, error } = await supabase
       .from('push_tokens')
       .select('token')
@@ -60,29 +115,35 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ sent: 0 }), { status: 200 });
     }
 
-    const messages = tokens.map((t: { token: string }) => ({
-      to: t.token,
-      sound: 'default',
-      title,
-      body: message,
-      priority: 'high',
-      channelId: rec.kind === 'coach' ? 'coach' : 'default',
-    }));
+    const expoTokens = tokens.map((t: { token: string }) => t.token).filter(isExpoToken);
+    const webTokens = tokens.map((t: { token: string }) => t.token).filter(isWebSubscription);
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    };
-    if (EXPO_ACCESS_TOKEN) headers.Authorization = `Bearer ${EXPO_ACCESS_TOKEN}`;
+    let expoSent = 0;
+    if (expoTokens.length) {
+      const messages = expoTokens.map((to: string) => ({
+        to,
+        sound: 'default',
+        title,
+        body: message,
+        priority: 'high',
+        channelId: kind === 'coach' ? 'coach' : 'default',
+      }));
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      };
+      if (EXPO_ACCESS_TOKEN) headers.Authorization = `Bearer ${EXPO_ACCESS_TOKEN}`;
+      const expoRes = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(messages),
+      });
+      if (expoRes.ok) expoSent = expoTokens.length;
+    }
 
-    const expoRes = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(messages),
-    });
-    const result = await expoRes.json();
+    const webSent = await sendWeb(webTokens, title, message);
 
-    return new Response(JSON.stringify({ sent: messages.length, result }), {
+    return new Response(JSON.stringify({ sent: expoSent + webSent, expo: expoSent, web: webSent }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

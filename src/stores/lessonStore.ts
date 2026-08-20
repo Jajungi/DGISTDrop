@@ -6,6 +6,7 @@ import { useAuthStore } from './authStore';
 import { persistAppState } from '@/src/services/appState';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { runWhenRemoteId } from '@/src/utils/localId';
+import { isLessonTurnEnabled } from '@/src/stores/notificationPrefsStore';
 
 function persistLessonQueue() {
   persistAppState();
@@ -328,6 +329,7 @@ export const useLessonStore = create<LessonState>((set, get) => ({
   notifyIfNext: (userId) => {
     const entry = get().lessonQueue.find((e) => e.userId === userId && e.status === 'next');
     if (!entry) return;
+    if (!isLessonTurnEnabled()) return;
 
     const notify = useNotificationStore.getState();
     notify.showSiren('다음 레슨 차례입니다', '코치 코트로 이동해 셔틀콕을 준비해 주세요.');

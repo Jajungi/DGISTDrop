@@ -9,7 +9,8 @@ import {
   Pressable,
   Platform,
 } from 'react-native';
-import { colors, borderRadius, typography, shadows } from '@/src/theme';
+import { colors, typography, shadows } from '@/src/theme';
+import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 
 type Variant = 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
 type Size = 'sm' | 'md' | 'lg';
@@ -55,6 +56,7 @@ export function Button({
   textStyle,
   fullWidth = false,
 }: ButtonProps) {
+  const { scaledBorderRadius } = useLayoutMode();
   const isDisabled = disabled || loading;
 
   return (
@@ -63,6 +65,7 @@ export function Button({
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.face,
+        { borderRadius: scaledBorderRadius.squish },
         FACE[variant],
         styles[`size_${size}`],
         fullWidth && styles.fullWidth,
@@ -90,7 +93,6 @@ export function Button({
 const styles = StyleSheet.create({
   face: {
     alignSelf: 'flex-start',
-    borderRadius: borderRadius.squish,
     overflow: 'hidden',
   },
   fullWidth: { width: '100%', alignSelf: 'stretch' },

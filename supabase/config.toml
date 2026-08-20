@@ -12,3 +12,10 @@ enabled = true
 
 [storage]
 enabled = true
+
+[functions.broadcast-push]
+verify_jwt = false
+
+[functions.scheduled-activity-notify]
+verify_jwt = false
+

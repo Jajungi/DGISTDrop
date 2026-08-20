@@ -5,6 +5,7 @@ import {
   MOCK_CLEANING_LEADERBOARD,
 } from '@/src/services/mockData';
 import { calculateEloChange } from '@/src/services/elo';
+import { isEloFeaturesEnabled } from '@/src/stores/featureFlagsStore';
 import {
   calculateWinPoints,
   calculateLossPoints,
@@ -85,8 +86,10 @@ function applyMatchOutcome(match: MatchResult, matchId: string): Record<string, 
     const loserElos = losers.map((id) => authStore.users.find((u) => u.id === id)?.elo ?? 1000);
     const avgLoserElo = loserElos.reduce((a, b) => a + b, 0) / (loserElos.length || 1);
     const { winnerChange } = calculateEloChange(user.elo, avgLoserElo);
-    eloChanges[userId] = winnerChange;
-    authStore.updateUserElo(userId, winnerChange);
+    if (isEloFeaturesEnabled()) {
+      eloChanges[userId] = winnerChange;
+      authStore.updateUserElo(userId, winnerChange);
+    }
     if (winPts > 0) {
       applyPointChange(userId, winPts, 'match_win', '경기 승리 (팀원 지급)', { matchId });
     }
@@ -98,8 +101,10 @@ function applyMatchOutcome(match: MatchResult, matchId: string): Record<string, 
     const winnerElos = winners.map((id) => authStore.users.find((u) => u.id === id)?.elo ?? 1000);
     const avgWinnerElo = winnerElos.reduce((a, b) => a + b, 0) / (winnerElos.length || 1);
     const { loserChange } = calculateEloChange(avgWinnerElo, user.elo);
-    eloChanges[userId] = loserChange;
-    authStore.updateUserElo(userId, loserChange);
+    if (isEloFeaturesEnabled()) {
+      eloChanges[userId] = loserChange;
+      authStore.updateUserElo(userId, loserChange);
+    }
     if (lossPts > 0) {
       applyPointChange(userId, lossPts, 'match_loss', '경기 참여 (위로 지급)', { matchId });
     }
@@ -387,9 +392,10 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       get().pushInbox({
         type: 'system',
         title: '경기 확정',
-        message: rated
-          ? `코트 ${match.courtId} 경기가 확정됐어요. Elo가 반영됩니다.`
-          : `코트 ${match.courtId} 경기가 확정됐어요.`,
+        message:
+          rated && isEloFeaturesEnabled()
+            ? `코트 ${match.courtId} 경기가 확정됐어요. Elo가 반영됩니다.`
+            : `코트 ${match.courtId} 경기가 확정됐어요.`,
         targetUserId: uid,
         courtId: match.courtId,
       });

@@ -63,7 +63,6 @@ interface AuthState {
   register: (input: {
     studentId: string;
     name: string;
-    kakaoId: string;
     email: string;
     password: string;
   }) => Promise<{ success: boolean; message: string }>;
@@ -116,7 +115,7 @@ interface AuthState {
   rejectLessonAccess: (userId: string) => { success: boolean; message: string };
   updateUserProfile: (
     userId: string,
-    patch: { avatarUri?: string | null; kakaoId?: string }
+    patch: { avatarUri?: string | null }
   ) => Promise<{ success: boolean; message: string }>;
   setUserAtGym: (userId: string, atGym: boolean) => void;
   canPerformMemberAction: (userId: string) => { allowed: boolean; reason?: string };
@@ -340,12 +339,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    try {
-      const { unregisterPushToken } = await import('@/src/services/pushNotifications');
-      await unregisterPushToken();
-    } catch {
-      // 푸시 토큰 해제 실패는 로그아웃을 막지 않음
-    }
     if (isSupabaseEnabled()) await supabaseLogout();
     await clearGuestSession();
     await afterSupabaseAuth(null);
@@ -353,7 +346,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!isSupabaseEnabled()) persistAppState();
   },
 
-  register: async ({ studentId, name, kakaoId, email, password }) => {
+  register: async ({ studentId, name, email, password }) => {
     const idCheck = validateStudentId(studentId);
     if (!idCheck.ok) {
       return { success: false, message: idCheck.message };
@@ -363,10 +356,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!trimmedName) {
       return { success: false, message: '이름을 입력해 주세요.' };
     }
-    const trimmedKakaoId = kakaoId.trim();
-    if (!trimmedKakaoId) {
-      return { success: false, message: '카카오 아이디를 입력해 주세요.' };
-    }
     if (password.trim().length < 6) {
       return { success: false, message: '비밀번호는 6자 이상이어야 해요.' };
     }
@@ -375,7 +364,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return supabaseRegister({
         studentId: normalizedId,
         name: trimmedName,
-        kakaoId: trimmedKakaoId,
         email,
         password,
       });
@@ -389,7 +377,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const newUser: User = {
       id: `user-${Date.now()}`,
       studentId: normalizedId,
-      kakaoId: trimmedKakaoId,
       name: trimmedName,
       nickname: trimmedName,
       email: email.trim() || `${normalizedId}@dgist.ac.kr`,
@@ -1012,20 +999,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     }
 
-    if (isSupabaseEnabled() && 'kakaoId' in patch) {
-      try {
-        const { syncProfilePatch } = await import('@/src/services/supabase/profiles');
-        await syncProfilePatch(userId, { kakaoId: patch.kakaoId });
-        const users = await fetchAllProfiles();
-        const currentUser = syncCurrentUser(users, get().currentUser?.id ?? null);
-        set({ users, currentUser });
-        return { success: true, message: '카카오 아이디가 저장되었어요.' };
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : '카카오 아이디 저장에 실패했어요.';
-        return { success: false, message: msg };
-      }
-    }
-
     set((state) => {
       const users = state.users.map((u) => {
         if (u.id !== userId) return u;
@@ -1034,16 +1007,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           if (patch.avatarUri) next.avatarUri = patch.avatarUri;
           else delete next.avatarUri;
         }
-        if ('kakaoId' in patch) {
-          next.kakaoId = patch.kakaoId?.trim() || undefined;
-        }
         return next;
       });
       const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
       return { users, currentUser };
     });
     persistAppState();
-    if ('kakaoId' in patch) return { success: true, message: '카카오 아이디가 저장되었어요.' };
     return { success: true, message: '프로필 사진이 저장되었어요.' };
   },
 

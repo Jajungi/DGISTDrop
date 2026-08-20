@@ -110,6 +110,41 @@ eas build -p android --profile production
 
 ---
 
+## 6. 활동 알림 (푸시)
+
+관리자 패널 **[알림]** 탭에서 활동일 자동 푸시·메시지 템플릿·수동 발송을 설정합니다.
+
+### Supabase 설정
+
+1. `029_push_notification_settings.sql` 실행
+2. Edge Function 배포:
+
+```bash
+npx supabase functions deploy broadcast-push
+npx supabase functions deploy scheduled-activity-notify
+```
+
+3. **Cron 스케줄** (Dashboard → Edge Functions → scheduled-activity-notify → Schedules):
+   - `*/5 * * * *` (5분마다 KST 활동일·알림 시간 확인)
+
+4. **웹 푸시 (iOS PWA)** VAPID 키 생성 후 시크릿 등록:
+
+```bash
+npx web-push generate-vapid-keys
+supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:drop@dgist.ac.kr
+```
+
+`.env`에 `EXPO_PUBLIC_VAPID_PUBLIC_KEY`도 동일한 public key 로 추가합니다.
+
+### 사용자별 등록
+
+| 환경 | 방법 |
+|------|------|
+| Android 앱 | 로그인 시 Expo 푸시 토큰 자동 등록 |
+| iOS / 웹 | Safari/Chrome → 홈 화면 추가 → 프로필 → [알림 켜기] |
+
+---
+
 ## 장애 대응
 
 | 증상 | 원인 |

@@ -111,7 +111,6 @@ export async function supabaseLogin(
 export async function supabaseRegister(input: {
   studentId: string;
   name: string;
-  kakaoId: string;
   email: string;
   password: string;
 }): Promise<AuthResult> {
@@ -121,16 +120,12 @@ export async function supabaseRegister(input: {
 
   const trimmedId = input.studentId.trim();
   const trimmedName = input.name.trim();
-  const trimmedKakaoId = input.kakaoId.trim();
   const idCheck = validateStudentId(trimmedId);
   if (!idCheck.ok) {
     return { success: false, message: idCheck.message };
   }
   if (!trimmedName) {
     return { success: false, message: '이름을 입력해 주세요.' };
-  }
-  if (!trimmedKakaoId) {
-    return { success: false, message: '카카오 아이디를 입력해 주세요.' };
   }
   if (input.password.trim().length < 6) {
     return { success: false, message: '비밀번호는 6자 이상이어야 해요.' };
@@ -145,7 +140,6 @@ export async function supabaseRegister(input: {
       data: {
         student_id: normalizedId,
         name: trimmedName,
-        kakao_id: trimmedKakaoId,
         contact_email: input.email.trim() || `${normalizedId}@dgist.ac.kr`,
       },
     },

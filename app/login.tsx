@@ -42,7 +42,6 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [name, setName] = useState('');
-  const [kakaoId, setKakaoId] = useState('');
   const [guestName, setGuestName] = useState('');
   const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -115,7 +114,6 @@ export default function LoginScreen() {
       const result = await register({
         studentId: idCheck.normalized,
         name,
-        kakaoId,
         email,
         password,
       });
@@ -129,7 +127,6 @@ export default function LoginScreen() {
         setStudentId(idCheck.normalized);
         setPassword('');
         setPasswordConfirm('');
-        setKakaoId('');
         setShowSavedPrompt(false);
       }
     })();
@@ -295,14 +292,6 @@ export default function LoginScreen() {
                 />
                 <Text style={styles.label}>이름</Text>
                 <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="실명" />
-                <Text style={styles.label}>카카오 아이디</Text>
-                <TextInput
-                  style={styles.input}
-                  value={kakaoId}
-                  onChangeText={setKakaoId}
-                  placeholder="예: 카카오 프로필 ID"
-                  autoCapitalize="none"
-                />
                 <Text style={styles.label}>이메일 (선택)</Text>
                 <TextInput
                   style={styles.input}

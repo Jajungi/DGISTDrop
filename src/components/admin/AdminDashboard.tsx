@@ -8,6 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { useAuthStore, useAppStore } from '@/src/stores/authStore';
+import { useFeatureFlagsStore, isEloFeaturesEnabled } from '@/src/stores/featureFlagsStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCourtStore } from '@/src/stores/courtStore';
@@ -29,7 +30,7 @@ import { AdminSettingsPanel } from '@/src/components/admin/AdminSettingsPanel';
 import { AdminSubTabs } from '@/src/components/admin/AdminSubTabs';
 import { AdminPointsPanel } from '@/src/components/admin/AdminPointsPanel';
 import { AdminDbResetPanel } from '@/src/components/admin/AdminDbResetPanel';
-import { AdminChatbotPanel } from '@/src/components/admin/AdminChatbotPanel';
+import { AdminPushPanel } from '@/src/components/admin/AdminPushPanel';
 import { GAME_MODE_CONFIG } from '@/src/constants/court';
 import { getEffectiveSchedule, getTodayKey, formatTodayLabel } from '@/src/utils/dateFormat';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
@@ -57,7 +58,7 @@ const LESSON_STATUS_LABEL: Record<string, string> = {
   rejected: '레슨 거절',
 };
 
-type AdminGroup = 'home' | 'people' | 'live' | 'points' | 'chatbot' | 'settings' | 'logs' | 'developer';
+type AdminGroup = 'home' | 'people' | 'live' | 'points' | 'push' | 'settings' | 'logs' | 'developer';
 type PeopleSub = 'members' | 'attendance' | 'social';
 type LiveSub = 'courts' | 'matches' | 'lessons';
 
@@ -98,6 +99,8 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
   const setDemoMode = useAppStore((s) => s.setDemoMode);
   const infinitePoints = useAppStore((s) => s.infinitePoints);
   const setInfinitePoints = useAppStore((s) => s.setInfinitePoints);
+  const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
+  const setEloFeaturesEnabled = useFeatureFlagsStore((s) => s.setEloFeaturesEnabled);
   const adminAlerts = useAdminAlerts();
   const dismissAlert = useAdminAlertStore((s) => s.dismiss);
 
@@ -177,7 +180,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
     },
     { key: 'points', label: '포인트' },
     { key: 'settings', label: '설정' },
-    { key: 'chatbot', label: '챗봇' },
+    { key: 'push', label: '알림' },
     { key: 'logs', label: '로그' },
     ...(isAdminActor ? [{ key: 'developer' as AdminGroup, label: '개발자' }] : []),
   ];
@@ -329,6 +332,17 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
               hint="ON: 999,999P 부여 · OFF: 켜기 전 포인트로 복귀 (실제 차감·적립은 정상 동작)"
               value={infinitePoints}
               onToggle={() => setInfinitePoints(!infinitePoints)}
+            />
+            <View style={styles.devDivider} />
+            <DevToggle
+              label="Elo · 랭크 (실험적 기능)"
+              hint="OFF: 브론즈 등 티어, Elo 추이·순위표, 랭크 할인·모집 랭크 제한이 모두 숨겨집니다. 경기 승패·포인트는 그대로입니다."
+              value={eloOn}
+              onToggle={() => {
+                void setEloFeaturesEnabled(!eloOn).then((r) =>
+                  showToast({ type: r.success ? 'info' : 'warning', title: '', message: r.message })
+                );
+              }}
             />
           </Card>
 
@@ -556,13 +570,13 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
                 actions={
                   <View style={styles.actionStack}>
                     <Button
-                      title="결과 확정 및 Elo 반영"
+                      title={eloOn ? '결과 확정 및 Elo 반영' : '결과 확정 및 포인트 반영'}
                       onPress={() => {
                         confirmMatch(match.id, adminId);
                         showToast({
                           type: 'success',
                           title: '확정 완료',
-                          message: 'Elo 및 포인트가 반영되었습니다.',
+                          message: eloOn ? 'Elo 및 포인트가 반영되었습니다.' : '포인트가 반영되었습니다.',
                         });
                       }}
                       size="sm"
@@ -603,7 +617,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
                   onToggle={() => setExpandedMatchId((id) => (id === match.id ? null : match.id))}
                   actions={
                     <Button
-                      title="확정 철회 (Elo·포인트 되돌림)"
+                      title={eloOn ? '확정 철회 (Elo·포인트 되돌림)' : '확정 철회 (포인트 되돌림)'}
                       onPress={() => {
                         const r = adminRevokeConfirmedMatch(match.id, adminId);
                         showToast({
@@ -908,9 +922,9 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
         </View>
       )}
 
-      {group === 'chatbot' && (
+      {group === 'push' && (
         <View style={styles.sectionBody}>
-          <AdminChatbotPanel
+          <AdminPushPanel
             adminId={adminId}
             onToast={(type, message) => showToast({ type, title: '', message })}
           />
@@ -998,7 +1012,7 @@ function MemberCard({
         <View style={styles.detailBox}>
           <DetailRow label="이메일" value={user.email} />
           <DetailRow label="등급" value={user.membershipTier} />
-          <DetailRow label="Elo" value={String(user.elo)} />
+          {isEloFeaturesEnabled() ? <DetailRow label="Elo" value={String(user.elo)} /> : null}
           <DetailRow label="포인트" value={`${user.points}P`} />
           <DetailRow label="전적" value={`${user.wins}승 ${user.losses}패`} />
           <DetailRow label="가입일" value={new Date(user.createdAt).toLocaleDateString('ko-KR')} />

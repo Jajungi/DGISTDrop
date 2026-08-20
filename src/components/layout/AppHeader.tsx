@@ -8,6 +8,7 @@ import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCourtStore } from '@/src/stores/courtStore';
 import { useShellStore } from '@/src/stores/shellStore';
 import { useSearchStore } from '@/src/stores/searchStore';
+import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
 import { Avatar } from '@/src/components/ui/Avatar';
 import { NotificationPanel } from './NotificationPanel';
 import { DropBrand } from './DropBrand';
@@ -29,6 +30,7 @@ export function AppHeader() {
   const showToast = useNotificationStore((s) => s.showToast);
   const inbox = useNotificationStore((s) => s.inbox);
   const lessonQueue = useLessonStore((s) => s.lessonQueue);
+  const lessonTurnOn = useNotificationPrefsStore((s) => s.lessonTurn);
   const courts = useCourtStore((s) => s.courts);
   const sidebarExpanded = useShellStore((s) => s.sidebarExpanded);
   const toggleSidebar = useShellStore((s) => s.toggleSidebar);
@@ -67,7 +69,10 @@ export function AppHeader() {
 
   const unreadCount = useMemo(() => {
     let count = inbox.filter(
-      (n) => !n.read && (!n.targetUserId || n.targetUserId === currentUser?.id)
+      (n) =>
+        !n.read &&
+        (!n.targetUserId || n.targetUserId === currentUser?.id) &&
+        !(n.type === 'coach' && !lessonTurnOn)
     ).length;
     if (currentUser) {
       courts.forEach((court) => {
@@ -76,13 +81,15 @@ export function AppHeader() {
           court.players[0]?.userId === currentUser.id;
         if (isHost) count += court.joinRequests.length;
       });
-      const coach = lessonQueue.filter(
-        (e) => e.userId === currentUser.id && (e.status === 'next' || e.status === 'active')
-      );
+      const coach = lessonTurnOn
+        ? lessonQueue.filter(
+            (e) => e.userId === currentUser.id && (e.status === 'next' || e.status === 'active')
+          )
+        : [];
       count += coach.length;
     }
     return count;
-  }, [courts, currentUser, inbox, lessonQueue]);
+  }, [courts, currentUser, inbox, lessonQueue, lessonTurnOn]);
 
   const handleCheckIn = () => {
     if (!currentUser) return;

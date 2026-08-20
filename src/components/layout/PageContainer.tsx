@@ -12,9 +12,8 @@ interface PageContainerProps {
 
 /** Portfolio 스타일 흰색 라운드 패널 */
 export function PageContainer({ children, style, flush }: PageContainerProps) {
-  const { isDesktop, scaledSpacing, scale } = useLayoutMode();
-  // 모바일은 화면을 축소한 것처럼 코너 반경도 비례 축소
-  const panelRadius = isDesktop ? borderRadius.panel : Math.round(borderRadius.panel * scale);
+  const { isDesktop, scaledSpacing, scaledBorderRadius } = useLayoutMode();
+  const panelRadius = scaledBorderRadius.panel;
 
   return (
     <View

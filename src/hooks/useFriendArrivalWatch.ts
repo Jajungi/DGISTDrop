@@ -3,7 +3,9 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { useFriendStore } from '@/src/stores/friendStore';
 import { useFriendPrefsStore } from '@/src/stores/friendPrefsStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
+import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
 import { getTodayKey } from '@/src/utils/dateFormat';
+import { isSupabaseEnabled } from '@/src/lib/supabase';
 
 /**
  * 구독한 친구가 isAtGym false→true 로 바뀌면 알림함(+로컬) 알림.
@@ -16,6 +18,8 @@ export function useFriendArrivalWatch() {
   const arrivalNotify = useFriendPrefsStore((s) => s.arrivalNotify);
   const hydrated = useFriendPrefsStore((s) => s.hydrated);
   const hydrate = useFriendPrefsStore((s) => s.hydrate);
+  const hydrateForUser = useFriendPrefsStore((s) => s.hydrateForUser);
+  const hydrateNotifPrefs = useNotificationPrefsStore((s) => s.hydrate);
 
   const prevGym = useRef<Record<string, boolean>>({});
   const primed = useRef(false);
@@ -29,7 +33,11 @@ export function useFriendArrivalWatch() {
 
   useEffect(() => {
     void hydrate();
-  }, [hydrate]);
+    if (currentUserId) {
+      void hydrateForUser(currentUserId);
+      void hydrateNotifPrefs(currentUserId);
+    }
+  }, [hydrate, hydrateForUser, hydrateNotifPrefs, currentUserId]);
 
   useEffect(() => {
     const today = getTodayKey();
@@ -64,6 +72,7 @@ export function useFriendArrivalWatch() {
         const key = `${today}:${u.id}`;
         if (notifiedToday.current.has(key)) continue;
         notifiedToday.current.add(key);
+        if (isSupabaseEnabled()) continue;
         useNotificationStore.getState().pushInbox({
           type: 'friend',
           title: '친구 도착',

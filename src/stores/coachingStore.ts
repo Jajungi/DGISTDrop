@@ -79,6 +79,17 @@ export const useCoachingStore = create<CoachingState>((set, get) => ({
       message: `코치 공지: ${trimmedTitle}`,
     });
     persistAppState();
+    if (isSupabaseEnabled()) {
+      void import('@/src/services/supabase/pushSettings')
+        .then(({ invokeBroadcastPush }) =>
+          invokeBroadcastPush({
+            title: trimmedTitle,
+            message: trimmedMessage,
+            type: 'coach',
+          })
+        )
+        .catch((err) => console.warn('[coach] push failed', err));
+    }
     return { success: true, message: '코치 공지를 등록했어요.' };
   },
 

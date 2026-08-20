@@ -17,6 +17,7 @@ import { usePointStore } from '@/src/stores/pointStore';
 import { useCourtStore } from '@/src/stores/courtStore';
 import { useFriendStore } from '@/src/stores/friendStore';
 import { useAdminLogStore } from '@/src/stores/adminLogStore';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { Avatar } from '@/src/components/ui/Avatar';
 import { RankBadge } from '@/src/components/ui/RankBadge';
 import { Button } from '@/src/components/ui/Button';
@@ -91,6 +92,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
   const courts = useCourtStore((s) => s.courts);
   const getFriendIds = useFriendStore((s) => s.getFriendIds);
   const adminLogs = useAdminLogStore((s) => s.logs);
+  const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -268,7 +270,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
               </View>
             </View>
             <View style={styles.statRow}>
-              <MiniStat label="Elo" value={String(selected.elo)} />
+              {eloOn ? <MiniStat label="Elo" value={String(selected.elo)} /> : null}
               <MiniStat label="포인트" value={`${selected.points}P`} />
               <MiniStat label="전적" value={`${selected.wins}승 ${selected.losses}패`} />
               <MiniStat label="친구" value={`${friendCount}명`} />
@@ -473,7 +475,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
             </View>
           </Section>
 
-          <Section title="포인트 · Elo 조정">
+          <Section title={eloOn ? '포인트 · Elo 조정' : '포인트 조정'}>
             <View style={styles.adjustRow}>
               <TextInput
                 style={[styles.input, styles.inputSm]}
@@ -494,6 +496,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
                 notify(adminAdjustPoints(selected.id, parseInt(pointDelta, 10) || 0, pointReason))
               } />
             </View>
+            {eloOn ? (
             <View style={styles.adjustRow}>
               <TextInput
                 style={[styles.input, styles.inputSm]}
@@ -514,8 +517,10 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
                 notify(adminAdjustElo(selected.id, parseInt(eloDelta, 10) || 0, eloReason))
               } />
             </View>
+            ) : null}
           </Section>
 
+          {eloOn ? (
           <Section title="시작 랭크 배치">
             <Text style={styles.sectionHint}>
               전반적인 실력에 맞춰 해당 랭크의 시작 점수로 Elo를 설정합니다. 배치 전 기본 시작
@@ -543,6 +548,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
               })}
             </View>
           </Section>
+          ) : null}
 
           <Section title="운영 메모">
             <Text style={styles.sectionHint}>회원에게 보이지 않는 내부 메모입니다.</Text>
@@ -695,7 +701,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
             ['name', '이름'],
             ['recent', '최근 가입'],
             ['points', '포인트'],
-            ['elo', 'Elo'],
+            ...(eloOn ? ([['elo', 'Elo']] as [SortKey, string][]) : []),
           ] as [SortKey, string][]
         ).map(([key, label]) => (
           <Pressable key={key} onPress={() => setSortKey(key)} style={styles.sortChip}>

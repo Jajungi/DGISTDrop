@@ -21,7 +21,6 @@ export interface User {
   id: string;
   studentId: string;
   /** 카카오 채널 챗봇 연동용 카카오 ID */
-  kakaoId?: string;
   name: string;
   nickname: string;
   email: string;

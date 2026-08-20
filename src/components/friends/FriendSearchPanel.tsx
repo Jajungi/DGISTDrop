@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { useAuthStore } from '@/src/stores/authStore';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { useSearchStore, filterUsersByQuery } from '@/src/stores/searchStore';
 import { Avatar } from '@/src/components/ui/Avatar';
 import { RankBadge } from '@/src/components/ui/RankBadge';
@@ -14,6 +15,7 @@ export function FriendSearchPanel() {
   const query = useSearchStore((s) => s.query);
   const clearQuery = useSearchStore((s) => s.clearQuery);
   const users = useAuthStore((s) => s.users);
+  const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
 
   const results = useMemo(() => filterUsersByQuery(users, query), [query, users]);
   const trimmed = query.trim();
@@ -52,7 +54,7 @@ export function FriendSearchPanel() {
                     {formatArrivalLabel(user) ?? '일정 미등록'}
                   </Text>
                   <Text style={styles.meta}>
-                    ELO {user.elo} · 승률 {getWinRate(user.wins, user.losses)}% · {user.wins}승 {user.losses}패
+                    {eloOn ? `ELO ${user.elo} · ` : ''}승률 {getWinRate(user.wins, user.losses)}% · {user.wins}승 {user.losses}패
                   </Text>
                 </View>
                 <FriendActionButton otherUserId={user.id} compact />

@@ -7,6 +7,7 @@ import { Avatar } from '@/src/components/ui/Avatar';
 import { FriendActionButton } from './FriendActionButton';
 import { countPlayPartners } from '@/src/utils/playPartners';
 import { RANK_THRESHOLDS } from '@/src/constants';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { colors, spacing, typography, borderRadius, shadows } from '@/src/theme';
 
 /** 최근 같이 친 비친구 → 친구 추천 */
@@ -15,6 +16,7 @@ export function PartnerSuggestPanel() {
   const users = useAuthStore((s) => s.users);
   const matchHistory = useNotificationStore((s) => s.matchHistory);
   const getRelationStatus = useFriendStore((s) => s.getRelationStatus);
+  const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
 
   const suggestions = useMemo(() => {
     if (!currentUser) return [];
@@ -59,7 +61,8 @@ export function PartnerSuggestPanel() {
               <View style={styles.body}>
                 <Text style={styles.name}>{user.name}</Text>
                 <Text style={styles.meta}>
-                  같이 {count}경기 · {RANK_THRESHOLDS[user.rank]?.label ?? user.rank}
+                  같이 {count}경기
+                  {eloOn ? ` · ${RANK_THRESHOLDS[user.rank]?.label ?? user.rank}` : ''}
                   {rel === 'pending_out' ? ' · 신청함' : rel === 'pending_in' ? ' · 받은 신청' : ''}
                 </Text>
               </View>

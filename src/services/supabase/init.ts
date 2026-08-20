@@ -13,11 +13,14 @@ import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCoachingStore } from '@/src/stores/coachingStore';
 import { useAdminLogStore } from '@/src/stores/adminLogStore';
 import { createEmptyCourts } from '@/src/services/courtService';
-import { fetchOpenRegistration, fetchActivitySchedule, fetchSiteOverlays, fetchClubEvents, fetchLobbyExpiry } from '@/src/services/supabase/club';
+import { fetchOpenRegistration, fetchActivitySchedule, fetchSiteOverlays, fetchClubEvents, fetchLobbyExpiry, fetchEloFeaturesEnabled } from '@/src/services/supabase/club';
 import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { useSiteOverlayStore } from '@/src/stores/siteOverlayStore';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { useLobbyExpiryStore } from '@/src/stores/lobbyExpiryStore';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
+import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
+import { useFriendPrefsStore } from '@/src/stores/friendPrefsStore';
 
 let courtsUnsub: (() => void) | null = null;
 let profilesUnsub: (() => void) | null = null;
@@ -56,6 +59,13 @@ export async function initSupabaseApp(): Promise<boolean> {
   try {
     const open = await fetchOpenRegistration();
     useAppStore.setState({ openRegistration: open });
+  } catch {
+    /* keep default */
+  }
+
+  try {
+    const eloOn = await fetchEloFeaturesEnabled();
+    useFeatureFlagsStore.getState().setEloFeaturesEnabledLocal(eloOn);
   } catch {
     /* keep default */
   }
@@ -368,6 +378,9 @@ async function hydrateUserData(userId: string, isAdmin: boolean) {
     useLobbyStore.getState().hydrateRooms(roomRes.value);
     useLobbyStore.getState().expireStaleRooms();
   }
+
+  await useNotificationPrefsStore.getState().hydrate(userId);
+  await useFriendPrefsStore.getState().hydrateForUser(userId);
 }
 
 export function teardownSupabaseSubscriptions() {

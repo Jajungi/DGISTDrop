@@ -5,6 +5,7 @@ import { Avatar } from '@/src/components/ui/Avatar';
 import { RankBadge } from '@/src/components/ui/RankBadge';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 interface TeamRoomCardProps {
@@ -37,6 +38,7 @@ export function TeamRoomCard({
   isHost,
   hasPendingRequest,
 }: TeamRoomCardProps) {
+  const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
   const canReserve = isHost && room.status === 'ready' && room.members.length >= room.minMembers;
   const joinRequests = room.joinRequests ?? [];
 
@@ -60,12 +62,14 @@ export function TeamRoomCard({
 
       <Text style={styles.host}>방장 {room.hostName}</Text>
 
+      {eloOn ? (
       <View style={styles.rankFilter}>
         {room.minRank && <RankBadge rank={room.minRank} size="sm" />}
         {room.minRank && room.maxRank && <Text style={styles.rankSep}>~</Text>}
         {room.maxRank && <RankBadge rank={room.maxRank} size="sm" />}
         {!room.minRank && !room.maxRank && <Text style={styles.noFilter}>랭크 제한 없음</Text>}
       </View>
+      ) : null}
 
       <View style={styles.members}>
         {room.members.map((m) => (

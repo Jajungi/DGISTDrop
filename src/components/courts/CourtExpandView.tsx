@@ -72,7 +72,7 @@ export function CourtExpandView({
   myUserId,
   detailProps,
 }: CourtExpandViewProps) {
-  const { headerHeight, tabBarHeight, needsHorizontalScroll, isDesktop } = useLayoutMode();
+  const { headerHeight, tabBarHeight, needsHorizontalScroll, isDesktop, scaledBorderRadius } = useLayoutMode();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const containerRef = useRef<RNView>(null);
@@ -284,6 +284,7 @@ export function CourtExpandView({
           <Animated.View
             style={[
               styles.detailLayer,
+              { borderRadius: scaledBorderRadius.lg },
               detailStyle,
               { pointerEvents: selectedCourtId ? 'box-none' : 'none' },
             ]}
@@ -360,7 +361,6 @@ const styles = StyleSheet.create({
   detailLayer: {
     zIndex: 25,
     backgroundColor: colors.surfaceAlt,
-    borderRadius: borderRadius.lg,
     overflow: 'hidden',
     flexDirection: 'column',
   },

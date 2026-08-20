@@ -33,7 +33,7 @@ export function CourtOverviewHeader({
   remaining,
   isExpanded = false,
 }: CourtOverviewHeaderProps) {
-  const { isMobile, scaledTypography, isCompact } = useLayoutMode();
+  const { isMobile, scaledTypography, isCompact, isLandscape } = useLayoutMode();
   const emptyCount = courts.filter((c) => c.status === 'empty').length;
   const reservedCount = courts.filter((c) => c.status === 'reserved').length;
   const playingCount = courts.filter((c) => c.status === 'playing').length;
@@ -48,8 +48,8 @@ export function CourtOverviewHeader({
   ];
 
   return (
-    <View style={[styles.wrap, isMobile && styles.wrapMobile]}>
-      <View style={[styles.headerRow, isMobile && styles.headerRowMobile]}>
+    <View style={[styles.wrap, isMobile && styles.wrapMobile, isLandscape && styles.wrapLandscape]}>
+      <View style={[styles.headerRow, isMobile && styles.headerRowMobile, isLandscape && styles.headerRowLandscape]}>
         <View style={styles.titleRow}>
           <View>
             <Text
@@ -64,7 +64,7 @@ export function CourtOverviewHeader({
             >
               코트 현황
             </Text>
-            {!isExpanded && (
+            {!isExpanded && !isLandscape && (
               <Text
                 style={[
                   styles.venueSub,
@@ -189,8 +189,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.lg,
   },
-  headerRowMobile: {
-    marginBottom: spacing.sm,
+  wrapLandscape: {
+    paddingBottom: 4,
+    paddingTop: 0,
+    paddingHorizontal: spacing.xs,
+  },
+  headerRowLandscape: {
+    marginBottom: 4,
   },
   titleRow: {
     flexDirection: 'row',

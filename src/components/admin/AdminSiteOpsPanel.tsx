@@ -13,6 +13,7 @@ import {
 } from '@/src/utils/siteOps';
 import { lobbyExpiryLabel } from '@/src/utils/lobbyExpiry';
 import type { ClubEventKind, LobbyExpiryMode, SiteOverlaySurface } from '@/src/types';
+import { invokeBroadcastPush } from '@/src/services/supabase/pushSettings';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 const SURFACES: { key: SiteOverlaySurface; label: string; hint: string }[] = [
@@ -48,12 +49,14 @@ export function AdminSiteOpsPanel({ onToast }: Props) {
   const [ovBody, setOvBody] = useState('');
   const [ovSurfaces, setOvSurfaces] = useState<SiteOverlaySurface[]>(['home']);
   const [ovDismissible, setOvDismissible] = useState(true);
+  const [ovSendPush, setOvSendPush] = useState(true);
 
   const [evKind, setEvKind] = useState<ClubEventKind>('closure');
   const [evTitle, setEvTitle] = useState('');
   const [evBody, setEvBody] = useState('');
   const [evStart, setEvStart] = useState(todayLocalISODate());
   const [evEnd, setEvEnd] = useState(todayLocalISODate());
+  const [evSendPush, setEvSendPush] = useState(true);
 
   const toggleSurface = (key: SiteOverlaySurface) => {
     setOvSurfaces((prev) =>
@@ -67,6 +70,7 @@ export function AdminSiteOpsPanel({ onToast }: Props) {
         <Text style={styles.blockTitle}>화면 위 공지 (오버레이)</Text>
         <Text style={styles.hint}>
           알림함이 아니라 사이트 위에 모달로 뜹니다. 노출 위치를 나눠 설정할 수 있어요.
+          푸시를 켜면 알림을 허용한 승인 회원에게도 같은 내용이 갑니다.
         </Text>
         <TextInput
           style={styles.input}
@@ -111,6 +115,19 @@ export function AdminSiteOpsPanel({ onToast }: Props) {
             <View style={[styles.switchKnob, ovDismissible && styles.switchKnobOn]} />
           </View>
         </Pressable>
+        <Pressable
+          onPress={() => setOvSendPush((v) => !v)}
+          style={styles.switchRow}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: ovSendPush }}
+        >
+          <Text style={styles.switchLabel}>
+            {ovSendPush ? '푸시 알림도 보내기 (알림 켠 회원)' : '사이트 공지만 (푸시 안 보냄)'}
+          </Text>
+          <View style={[styles.switchTrack, ovSendPush && styles.switchTrackOn]}>
+            <View style={[styles.switchKnob, ovSendPush && styles.switchKnobOn]} />
+          </View>
+        </Pressable>
         <Button
           title="오버레이 공지 등록"
           size="sm"
@@ -137,6 +154,18 @@ export function AdminSiteOpsPanel({ onToast }: Props) {
             });
             onToast(r.success ? 'success' : 'warning', r.message);
             if (r.success) {
+              if (ovSendPush) {
+                try {
+                  const push = await invokeBroadcastPush({
+                    title: ovTitle.trim() || '공지',
+                    message: ovBody.trim() || '새 공지가 등록되었습니다.',
+                    type: 'notice',
+                  });
+                  onToast('info', `푸시 ${push.sent}명에게 발송됨`);
+                } catch (err) {
+                  onToast('warning', err instanceof Error ? err.message : '푸시 발송 실패');
+                }
+              }
               setOvTitle('');
               setOvBody('');
             }
@@ -184,7 +213,10 @@ export function AdminSiteOpsPanel({ onToast }: Props) {
 
       <Card style={styles.block}>
         <Text style={styles.blockTitle}>휴관 · 특강 일정</Text>
-        <Text style={styles.hint}>해당 날짜에 홈·친구·모집 상단 배너로 표시됩니다.</Text>
+        <Text style={styles.hint}>
+          해당 날짜에 홈·친구·모집 상단 배너로 표시됩니다. 푸시를 켜면 알림을 허용한 승인 회원에게도
+          알려 줍니다.
+        </Text>
         <View style={styles.chipRow}>
           {(['closure', 'special'] as ClubEventKind[]).map((k) => (
             <Pressable
@@ -235,6 +267,19 @@ export function AdminSiteOpsPanel({ onToast }: Props) {
             />
           </View>
         </View>
+        <Pressable
+          onPress={() => setEvSendPush((v) => !v)}
+          style={styles.switchRow}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: evSendPush }}
+        >
+          <Text style={styles.switchLabel}>
+            {evSendPush ? '푸시 알림도 보내기 (알림 켠 회원)' : '배너만 표시 (푸시 안 보냄)'}
+          </Text>
+          <View style={[styles.switchTrack, evSendPush && styles.switchTrackOn]}>
+            <View style={[styles.switchKnob, evSendPush && styles.switchKnobOn]} />
+          </View>
+        </Pressable>
         <Button
           title="일정 등록"
           size="sm"
@@ -259,6 +304,21 @@ export function AdminSiteOpsPanel({ onToast }: Props) {
             });
             onToast(r.success ? 'success' : 'warning', r.message);
             if (r.success) {
+              if (evSendPush) {
+                const kindLabel = clubEventKindLabel(evKind);
+                const range =
+                  evEnd < evStart || evStart === evEnd ? evStart : `${evStart} ~ ${evEnd}`;
+                try {
+                  const push = await invokeBroadcastPush({
+                    title: `[${kindLabel}] ${evTitle.trim()}`,
+                    message: evBody.trim() || `${range} 일정이 등록되었습니다.`,
+                    type: 'notice',
+                  });
+                  onToast('info', `푸시 ${push.sent}명에게 발송됨`);
+                } catch (err) {
+                  onToast('warning', err instanceof Error ? err.message : '푸시 발송 실패');
+                }
+              }
               setEvTitle('');
               setEvBody('');
             }

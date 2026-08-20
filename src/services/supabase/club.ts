@@ -24,6 +24,38 @@ export async function fetchOpenRegistration(): Promise<boolean> {
   return (data as { open_registration?: boolean } | null)?.open_registration ?? true;
 }
 
+export async function fetchEloFeaturesEnabled(): Promise<boolean> {
+  if (!isSupabaseEnabled()) return true;
+  const { data, error } = await getSupabase()
+    .from('club_metadata')
+    .select('elo_features_enabled')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error) {
+    if (__DEV__ && !isMissingColumnError(error.message)) {
+      console.warn('[club] fetchEloFeaturesEnabled', error.message);
+    }
+    return true;
+  }
+  const raw = (data as { elo_features_enabled?: boolean | null } | null)?.elo_features_enabled;
+  return raw !== false;
+}
+
+export async function setEloFeaturesEnabledRemote(enabled: boolean): Promise<boolean> {
+  const { data, error } = await getSupabase().rpc('rpc_set_elo_features_enabled', {
+    p_enabled: enabled,
+  });
+  if (error) {
+    if (isMissingColumnError(error.message) || error.message?.includes('rpc_set_elo_features_enabled')) {
+      throw new Error(
+        'Elo 기능 스위치 DB가 아직 없어요. Supabase에서 030_elo_features.sql 을 실행해 주세요.'
+      );
+    }
+    throw error;
+  }
+  return Boolean(data ?? enabled);
+}
+
 export async function setOpenRegistrationRemote(enabled: boolean): Promise<boolean> {
   const { data, error } = await getSupabase().rpc('rpc_set_open_registration', {
     p_enabled: enabled,

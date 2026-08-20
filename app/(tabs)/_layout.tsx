@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { Tabs } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,7 +9,6 @@ import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { useAuthGuard } from '@/src/hooks/useAuthGuard';
 import { useActivityClock } from '@/src/hooks/useActivityStatus';
 import { useAuthStore } from '@/src/stores/authStore';
-import { useNotificationStore } from '@/src/stores/notificationStore';
 import { useCourtStore } from '@/src/stores/courtStore';
 import { useAdminAlertCount } from '@/src/hooks/useAdminAlerts';
 import { isStaffUser } from '@/src/utils/staffAccess';
@@ -57,29 +56,14 @@ const TAB_SCREENS = [
 ];
 
 export default function TabLayout() {
-  const { isDesktop, scale, isCompact } = useLayoutMode();
+  const { isDesktop, scale, isCompact, isLandscape } = useLayoutMode();
   const insets = useSafeAreaInsets();
   const isStaff = isStaffUser(useAuthStore((s) => s.currentUser));
   const isGuest = useAuthStore((s) => s.isGuestSession);
-  const currentUser = useAuthStore((s) => s.currentUser);
-  const showToast = useNotificationStore((s) => s.showToast);
-  const promptedUserIdRef = useRef<string | null>(null);
   useAuthGuard();
   useActivityClock();
 
-  useEffect(() => {
-    if (!currentUser || isGuest) return;
-    if (currentUser.kakaoId) return;
-    if (promptedUserIdRef.current === currentUser.id) return;
-    promptedUserIdRef.current = currentUser.id;
-    showToast({
-      type: 'info',
-      title: '카카오 아이디 등록 안내',
-      message: '프로필에서 카카오 아이디를 입력하면 단톡방 참여와 계정 매칭이 정확해져요.',
-    });
-  }, [currentUser, isGuest, showToast]);
-
-  const tabBarHeight = 56 + insets.bottom;
+  const tabBarHeight = (isLandscape ? 44 : 56) + insets.bottom;
   const tabIconSize = Math.round(24 * scale);
   const tabLabelSize = isCompact ? 10 : Math.max(10, Math.round(11 * scale));
 
@@ -93,8 +77,8 @@ export default function TabLayout() {
           : {
               ...styles.tabBar,
               height: tabBarHeight,
-              paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 10 : 6),
-              paddingTop: 8,
+              paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 8 : 4),
+              paddingTop: isLandscape ? 4 : 8,
             },
         tabBarLabelStyle: [styles.tabLabel, { fontSize: tabLabelSize }],
         tabBarItemStyle: styles.tabItem,

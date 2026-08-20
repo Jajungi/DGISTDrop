@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Platform } from 'react-native';
 import { useAuthStore } from '@/src/stores/authStore';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { Avatar } from '@/src/components/ui/Avatar';
 import { RankBadge } from '@/src/components/ui/RankBadge';
 import { getEffectiveSchedule } from '@/src/utils/dateFormat';
@@ -26,6 +27,7 @@ function formatArrival(user: { scheduleDate?: string; scheduledStart?: string; s
 
 export function PersonSearchResults({ query, onSelect }: PersonSearchResultsProps) {
   const users = useAuthStore((s) => s.users);
+  const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
   const trimmed = query.trim().toLowerCase();
 
   const results = useMemo(() => {
@@ -59,7 +61,7 @@ export function PersonSearchResults({ query, onSelect }: PersonSearchResultsProp
                 </View>
                 <Text style={styles.arrival}>{formatArrival(user)}</Text>
                 <Text style={styles.meta}>
-                  ELO {user.elo} · 승률 {getWinRate(user.wins, user.losses)}% · {user.wins}승 {user.losses}패
+                  {eloOn ? `ELO ${user.elo} · ` : ''}승률 {getWinRate(user.wins, user.losses)}% · {user.wins}승 {user.losses}패
                 </Text>
               </View>
               <FriendActionButton otherUserId={user.id} compact />

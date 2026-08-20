@@ -31,8 +31,8 @@ import { initCrossTabSync } from '@/src/services/crossTabSync';
 import { initServerSync } from '@/src/services/serverSync';
 import { initSupabaseApp } from '@/src/services/supabase/init';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
-import { useAuthStore } from '@/src/stores/authStore';
 import { useFriendArrivalWatch } from '@/src/hooks/useFriendArrivalWatch';
+import { PushPermissionGate } from '@/src/components/profile/PushPermissionGate';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -71,18 +71,6 @@ export default function RootLayout() {
     if (Platform.OS === 'web') return;
     void import('@/src/services/localNotifications').then((m) => m.initLocalNotifications());
   }, []);
-
-  const currentUserId = useAuthStore((s) => s.currentUser?.id ?? null);
-  const isGuestSession = useAuthStore((s) => s.isGuestSession);
-
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-    if (currentUserId && !isGuestSession) {
-      void import('@/src/services/pushNotifications').then((m) =>
-        m.registerPushTokenForUser(currentUserId)
-      );
-    }
-  }, [currentUserId, isGuestSession]);
 
   useEffect(() => {
     initCrossTabSync();
@@ -125,9 +113,14 @@ export default function RootLayout() {
             name="coaching"
             options={{ title: '코칭 · 레슨', presentation: 'card' }}
           />
+          <Stack.Screen
+            name="settings"
+            options={{ title: '설정', presentation: 'card' }}
+          />
         </Stack>
         <ToastContainer />
         <SirenModal />
+        <PushPermissionGate />
         <PostLoginOverlayGate />
       </SafeAreaProvider>
     </GestureHandlerRootView>

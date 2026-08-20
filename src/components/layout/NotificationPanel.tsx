@@ -13,6 +13,7 @@ import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCourtStore } from '@/src/stores/courtStore';
 import { useLobbyStore } from '@/src/stores/lobbyStore';
 import { useAuthStore } from '@/src/stores/authStore';
+import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
 import type { AppNotification } from '@/src/types';
 import { colors, spacing, typography, borderRadius, shadows } from '@/src/theme';
 import { formatLessonEtaLabel } from '@/src/utils/lessonEta';
@@ -67,14 +68,17 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
   const acceptInvite = useLobbyStore((s) => s.acceptInvite);
   const currentUser = useAuthStore((s) => s.currentUser);
   const lessonQueue = useLessonStore((s) => s.lessonQueue);
+  const lessonTurnOn = useNotificationPrefsStore((s) => s.lessonTurn);
   const [expanded, setExpanded] = useState(false);
 
   const inbox = useMemo(
     () =>
-      inboxAll.filter(
-        (n) => !n.targetUserId || (currentUser && n.targetUserId === currentUser.id)
-      ),
-    [inboxAll, currentUser]
+      inboxAll.filter((n) => {
+        if (n.targetUserId && (!currentUser || n.targetUserId !== currentUser.id)) return false;
+        if (n.type === 'coach' && !lessonTurnOn) return false;
+        return true;
+      }),
+    [inboxAll, currentUser, lessonTurnOn]
   );
 
   const liveJoin = useMemo(() => {
@@ -117,7 +121,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
   }, [courts, rooms, currentUser]);
 
   const coachAlerts = useMemo(() => {
-    if (!currentUser) return [];
+    if (!currentUser || !lessonTurnOn) return [];
     return lessonQueue
       .filter((e) => e.userId === currentUser.id && (e.status === 'next' || e.status === 'active' || e.status === 'waiting'))
       .map((e) => {
@@ -134,7 +138,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
           createdAt: new Date().toISOString(),
         };
       });
-  }, [currentUser, lessonQueue]);
+  }, [currentUser, lessonQueue, lessonTurnOn]);
 
   const all = useMemo(() => {
     const liveIds = new Set(liveJoin.map((n) => n.joinRequestId).filter(Boolean));

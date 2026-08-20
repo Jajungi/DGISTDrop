@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { RANK_THRESHOLDS } from '@/src/constants';
 import type { RankTier } from '@/src/types';
 import { typography, borderRadius } from '@/src/theme';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 
 interface RankBadgeProps {
   rank: RankTier;
@@ -10,6 +11,8 @@ interface RankBadgeProps {
 }
 
 export function RankBadge({ rank, size = 'md' }: RankBadgeProps) {
+  const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
+  if (!eloOn) return null;
   const config = RANK_THRESHOLDS[rank];
   return (
     <View style={[styles.badge, { backgroundColor: config.color + '18' }, styles[`size_${size}`]]}>

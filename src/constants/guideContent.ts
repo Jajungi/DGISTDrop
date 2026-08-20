@@ -5,6 +5,8 @@ export interface GuideItem {
   content: string;
   /** FAQ 등 긴 목록에서 소제목 그룹 */
   category?: string;
+  /** 있으면 해당 기기에서만 이용 안내에 표시 */
+  forDevices?: Array<'ios' | 'android' | 'desktop' | 'native'>;
 }
 
 export interface GuideSection {
@@ -57,9 +59,33 @@ export const GUIDE_SECTIONS: GuideSection[] = [
         content: `${GYM_NAME} 반경 약 500m 안에서만 코트 예약·모집방 생성·합류 신청이 가능합니다. 멀리서 미리 독점하는 것을 막기 위함입니다.`,
       },
       {
-        title: '코트 반납',
+        title: '활동 알림 (푸시)',
         content:
-          '예약한 게임 수가 끝나면 [게임 완료 / 코트 반납]을 눌러 주세요. 한 번에 하나의 코트만 이용할 수 있습니다.',
+          '접속 기기에 맞는 방법이 안내됩니다. 프로필 → 설정에서 알림을 켜고, 종류별로 받을지 고를 수 있습니다.',
+      },
+      {
+        title: '홈 화면에 추가 (iPhone Safari)',
+        forDevices: ['ios'],
+        content:
+          '1) Safari에서 Drop 사이트 열기 → 2) 하단 [공유] 버튼 → 3) [홈 화면에 추가] → 4) 추가된 Drop 아이콘으로 접속 → 5) 설정에서 [알림 켜기]. Safari 탭 안에서는 푸시가 오지 않습니다.',
+      },
+      {
+        title: '홈 화면에 추가 (Android Chrome)',
+        forDevices: ['android'],
+        content:
+          'Chrome에서 Drop 사이트를 연 뒤 메뉴(⋮) → [홈 화면에 추가] 또는 [앱 설치]를 선택하세요. 이 브라우저에서 알림만 허용해도 받을 수 있고, 바로가기가 더 편합니다.',
+      },
+      {
+        title: 'PC에서 알림 켜기',
+        forDevices: ['desktop'],
+        content:
+          'Chrome 또는 Edge에서 이 사이트 알림을 허용하면 됩니다. 홈 화면 추가는 필요 없습니다. 안 오면 주소창 왼쪽 자물쇠 → 알림이 허용인지 확인하세요.',
+      },
+      {
+        title: '앱에서 알림이 안 올 때',
+        forDevices: ['native'],
+        content:
+          '휴대폰 설정 → 앱 → Drop → 알림이 켜져 있는지 확인하세요. 앱은 Play Store에서 최신 버전으로 유지하세요.',
       },
     ],
   },

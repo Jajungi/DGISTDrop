@@ -1,4 +1,4 @@
-import { RANK_ORDER } from '@/src/constants';
+import { isEloFeaturesEnabled } from '@/src/stores/featureFlagsStore';
 import type { RankTier } from '@/src/types';
 
 const K_FACTOR = 32;
@@ -21,6 +21,7 @@ export function getRankIndex(rank: RankTier): number {
 }
 
 export function isRankEligible(userRank: RankTier, minRank?: RankTier, maxRank?: RankTier): boolean {
+  if (!isEloFeaturesEnabled()) return true;
   const userIdx = getRankIndex(userRank);
   if (minRank && userIdx < getRankIndex(minRank)) return false;
   if (maxRank && userIdx > getRankIndex(maxRank)) return false;

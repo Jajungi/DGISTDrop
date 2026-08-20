@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { isSupabaseEnabled } from '@/src/lib/supabase';
 
 const STORAGE_KEY = '@badmin/friend_arrival_notify';
 
@@ -8,6 +9,7 @@ interface FriendPrefsState {
   arrivalNotify: Record<string, string[]>;
   hydrated: boolean;
   hydrate: () => Promise<void>;
+  hydrateForUser: (meId: string) => Promise<void>;
   isArrivalNotifyOn: (meId: string, friendId: string) => boolean;
   setArrivalNotify: (meId: string, friendId: string, on: boolean) => Promise<void>;
 }
@@ -40,6 +42,22 @@ export const useFriendPrefsStore = create<FriendPrefsState>((set, get) => ({
     set({ hydrated: true });
   },
 
+  hydrateForUser: async (meId) => {
+    await get().hydrate();
+    if (!isSupabaseEnabled()) return;
+    try {
+      const { fetchArrivalNotifyFriendIds } = await import(
+        '@/src/services/supabase/notificationPrefs'
+      );
+      const ids = await fetchArrivalNotifyFriendIds(meId);
+      const next = { ...get().arrivalNotify, [meId]: ids };
+      set({ arrivalNotify: next });
+      await persist(next);
+    } catch {
+      /* keep local */
+    }
+  },
+
   isArrivalNotifyOn: (meId, friendId) =>
     (get().arrivalNotify[meId] ?? []).includes(friendId),
 
@@ -51,5 +69,15 @@ export const useFriendPrefsStore = create<FriendPrefsState>((set, get) => ({
     const next = { ...prev, [meId]: [...list] };
     set({ arrivalNotify: next });
     await persist(next);
+    if (isSupabaseEnabled()) {
+      try {
+        const { setArrivalNotifyRemote } = await import(
+          '@/src/services/supabase/notificationPrefs'
+        );
+        await setArrivalNotifyRemote(meId, friendId, on);
+      } catch (err) {
+        console.warn('[arrival-notify] save failed', err);
+      }
+    }
   },
 }));
