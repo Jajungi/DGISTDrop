@@ -111,18 +111,18 @@ export function getPushGuideCopy(device = detectClientDevice()): PushGuideCopy {
   return {
     device,
     deviceLabel: 'PC',
-    summary: '이 브라우저에서 알림만 허용하면 됩니다. 홈 화면 추가는 필요 없어요.',
+    summary: '이 브라우저에서 알림만 허용하면 됩니다. 원하면 설정에서 앱으로도 설치할 수 있어요.',
     guideBody:
-      'PC Chrome·Edge에서 이 사이트 알림을 허용하면 됩니다. 바로가기를 만들지 않아도 푸시가 옵니다. 주소창 왼쪽 자물쇠에서 알림이 차단돼 있지 않은지 확인하세요.',
+      'PC Chrome·Edge에서 알림을 허용하면 됩니다. 앱 설치는 선택이지만, 메뉴(⋮) → [캐스팅, 저장, 공유] → [페이지를 앱으로 설치]로 가능합니다. 자세한 안내는 설정에 있습니다.',
     howToTitle: 'PC에서 알림 켜기',
     steps: [
       '이 화면에서 [알림 켜기]를 누르고 허용하세요.',
       '안 오면 주소창 왼쪽 자물쇠(또는 사이트 설정) → 알림이 허용인지 확인하세요.',
-      'Chrome 또는 Edge를 권장합니다.',
+      '앱으로 쓰려면 설정에 안내된 [페이지를 앱으로 설치]를 보세요.',
     ],
     gateTitle: '알림을 받아 볼까요?',
     gateBody:
-      '활동일 저녁·레슨·공지 푸시를 받으려면 이 브라우저에서 알림을 허용해 주세요. PC는 바로가기를 만들지 않아도 됩니다. 나중에 설정에서 종류별로 끌 수 있어요.',
+      '활동일 저녁·레슨·공지 푸시를 받으려면 이 브라우저에서 알림을 허용해 주세요. PC는 앱 설치 없이도 됩니다. 나중에 설정에서 종류별로 끌 수 있어요.',
     canRequestPermission: true,
     needsHomeScreen: false,
   };

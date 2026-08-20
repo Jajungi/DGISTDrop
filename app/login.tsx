@@ -168,6 +168,7 @@ export default function LoginScreen() {
           </View>
 
           <PwaInstallCard
+            placement="login"
             compact
             onToast={(type, message) => showToast({ type, title: '', message })}
           />

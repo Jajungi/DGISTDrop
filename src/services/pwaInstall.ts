@@ -66,15 +66,24 @@ export async function promptPwaInstall(): Promise<'accepted' | 'dismissed' | 'un
   return outcome;
 }
 
-/** Android Chrome / iPhone Safari — 이미 홈 화면 앱으로 연 경우는 숨김 */
-export function shouldShowPwaInstallGuide(): boolean {
+export type PwaInstallPlacement = 'login' | 'settings';
+
+/**
+ * login: iOS/Android만 (모바일에서 설치 추천)
+ * settings: 모바일 + 데스크톱 (PC는 설정에서만 안내)
+ * 이미 설치(standalone)면 숨김
+ */
+export function shouldShowPwaInstallGuide(placement: PwaInstallPlacement = 'settings'): boolean {
   if (Platform.OS !== 'web') return false;
   if (isStandalonePwa()) return false;
   const device = detectClientDevice();
-  return device === 'android' || device === 'ios';
+  if (placement === 'login') {
+    return device === 'android' || device === 'ios';
+  }
+  return device === 'android' || device === 'ios' || device === 'desktop';
 }
 
 /** @deprecated use shouldShowPwaInstallGuide */
 export function shouldShowAndroidInstallGuide(): boolean {
-  return shouldShowPwaInstallGuide() && detectClientDevice() === 'android';
+  return shouldShowPwaInstallGuide('login') && detectClientDevice() === 'android';
 }

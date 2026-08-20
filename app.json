@@ -43,7 +43,7 @@
       "shortName": "Drop",
       "description": "DGIST 배드민턴 동아리 Drop — 코트 예약·출석·매칭·포인트",
       "themeColor": "#1B4332",
-      "backgroundColor": "#F3F8F6",
+      "backgroundColor": "#FFFFFF",
       "display": "standalone",
       "startUrl": "/",
       "lang": "ko"

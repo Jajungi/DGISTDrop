@@ -65,6 +65,7 @@ export default function SettingsScreen() {
       <PageContainer>
         <ScrollView contentContainerStyle={styles.content}>
           <PwaInstallCard
+            placement="settings"
             onToast={(type, message) => showToast({ type, title: '', message })}
           />
           <PushNotificationCard
