@@ -28,11 +28,11 @@ export const useClubEventStore = create<ClubEventState>((set, get) => ({
         set({ events: prev });
         return {
           success: false,
-          message: err instanceof Error ? err.message : '휴관·특강 저장에 실패했어요.',
+          message: err instanceof Error ? err.message : '휴관·배너 일정 저장에 실패했어요.',
         };
       }
     }
-    return { success: true, message: '휴관·특강 일정을 저장했어요.' };
+    return { success: true, message: '휴관·배너 일정을 저장했어요.' };
   },
 
   upsert: async (event) => {

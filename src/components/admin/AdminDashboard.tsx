@@ -31,6 +31,7 @@ import { AdminSubTabs } from '@/src/components/admin/AdminSubTabs';
 import { AdminPointsPanel } from '@/src/components/admin/AdminPointsPanel';
 import { AdminDbResetPanel } from '@/src/components/admin/AdminDbResetPanel';
 import { AdminPushPanel } from '@/src/components/admin/AdminPushPanel';
+import { AdminFieldOpsPanel } from '@/src/components/admin/AdminFieldOpsPanel';
 import { GAME_MODE_CONFIG } from '@/src/constants/court';
 import { getEffectiveSchedule, getTodayKey, formatTodayLabel } from '@/src/utils/dateFormat';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
@@ -60,7 +61,7 @@ const LESSON_STATUS_LABEL: Record<string, string> = {
 
 type AdminGroup = 'home' | 'people' | 'live' | 'points' | 'push' | 'settings' | 'logs' | 'developer';
 type PeopleSub = 'members' | 'attendance' | 'social';
-type LiveSub = 'courts' | 'matches' | 'lessons';
+type LiveSub = 'courts' | 'matches' | 'lessons' | 'arrival' | 'lobby';
 
 interface AdminDashboardProps {
   adminId: string;
@@ -95,8 +96,6 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
   const lobbyRooms = useLobbyStore((s) => s.rooms);
   const adminLogs = useAdminLogStore((s) => s.logs);
   const clearAdminLogs = useAdminLogStore((s) => s.clear);
-  const demoMode = useAppStore((s) => s.demoMode);
-  const setDemoMode = useAppStore((s) => s.setDemoMode);
   const infinitePoints = useAppStore((s) => s.infinitePoints);
   const setInfinitePoints = useAppStore((s) => s.setInfinitePoints);
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
@@ -281,7 +280,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
           <Card style={styles.hintCard}>
             <Text style={styles.hintTitle}>관리자 안내</Text>
             <Text style={styles.hintText}>
-              사람(회원·출석·친구) · 현장(코트·경기·레슨) · 설정(활동 시간·공지)에서 운영 작업을
+              사람(회원·출석·친구) · 현장(코트·도착·모집·경기·레슨) · 설정(활동 시간·달력·공지)에서 운영 작업을
               하세요. 주요 작업은 로그에 남습니다.
             </Text>
           </Card>
@@ -320,13 +319,6 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
         <View style={styles.sectionBody}>
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>개발자 모드</Text>
-            <DevToggle
-              label="데모 모드"
-              hint="위치·활동 시간 제한 없이 전 기능 체험 (실제 배포 시 OFF)"
-              value={demoMode}
-              onToggle={() => setDemoMode(!demoMode)}
-            />
-            <View style={styles.devDivider} />
             <DevToggle
               label="무한 포인트 모드"
               hint="ON: 999,999P 부여 · OFF: 켜기 전 포인트로 복귀 (실제 차감·적립은 정상 동작)"
@@ -540,6 +532,8 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
             onChange={setLiveSub}
             items={[
               { key: 'courts', label: '코트' },
+              { key: 'arrival', label: '도착' },
+              { key: 'lobby', label: '모집' },
               {
                 key: 'matches',
                 label: '경기',
@@ -552,6 +546,22 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
               },
             ]}
           />
+
+      {liveSub === 'arrival' && (
+        <AdminFieldOpsPanel
+          adminId={adminId}
+          onToast={(type, message) => showToast({ type, title: '', message })}
+          sections={['arrival']}
+        />
+      )}
+
+      {liveSub === 'lobby' && (
+        <AdminFieldOpsPanel
+          adminId={adminId}
+          onToast={(type, message) => showToast({ type, title: '', message })}
+          sections={['lobby']}
+        />
+      )}
 
       {liveSub === 'matches' && (
         <>
@@ -1139,6 +1149,20 @@ function CourtAdminCard({
       {court.joinRequests.length > 0 && (
         <DetailRow label="합류 대기" value={court.joinRequests.map((r) => r.userName).join(', ')} />
       )}
+      <View style={styles.waitQueueBox}>
+        <Text style={styles.waitQueueTitle}>
+          대기열 {court.waitQueue?.length ? `(${court.waitQueue.length})` : ''}
+        </Text>
+        {(!court.waitQueue || court.waitQueue.length === 0) ? (
+          <Text style={styles.waitQueueEmpty}>대기자 없음 · 예약/경기 중 코트가 반납되면 대기자에게 알림</Text>
+        ) : (
+          court.waitQueue.map((w, i) => (
+            <Text key={`${w.userId}-${i}`} style={styles.waitQueueItem}>
+              {i + 1}. {w.userName}
+            </Text>
+          ))
+        )}
+      </View>
       {(onForceReturn || onRefundAndReturn || onClearJoinRequests) && (
         <View style={styles.itemActions}>
           {onRefundAndReturn && (
@@ -1302,6 +1326,29 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     marginBottom: spacing.sm,
     gap: 4,
+  },
+  waitQueueBox: {
+    marginTop: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: borderRadius.sm,
+    backgroundColor: '#F7F8FA',
+    gap: 2,
+  },
+  waitQueueTitle: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  waitQueueEmpty: {
+    ...typography.small,
+    color: colors.textMuted,
+    lineHeight: 16,
+  },
+  waitQueueItem: {
+    ...typography.small,
+    color: colors.text,
+    lineHeight: 18,
   },
   itemRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   itemBody: { flex: 1, gap: 2 },

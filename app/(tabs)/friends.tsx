@@ -10,6 +10,7 @@ import { FriendSearchPanel } from '@/src/components/friends/FriendSearchPanel';
 import { PartnerSuggestPanel } from '@/src/components/friends/PartnerSuggestPanel';
 import { ActivityNoticeBanner } from '@/src/components/guide/ActivityNoticeBanner';
 import { ClubEventBanner } from '@/src/components/guide/ClubEventBanner';
+import { SystemNoticeBanner } from '@/src/components/guide/SystemNoticeBanner';
 import { useSearchStore } from '@/src/stores/searchStore';
 import { useFriendsPresence } from '@/src/hooks/useFriendsPresence';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
@@ -40,6 +41,7 @@ export default function FriendsScreen() {
         </View>
 
         <ClubEventBanner />
+        <SystemNoticeBanner />
         <ActivityNoticeBanner />
 
         <FriendsSegmentTabs active={tab} onChange={setTab} />

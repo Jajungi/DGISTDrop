@@ -122,7 +122,7 @@ export interface SiteOverlay {
 }
 
 /** 휴관 · 특강 등 정기 활동 외 일정 */
-export type ClubEventKind = 'closure' | 'special';
+export type ClubEventKind = 'closure' | 'special' | 'extra';
 
 export interface ClubEvent {
   id: string;
@@ -134,6 +134,17 @@ export interface ClubEvent {
   /** YYYY-MM-DD inclusive */
   dateEnd: string;
   active: boolean;
+  /**
+   * 휴관 전용: 등록 직후가 아니라 해당일(기간이면 매일) KST 시각에 푸시.
+   * enabled=false 또는 없으면 푸시 없음.
+   */
+  pushNotify?: {
+    enabled: boolean;
+    /** HH:MM (KST) */
+    time: string;
+    /** 이미 발송한 날짜 YYYY-MM-DD */
+    sentDates?: string[];
+  };
 }
 
 export interface TeamRoom {

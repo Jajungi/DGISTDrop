@@ -1,23 +1,18 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Platform } from 'react-native';
-import { AdminOperationsPanel } from '@/src/components/admin/AdminOperationsPanel';
-import { AdminSiteOpsPanel } from '@/src/components/admin/AdminSiteOpsPanel';
+import { AdminClosureCalendar, type BannerPrefill } from '@/src/components/admin/AdminClosureCalendar';
+import { AdminNoticesPanel } from '@/src/components/admin/AdminNoticesPanel';
+import { AdminJoinInfoPanel } from '@/src/components/admin/AdminJoinInfoPanel';
 import { AdminSubTabs } from '@/src/components/admin/AdminSubTabs';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
 import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { getActivityDayLabel } from '@/src/services/activityTime';
-import {
-  cloneSchedule,
-  formatHHMM,
-  parseHHMM,
-  DEFAULT_ACTIVITY_SCHEDULE,
-} from '@/src/utils/activitySchedule';
-import { GYM_LOCATION, PEAK_HOURS } from '@/src/constants';
+import { cloneSchedule, formatHHMM, parseHHMM } from '@/src/utils/activitySchedule';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import type { ActivitySession } from '@/src/types';
 
-type SettingsSub = 'schedule' | 'notices' | 'ops' | 'info';
+type SettingsSub = 'schedule' | 'calendar' | 'notices' | 'join';
 
 const DAY_OPTIONS = [1, 2, 3, 4, 5, 6, 0]; // 월→일
 
@@ -30,9 +25,9 @@ interface AdminSettingsPanelProps {
 export function AdminSettingsPanel({ adminId, adminName, onToast }: AdminSettingsPanelProps) {
   const schedule = useActivityScheduleStore((s) => s.schedule);
   const setSchedule = useActivityScheduleStore((s) => s.setSchedule);
-  const resetToDefault = useActivityScheduleStore((s) => s.resetToDefault);
 
   const [sub, setSub] = useState<SettingsSub>('schedule');
+  const [bannerPrefill, setBannerPrefill] = useState<BannerPrefill | null>(null);
   const [draft, setDraft] = useState<ActivitySession[]>(() => cloneSchedule(schedule));
   const [dirty, setDirty] = useState(false);
   const [startInputs, setStartInputs] = useState(() =>
@@ -50,6 +45,8 @@ export function AdminSettingsPanel({ adminId, adminName, onToast }: AdminSetting
     setDirty(true);
   };
 
+  const clearBannerPrefill = useCallback(() => setBannerPrefill(null), []);
+
   return (
     <View style={styles.wrap}>
       <AdminSubTabs
@@ -57,13 +54,33 @@ export function AdminSettingsPanel({ adminId, adminName, onToast }: AdminSetting
         onChange={setSub}
         items={[
           { key: 'schedule', label: '활동 시간' },
-          { key: 'notices', label: '공지·휴관' },
-          { key: 'ops', label: '가입·현장' },
-          { key: 'info', label: '참고' },
+          { key: 'calendar', label: '달력' },
+          { key: 'notices', label: '공지' },
+          { key: 'join', label: '가입·참고' },
         ]}
       />
 
-      {sub === 'notices' && <AdminSiteOpsPanel onToast={onToast} />}
+      {sub === 'calendar' && (
+        <AdminClosureCalendar
+          onToast={onToast}
+          onGoToBannerNotice={(prefill) => {
+            setBannerPrefill(prefill);
+            setSub('notices');
+          }}
+        />
+      )}
+
+      {sub === 'notices' && (
+        <AdminNoticesPanel
+          adminId={adminId}
+          adminName={adminName}
+          onToast={onToast}
+          bannerPrefill={bannerPrefill}
+          onBannerPrefillConsumed={clearBannerPrefill}
+        />
+      )}
+
+      {sub === 'join' && <AdminJoinInfoPanel adminId={adminId} onToast={onToast} />}
 
       {sub === 'schedule' && (
         <View style={styles.stack}>
@@ -71,7 +88,7 @@ export function AdminSettingsPanel({ adminId, adminName, onToast }: AdminSetting
             <Text style={styles.blockTitle}>정기 활동 시간</Text>
             <Text style={styles.hint}>
               앱의 활동 중/외 배너·예약 가능 여부·도착 일정 범위에 반영됩니다. 요일별로 여러 구간을
-              둘 수 있어요.
+              둘 수 있어요. 단발 휴관·추가 활동일은 [달력] 탭에서 지정합니다.
             </Text>
 
             {draft.map((session, index) => (
@@ -177,20 +194,6 @@ export function AdminSettingsPanel({ adminId, adminName, onToast }: AdminSetting
                 }
               />
               <Button
-                title="기본값(화·목)"
-                size="sm"
-                variant="ghost"
-                onPress={async () => {
-                  const r = await resetToDefault();
-                  const next = cloneSchedule(DEFAULT_ACTIVITY_SCHEDULE);
-                  setDraft(next);
-                  setStartInputs(next.map((s) => formatHHMM(s.startHour, s.startMinute)));
-                  setEndInputs(next.map((s) => formatHHMM(s.endHour, s.endMinute)));
-                  setDirty(false);
-                  onToast(r.success ? 'success' : 'warning', r.message);
-                }}
-              />
-              <Button
                 title={dirty ? '저장' : '저장됨'}
                 size="sm"
                 disabled={!dirty}
@@ -207,33 +210,6 @@ export function AdminSettingsPanel({ adminId, adminName, onToast }: AdminSetting
                 }}
               />
             </View>
-          </Card>
-        </View>
-      )}
-
-      {sub === 'ops' && (
-        <AdminOperationsPanel adminId={adminId} adminName={adminName} onToast={onToast} />
-      )}
-
-      {sub === 'info' && (
-        <View style={styles.stack}>
-          <Card style={styles.block}>
-            <Text style={styles.blockTitle}>체육관 위치 (지오펜스)</Text>
-            <Text style={styles.hint}>
-              {GYM_LOCATION.name}
-              {'\n'}
-              위도 {GYM_LOCATION.latitude} · 경도 {GYM_LOCATION.longitude}
-              {'\n'}
-              반경 {GYM_LOCATION.radiusMeters}m — 코드 상수로 고정되어 있어요.
-            </Text>
-          </Card>
-          <Card style={styles.block}>
-            <Text style={styles.blockTitle}>피크 시간 (포인트 정책)</Text>
-            <Text style={styles.hint}>
-              피크 시각: {PEAK_HOURS.map((h) => `${h}시`).join(' · ')}
-              {'\n'}
-              예약 한도·피크 요금에 쓰이며, 지금은 상수입니다.
-            </Text>
           </Card>
         </View>
       )}

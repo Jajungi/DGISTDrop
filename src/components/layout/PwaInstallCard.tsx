@@ -58,10 +58,10 @@ export function PwaInstallCard({
         onToast?.(
           'info',
           isIos
-            ? 'Safari 하단 [공유] → [홈 화면에 추가]를 눌러 주세요.'
+            ? 'Safari 하단 [공유] → [홈 화면에 추가] → [추가]를 눌러 주세요.'
             : isDesktop
-              ? '브라우저 메뉴(⋮) → [캐스팅, 저장, 공유] → [페이지를 앱으로 설치]를 눌러 주세요.'
-              : 'Chrome 메뉴(⋮) → [앱 설치] 또는 [홈 화면에 추가]를 눌러 주세요.'
+              ? '메뉴(⋮) → [캐스팅, 저장, 공유] → [Drop 설치하기](또는 페이지를 앱으로 설치)를 눌러 주세요.'
+              : 'Chrome이면 [설치] / [바로가기 만들기], 다른 브라우저는 [현재 페이지 추가] → [웹앱]을 눌러 주세요.'
         );
       }
     } finally {
@@ -70,71 +70,91 @@ export function PwaInstallCard({
   };
 
   let title = '홈 화면에 앱처럼 설치';
-  let body =
-    'Android에서는 Chrome으로 이 사이트를 연 뒤 [앱 설치] 또는 [홈 화면에 추가]하면 됩니다.';
-  let steps = [
-    '1. Chrome으로 https://dgistdrop.pages.dev 열기',
-    '2. 메뉴(⋮) → [앱 설치] 또는 [홈 화면에 추가]',
-    '3. 생긴 Drop 아이콘으로 열고 알림 허용',
-  ];
-  let hint = '설치 버튼이 안 보이면 Chrome 메뉴(⋮)에서 [앱 설치] / [홈 화면에 추가]를 직접 누르세요.';
+  let body = '기기·브라우저마다 메뉴 이름이 조금 다릅니다. 아래 순서를 따라 주세요.';
+  let steps: string[] = [];
+  let hint = '';
 
   if (isIos) {
-    title = '홈 화면에 추가 (iPhone) · 추천';
+    title = '홈 화면에 추가 (iPhone · Safari) · 추천';
     body = compact
-      ? 'Safari에서 [공유 → 홈 화면에 추가]한 뒤, 생긴 Drop 아이콘으로 여세요. 알림도 그 아이콘에서만 켤 수 있어요.'
-      : 'iPhone은 Safari에서 홈 화면에 추가하는 것을 추천합니다. 앱처럼 쓰고 푸시도 받을 수 있습니다. Safari 탭 안에서는 알림이 오지 않습니다.';
+      ? '반드시 Safari로 연 뒤, 공유 → 홈 화면에 추가 → 웹앱/추가 순서로 진행하세요. 생긴 Drop 아이콘으로 열어야 알림이 됩니다.'
+      : 'iPhone/iPad는 Safari에서만 홈 화면 추가가 됩니다(Chrome 앱이 아님). Safari 탭 안에서는 푸시가 오지 않으니, 추가된 Drop 아이콘으로 여세요.';
     steps = [
-      '1. Safari로 https://dgistdrop.pages.dev 열기',
-      '2. 하단 [공유] → [홈 화면에 추가]',
-      '3. 생긴 Drop 아이콘으로 열고 알림 허용',
-    ];
-    hint = 'Safari 하단 [공유] 버튼 → [홈 화면에 추가]를 직접 누르세요. (iPhone은 앱 내 설치 버튼이 없습니다)';
-  } else if (isAndroid) {
-    title = '홈 화면에 앱처럼 설치 · 추천';
-    body = compact
-      ? 'Chrome에서 Drop을 홈 화면에 추가해 쓰세요. 알림도 바로가기로 받을 수 있어요.'
-      : 'Android에서는 Chrome [앱 설치] 또는 [홈 화면에 추가]를 추천합니다. Play 스토어 앱은 나중에 다시 준비할 예정입니다.';
-  } else if (isDesktop) {
-    title = 'PC에서도 앱으로 설치할 수 있어요';
-    body =
-      '필수는 아닙니다. Chrome·Edge에서 원하면 창 앱처럼 설치해 쓸 수 있습니다.';
-    steps = [
-      '1. 브라우저 오른쪽 위 메뉴(⋮) 열기',
-      '2. [캐스팅, 저장, 공유] 선택',
-      '3. [페이지를 앱으로 설치…] 누르기',
-      '또는 주소창의 설치 아이콘 / [바로가기 만들기]도 가능합니다.',
+      '1. Safari 앱으로 https://dgistdrop.pages.dev 열기 (다른 브라우저 X)',
+      '2. 화면 하단(또는 상단) [공유] 버튼(□↑) 누르기',
+      '3. 목록에서 [홈 화면에 추가] 선택 (안 보이면 목록을 아래로 스크롤)',
+      '4. [웹앱] / Drop 미리보기가 보이면 확인하고 [추가] 누르기',
+      '5. 홈 화면에 생긴 Drop 아이콘으로 다시 연 뒤, 설정에서 [알림 켜기]',
     ];
     hint =
-      '메뉴에 항목이 없으면 주소창 오른쪽 설치 아이콘을 확인하거나, 같은 메뉴의 [바로가기 만들기]를 쓰세요.';
+      '공유 시트에 [홈 화면에 추가]가 없으면 Safari인지 확인하세요. 추가 후에는 반드시 홈 화면 아이콘으로 열어야 알림이 옵니다.';
+  } else if (isAndroid) {
+    title = '홈 화면에 앱처럼 설치 (Android) · 추천';
+    body = compact
+      ? 'Chrome은 [설치]/[바로가기 만들기], 다른 브라우저는 [현재 페이지 추가] → [웹앱]으로 설치하세요.'
+      : 'Play 스토어 앱 대신 웹앱을 씁니다. 쓰는 브라우저에 따라 메뉴 이름이 다릅니다.';
+    steps = [
+      '【Chrome】',
+      '1. Chrome으로 https://dgistdrop.pages.dev 열기',
+      '2. 오른쪽 위 메뉴(⋮) → [앱 설치] 또는 [홈 화면에 추가] / [바로가기 만들기]',
+      '3. 확인 후 홈 화면 Drop 아이콘으로 열고 알림 허용',
+      '',
+      '【Chrome이 아닌 브라우저 (삼성·네이버 등)】',
+      '1. 메뉴에서 [현재 페이지 추가](또는 비슷 이름) 누르기',
+      '2. [웹앱] / [앱으로 설치] / [홈 화면에 추가] 중 선택',
+      '3. 생긴 아이콘으로 다시 열고 알림 허용',
+    ];
+    hint =
+      '설치·바로가기 항목이 안 보이면 주소창 옆 설치 아이콘을 확인하거나, 메뉴에서 “추가/바로가기/웹앱” 단어를 찾아 보세요.';
+  } else if (isDesktop) {
+    title = 'PC에서 앱으로 설치 (Chrome · Edge)';
+    body =
+      '필수는 아닙니다. 창 앱처럼 쓰려면 Chrome/Edge에서 아래처럼 [Drop 설치하기]를 누르면 됩니다.';
+    steps = [
+      '1. Chrome(또는 Edge)으로 https://dgistdrop.pages.dev 열기',
+      '2. 오른쪽 위 메뉴(⋮) 열기',
+      '3. [캐스팅, 저장, 공유](또는 Cast, save, and share) 선택',
+      '4. [Drop 설치하기] / [페이지를 앱으로 설치…] 누르기',
+      '5. 설치 확인 → 작업 표시줄·시작 메뉴에서 Drop 실행',
+      '또는 주소창 오른쪽 모니터/설치 아이콘을 눌러도 됩니다.',
+    ];
+    hint =
+      '메뉴에 [캐스팅, 저장, 공유]가 보이면 그 안을 펼치세요. [Drop 설치하기]가 그 아래에 있습니다. 없으면 주소창 설치 아이콘 또는 [바로가기 만들기]를 쓰세요.';
   }
 
   const showInstallButton = (isAndroid || isDesktop) && canPrompt;
+  const showSteps = !compact || isDesktop;
 
   return (
     <Card style={styles.card}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.body}>{body}</Text>
-      {!compact && (
+      {showSteps && (
         <View style={styles.steps}>
-          {steps.map((step) => (
-            <Text key={step} style={styles.step}>
-              {step}
-            </Text>
-          ))}
+          {steps.map((step, i) =>
+            step === '' ? (
+              <View key={`gap-${i}`} style={styles.stepGap} />
+            ) : (
+              <Text
+                key={`${i}-${step}`}
+                style={[styles.step, step.startsWith('【') && styles.stepHead]}
+              >
+                {step}
+              </Text>
+            )
+          )}
         </View>
       )}
       {showInstallButton ? (
         <Button
-          title={busy ? '설치 중...' : '앱 설치'}
+          title={busy ? '설치 중...' : isDesktop ? 'Drop 설치하기' : '앱 설치'}
           onPress={() => void install()}
           disabled={busy}
           fullWidth
           size={compact ? 'md' : 'lg'}
         />
-      ) : (
-        <Text style={styles.hint}>{hint}</Text>
-      )}
+      ) : null}
+      <Text style={styles.hint}>{hint}</Text>
     </Card>
   );
 }
@@ -144,6 +164,8 @@ const styles = StyleSheet.create({
   title: { ...typography.bodyBold, color: colors.text },
   body: { ...typography.caption, color: colors.textSecondary, lineHeight: 18 },
   steps: { gap: 4 },
-  step: { ...typography.caption, color: colors.textMuted, lineHeight: 18 },
+  stepGap: { height: 6 },
+  step: { ...typography.caption, color: colors.textMuted, lineHeight: 19 },
+  stepHead: { color: colors.text, fontWeight: '700', marginTop: 2 },
   hint: { ...typography.caption, color: colors.primary, lineHeight: 18 },
 });

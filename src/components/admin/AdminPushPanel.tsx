@@ -187,7 +187,7 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>활동 일정</Text>
             <Text style={styles.hint}>{activityLabel}</Text>
-            <Text style={styles.hint}>활동 시간은 [설정 → 활동 시간] 탭에서 변경합니다.</Text>
+            <Text style={styles.hint}>활동 시간은 [설정 → 활동 시간], 휴관·추가 활동일은 [설정 → 달력]에서 변경합니다.</Text>
           </Card>
 
           {settings.cancel_today && (

@@ -5,7 +5,7 @@ import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { clubEventKindLabel, getActiveClubEvents } from '@/src/utils/siteOps';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
-/** 오늘 휴관·특강 안내 배너 */
+/** 오늘 휴관·추가 활동일·배너 공지 안내 */
 export function ClubEventBanner() {
   const events = useClubEventStore((s) => s.events);
   const active = useMemo(() => getActiveClubEvents(events), [events]);
@@ -14,27 +14,48 @@ export function ClubEventBanner() {
 
   return (
     <View style={styles.wrap}>
-      {active.map((ev) => (
-        <View
-          key={ev.id}
-          style={[styles.banner, ev.kind === 'closure' ? styles.closure : styles.special]}
-        >
-          <Ionicons
-            name={ev.kind === 'closure' ? 'close-circle-outline' : 'school-outline'}
-            size={18}
-            color={ev.kind === 'closure' ? colors.error : colors.primary}
-          />
-          <View style={styles.body}>
-            <Text style={styles.title}>
-              오늘 {clubEventKindLabel(ev.kind)} · {ev.title}
-            </Text>
-            {!!ev.body && <Text style={styles.sub}>{ev.body}</Text>}
-            <Text style={styles.range}>
-              {ev.dateStart === ev.dateEnd ? ev.dateStart : `${ev.dateStart} ~ ${ev.dateEnd}`}
-            </Text>
+      {active.map((ev) => {
+        const tone =
+          ev.kind === 'closure' ? 'closure' : ev.kind === 'extra' ? 'extra' : 'special';
+        return (
+          <View
+            key={ev.id}
+            style={[
+              styles.banner,
+              tone === 'closure' && styles.closure,
+              tone === 'extra' && styles.extra,
+              tone === 'special' && styles.special,
+            ]}
+          >
+            <Ionicons
+              name={
+                tone === 'closure'
+                  ? 'close-circle-outline'
+                  : tone === 'extra'
+                    ? 'calendar-outline'
+                    : 'megaphone-outline'
+              }
+              size={18}
+              color={
+                tone === 'closure'
+                  ? colors.error
+                  : tone === 'extra'
+                    ? colors.primary
+                    : colors.primary
+              }
+            />
+            <View style={styles.body}>
+              <Text style={styles.title}>
+                {tone === 'special' ? '공지' : `오늘 ${clubEventKindLabel(ev.kind)}`} · {ev.title}
+              </Text>
+              {!!ev.body && <Text style={styles.sub}>{ev.body}</Text>}
+              <Text style={styles.range}>
+                {ev.dateStart === ev.dateEnd ? ev.dateStart : `${ev.dateStart} ~ ${ev.dateEnd}`}
+              </Text>
+            </View>
           </View>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
@@ -52,6 +73,10 @@ const styles = StyleSheet.create({
   closure: {
     backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
+  },
+  extra: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
   },
   special: {
     backgroundColor: colors.primaryLight,

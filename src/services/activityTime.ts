@@ -1,16 +1,54 @@
 import { getActivitySchedule } from '@/src/stores/activityScheduleStore';
+import { useClubEventStore } from '@/src/stores/clubEventStore';
+import { isClubEventActiveOn, todayLocalISODate } from '@/src/utils/siteOps';
 import type { ActivitySession } from '@/src/types';
 
 function schedule(): ActivitySession[] {
   return getActivitySchedule();
 }
 
+function defaultSessionTimes(): { startHour: number; startMinute: number; endHour: number; endMinute: number } {
+  const sessions = schedule();
+  if (sessions[0]) {
+    return {
+      startHour: sessions[0].startHour,
+      startMinute: sessions[0].startMinute,
+      endHour: sessions[0].endHour,
+      endMinute: sessions[0].endMinute,
+    };
+  }
+  return { startHour: 18, startMinute: 30, endHour: 21, endMinute: 50 };
+}
+
+function isClosedOn(dateISO: string): boolean {
+  return useClubEventStore
+    .getState()
+    .events.some((e) => e.kind === 'closure' && isClubEventActiveOn(e, dateISO));
+}
+
+function hasExtraActivityOn(dateISO: string): boolean {
+  return useClubEventStore
+    .getState()
+    .events.some((e) => e.kind === 'extra' && isClubEventActiveOn(e, dateISO));
+}
+
 export function isActivityTime(now: Date = new Date()): boolean {
+  const dateISO = todayLocalISODate(now);
+  if (isClosedOn(dateISO)) return false;
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  if (hasExtraActivityOn(dateISO)) {
+    const t = defaultSessionTimes();
+    const startMinutes = t.startHour * 60 + t.startMinute;
+    const endMinutes = t.endHour * 60 + t.endMinute;
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  }
+
   const day = now.getDay();
   const sessions = schedule().filter((s) => s.day === day);
   if (!sessions.length) return false;
 
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
   return sessions.some((session) => {
     const startMinutes = session.startHour * 60 + session.startMinute;
     const endMinutes = session.endHour * 60 + session.endMinute;
@@ -21,12 +59,28 @@ export function isActivityTime(now: Date = new Date()): boolean {
 export function getNextActivityTime(now: Date = new Date()): Date | null {
   const candidates: Date[] = [];
   const sessions = schedule();
+  const times = defaultSessionTimes();
 
-  for (let offset = 0; offset < 7; offset++) {
+  for (let offset = 0; offset < 21; offset++) {
     const checkDate = new Date(now);
     checkDate.setDate(checkDate.getDate() + offset);
+    const dateISO = todayLocalISODate(checkDate);
+    if (isClosedOn(dateISO)) continue;
+
     const day = checkDate.getDay();
-    for (const session of sessions.filter((s) => s.day === day)) {
+    const daySessions = hasExtraActivityOn(dateISO)
+      ? [
+          {
+            day,
+            startHour: times.startHour,
+            startMinute: times.startMinute,
+            endHour: times.endHour,
+            endMinute: times.endMinute,
+          },
+        ]
+      : sessions.filter((s) => s.day === day);
+
+    for (const session of daySessions) {
       const activityStart = new Date(checkDate);
       activityStart.setHours(session.startHour, session.startMinute, 0, 0);
       if (activityStart > now) candidates.push(activityStart);
@@ -40,12 +94,18 @@ export function getNextActivityTime(now: Date = new Date()): Date | null {
 export function getActivityTimeRemaining(now: Date = new Date()): string | null {
   if (!isActivityTime(now)) return null;
 
-  const day = now.getDay();
+  const dateISO = todayLocalISODate(now);
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const ends = schedule()
-    .filter((s) => s.day === day)
-    .map((s) => s.endHour * 60 + s.endMinute)
-    .filter((end) => end >= currentMinutes);
+  const day = now.getDay();
+  const times = defaultSessionTimes();
+
+  const ends = hasExtraActivityOn(dateISO)
+    ? [times.endHour * 60 + times.endMinute]
+    : schedule()
+        .filter((s) => s.day === day)
+        .map((s) => s.endHour * 60 + s.endMinute)
+        .filter((end) => end >= currentMinutes);
+
   if (!ends.length) return null;
   const endMinutes = Math.max(...ends);
 

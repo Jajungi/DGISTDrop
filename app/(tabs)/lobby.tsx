@@ -21,6 +21,7 @@ import { TeamCourtReserveModal } from '@/src/components/lobby/TeamCourtReserveMo
 import { useCourtStore } from '@/src/stores/courtStore';
 import { ActivityNoticeBanner } from '@/src/components/guide/ActivityNoticeBanner';
 import { ClubEventBanner } from '@/src/components/guide/ClubEventBanner';
+import { SystemNoticeBanner } from '@/src/components/guide/SystemNoticeBanner';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { Button } from '@/src/components/ui/Button';
@@ -224,6 +225,7 @@ export default function LobbyScreen() {
         )}
 
         <ClubEventBanner />
+        <SystemNoticeBanner />
         <ActivityNoticeBanner />
 
         <ScrollView contentContainerStyle={styles.content}>

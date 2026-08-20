@@ -14,6 +14,7 @@ import { CourtExpandView } from '@/src/components/courts/CourtExpandView';
 import { MatchScoreSheet } from '@/src/components/courts/MatchScoreSheet';
 import { ActivityNoticeBanner } from '@/src/components/guide/ActivityNoticeBanner';
 import { ClubEventBanner } from '@/src/components/guide/ClubEventBanner';
+import { SystemNoticeBanner } from '@/src/components/guide/SystemNoticeBanner';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { SiteOverlayHost } from '@/src/components/site/SiteOverlayHost';
 import { isActivityTime } from '@/src/services/activityTime';
@@ -262,6 +263,7 @@ export default function CourtsScreen() {
           }
         >
           <ClubEventBanner />
+          <SystemNoticeBanner />
           <ActivityNoticeBanner />
 
           <CourtOverviewHeader

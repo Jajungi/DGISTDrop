@@ -17,7 +17,9 @@ export function getActiveClubEvents(events: ClubEvent[], dateISO = todayLocalISO
 }
 
 export function clubEventKindLabel(kind: ClubEvent['kind']): string {
-  return kind === 'closure' ? '휴관' : '특강';
+  if (kind === 'closure') return '휴관';
+  if (kind === 'extra') return '추가 활동일';
+  return '배너 공지';
 }
 
 export function isOverlayInWindow(overlay: SiteOverlay, now = new Date()): boolean {
@@ -89,13 +91,36 @@ export function normalizeClubEvents(raw: unknown): ClubEvent[] {
     .map((item) => {
       if (!item || typeof item !== 'object') return null;
       const o = item as Record<string, unknown>;
-      const kind = o.kind === 'special' ? 'special' : o.kind === 'closure' ? 'closure' : null;
+      const kind =
+        o.kind === 'special'
+          ? 'special'
+          : o.kind === 'closure'
+            ? 'closure'
+            : o.kind === 'extra'
+              ? 'extra'
+              : null;
       if (!kind) return null;
       const dateStart = String(o.dateStart ?? '').slice(0, 10);
       const dateEnd = String(o.dateEnd ?? dateStart).slice(0, 10);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStart) || !/^\d{4}-\d{2}-\d{2}$/.test(dateEnd)) return null;
       const title = String(o.title ?? '').trim();
       if (!title) return null;
+      let pushNotify: ClubEvent['pushNotify'];
+      if (o.pushNotify && typeof o.pushNotify === 'object') {
+        const p = o.pushNotify as Record<string, unknown>;
+        const rawTime = String(p.time ?? '09:00');
+        const tm = /^(\d{1,2}):(\d{2})$/.exec(rawTime.trim());
+        const time = tm
+          ? `${String(Number(tm[1])).padStart(2, '0')}:${tm[2]}`
+          : '09:00';
+        pushNotify = {
+          enabled: p.enabled === true,
+          time,
+          sentDates: Array.isArray(p.sentDates)
+            ? p.sentDates.map((d) => String(d).slice(0, 10)).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+            : undefined,
+        };
+      }
       return {
         id: String(o.id ?? newEventId()),
         kind,
@@ -104,6 +129,7 @@ export function normalizeClubEvents(raw: unknown): ClubEvent[] {
         dateStart,
         dateEnd: dateEnd < dateStart ? dateStart : dateEnd,
         active: o.active !== false,
+        pushNotify,
       } satisfies ClubEvent;
     })
     .filter(Boolean) as ClubEvent[];

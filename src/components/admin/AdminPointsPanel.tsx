@@ -18,6 +18,8 @@ import {
   POINT_TYPE_LABELS,
 } from '@/src/constants/points';
 import { getReservationCost, getRankDiscountPercent } from '@/src/services/points';
+import { usePeakHoursStore } from '@/src/stores/peakHoursStore';
+import { formatPeakHoursLabel } from '@/src/utils/peakHours';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
 import { Avatar } from '@/src/components/ui/Avatar';
@@ -51,6 +53,7 @@ export function AdminPointsPanel({ adminId, onToast }: AdminPointsPanelProps) {
   const cleaningLeaderboard = useNotificationStore((s) => s.cleaningLeaderboard);
   const adminRevokeCleaning = useNotificationStore((s) => s.adminRevokeCleaning);
   const adminRevokeNetSetup = useNotificationStore((s) => s.adminRevokeNetSetup);
+  const peakHours = usePeakHoursStore((s) => s.hours);
 
   const [userQuery, setUserQuery] = useState('');
   const [txQuery, setTxQuery] = useState('');
@@ -143,7 +146,7 @@ export function AdminPointsPanel({ adminId, onToast }: AdminPointsPanelProps) {
         </Text>
         <Text style={styles.policyText}>
           제한: 충전 불가 · Gold+ 최대 {getRankDiscountPercent('master')}% 예약 할인 · 동시 1코트만 예약 ·
-          피크(19~20시) 1일 {PEAK_TIME_RESERVATION_LIMIT}회
+          피크({formatPeakHoursLabel(peakHours)}) 1일 {PEAK_TIME_RESERVATION_LIMIT}회
         </Text>
         <Text style={styles.policyHint}>
           예시: 골드 일반 코트 {getReservationCost('gold', false)}P · 중앙 코트{' '}

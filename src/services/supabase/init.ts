@@ -13,11 +13,12 @@ import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCoachingStore } from '@/src/stores/coachingStore';
 import { useAdminLogStore } from '@/src/stores/adminLogStore';
 import { createEmptyCourts } from '@/src/services/courtService';
-import { fetchOpenRegistration, fetchActivitySchedule, fetchSiteOverlays, fetchClubEvents, fetchLobbyExpiry, fetchEloFeaturesEnabled } from '@/src/services/supabase/club';
+import { fetchOpenRegistration, fetchActivitySchedule, fetchSiteOverlays, fetchClubEvents, fetchLobbyExpiry, fetchEloFeaturesEnabled, fetchPeakHours } from '@/src/services/supabase/club';
 import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { useSiteOverlayStore } from '@/src/stores/siteOverlayStore';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { useLobbyExpiryStore } from '@/src/stores/lobbyExpiryStore';
+import { usePeakHoursStore } from '@/src/stores/peakHoursStore';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
 import { useFriendPrefsStore } from '@/src/stores/friendPrefsStore';
@@ -96,6 +97,13 @@ export async function initSupabaseApp(): Promise<boolean> {
   try {
     const expiry = await fetchLobbyExpiry();
     if (expiry) useLobbyExpiryStore.getState().setLocal(expiry);
+  } catch {
+    /* keep default */
+  }
+
+  try {
+    const peakHours = await fetchPeakHours();
+    if (peakHours) usePeakHoursStore.getState().setLocal(peakHours);
   } catch {
     /* keep default */
   }

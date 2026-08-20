@@ -123,7 +123,7 @@ export function AppHeader() {
             <HamburgerIcon active={sidebarExpanded} />
           </Pressable>
         )}
-        <DropBrand compact={isMobile} scale={scale} />
+        {!isMobile && <DropBrand compact={false} scale={scale} />}
         <View style={[styles.searchArea, isMobile && styles.searchAreaMobile]}>
           <View
             style={[

@@ -1,11 +1,12 @@
 import {
-  PEAK_HOURS,
   PEAK_TIME_RESERVATION_LIMIT,
   POINT_EARN,
   POINT_SPEND,
   RANK_RESERVATION_DISCOUNT,
 } from '@/src/constants/points';
 import { isEloFeaturesEnabled } from '@/src/stores/featureFlagsStore';
+import { usePeakHoursStore } from '@/src/stores/peakHoursStore';
+import { formatPeakHoursLabel } from '@/src/utils/peakHours';
 import type { MembershipTier, RankTier } from '@/src/types';
 
 export function getRankFromElo(elo: number): RankTier {
@@ -54,9 +55,10 @@ export function canReserve(
   }
 
   if (isPeakTime && peakTimeReservations >= PEAK_TIME_RESERVATION_LIMIT) {
+    const label = formatPeakHoursLabel(usePeakHoursStore.getState().hours);
     return {
       allowed: false,
-      reason: `피크타임(19~20시) 예약은 하루 ${PEAK_TIME_RESERVATION_LIMIT}회까지예요.`,
+      reason: `피크타임(${label}) 예약은 하루 ${PEAK_TIME_RESERVATION_LIMIT}회까지예요.`,
     };
   }
 
@@ -64,7 +66,7 @@ export function canReserve(
 }
 
 export function isPeakTime(now: Date = new Date()): boolean {
-  return (PEAK_HOURS as readonly number[]).includes(now.getHours());
+  return usePeakHoursStore.getState().hours.includes(now.getHours());
 }
 
 /** 경기 승리 — 팀원당 고정 (+승리 축하) */
