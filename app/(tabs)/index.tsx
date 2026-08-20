@@ -16,6 +16,8 @@ import { ActivityNoticeBanner } from '@/src/components/guide/ActivityNoticeBanne
 import { ClubEventBanner } from '@/src/components/guide/ClubEventBanner';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { SiteOverlayHost } from '@/src/components/site/SiteOverlayHost';
+import { isActivityTime } from '@/src/services/activityTime';
+import { getEffectiveSchedule } from '@/src/utils/dateFormat';
 import { colors } from '@/src/theme';
 import type { Court, GameMode, NantaHalf } from '@/src/types';
 
@@ -48,9 +50,16 @@ export default function CourtsScreen() {
   const showToast = useNotificationStore((s) => s.showToast);
   const submitMatchResult = useNotificationStore((s) => s.submitMatchResult);
 
-  const atGymCount = authHydrated
-    ? users.filter((u) => u.isAtGym && u.memberStatus === 'approved').length
+  /** 스태프/데모 예외 없이, 실제 활동 시간대 기준 */
+  const inActivityWindow = isActivityTime();
+  const attendanceCount = authHydrated
+    ? inActivityWindow
+      ? users.filter((u) => u.isAtGym && u.memberStatus === 'approved').length
+      : users.filter(
+          (u) => u.memberStatus === 'approved' && Boolean(getEffectiveSchedule(u).start)
+        ).length
     : undefined;
+  const attendanceLabel = inActivityWindow ? '지금' : '갈 예정';
 
   const [refreshing, setRefreshing] = useState(false);
   const [showScoreSheet, setShowScoreSheet] = useState(false);
@@ -261,7 +270,8 @@ export default function CourtsScreen() {
             onFilterChange={setFilter}
             myUserId={currentUser?.id}
             isAtGym={isAtGym}
-            atGymCount={atGymCount}
+            attendanceCount={attendanceCount}
+            attendanceLabel={attendanceLabel}
             remaining={remaining}
             isExpanded={selectedCourtId !== null}
           />

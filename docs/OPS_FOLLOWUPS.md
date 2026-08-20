@@ -34,6 +34,20 @@
 
 ---
 
+## 푸시 토큰 정리 (결정: 발송 실패분만 삭제)
+
+**결정:** 오래된 토큰 일괄 삭제 / 유저당 1개 제한은 하지 않음.  
+여러 기기(PC·폰·PWA) 동시 수신을 허용한다.
+
+**동작:** `send-push` · `broadcast-push` 발송 시
+- Expo: `DeviceNotRegistered` 등 fatal 티켓 → 해당 토큰 삭제
+- Web Push: HTTP `404` / `410` / `403` → 해당 구독 삭제
+
+공유 코드: `supabase/functions/_shared/pushSend.ts`  
+배포 후 적용: `npx supabase functions deploy send-push` / `broadcast-push`
+
+---
+
 ## 1. Google Play 경고 후속 처리
 
 > 상태: **보류**. 웹앱으로 먼저 운영하고, Play 설치가 필요할 때 다시 진행.

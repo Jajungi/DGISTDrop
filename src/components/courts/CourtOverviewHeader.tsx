@@ -12,8 +12,12 @@ interface CourtOverviewHeaderProps {
   onFilterChange: (f: 'all' | 'empty' | 'mine') => void;
   myUserId?: string;
   isAtGym: boolean;
-  /** 체육관에 있는 인원 (isAtGym 실시간) */
-  atGymCount?: number;
+  /**
+   * 활동 시간: 체육관 도착(isAtGym) 인원 → 라벨 "지금"
+   * 그 외: 오늘 도착 일정(갈 예정) 인원 → 라벨 "갈 예정"
+   */
+  attendanceCount?: number;
+  attendanceLabel?: string;
   remaining?: string | null;
   isExpanded?: boolean;
 }
@@ -29,7 +33,8 @@ export function CourtOverviewHeader({
   onFilterChange,
   myUserId,
   isAtGym,
-  atGymCount,
+  attendanceCount,
+  attendanceLabel = '지금',
   remaining,
   isExpanded = false,
 }: CourtOverviewHeaderProps) {
@@ -95,8 +100,14 @@ export function CourtOverviewHeader({
       {!isExpanded && (
         <View style={[styles.lineRow, isMobile && styles.lineRowMobile]}>
           <View style={styles.statusRow}>
-            {atGymCount != null && (
-              <StatusItem number={`${atGymCount}명`} label="지금" isText compact={isMobile} emphasize />
+            {attendanceCount != null && (
+              <StatusItem
+                number={`${attendanceCount}명`}
+                label={attendanceLabel}
+                isText
+                compact={isMobile}
+                emphasize
+              />
             )}
             <StatusItem number={emptyCount} label="가능" compact={isMobile} />
             <StatusItem number={reservedCount} label="예약" compact={isMobile} />

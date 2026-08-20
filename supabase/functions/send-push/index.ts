@@ -1,6 +1,7 @@
 // Supabase Edge Function: send-push
 // notifications 테이블 insert 시(트리거/웹훅) 호출되어, 해당 유저의
 // Expo 푸시 토큰들로 원격 푸시를 발송한다.
+// 만료·Invalid(DeviceNotRegistered / web 404·410) 토큰은 발송 실패 시 삭제한다.
 //
 // 배포:
 //   supabase functions deploy send-push
@@ -9,7 +10,12 @@
 //   (선택) supabase secrets set EXPO_ACCESS_TOKEN=xxxx
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { buildPushPayload } from 'https://esm.sh/@block65/webcrypto-web-push@1.0.2';
+import {
+  isExpoToken,
+  isWebSubscription,
+  sendExpoAndPrune,
+  sendWebAndPrune,
+} from '../_shared/pushSend.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -25,42 +31,6 @@ interface Payload {
   message?: string;
   kind?: string;
   record?: { user_id?: string; title?: string; message?: string; kind?: string };
-}
-
-function isExpoToken(token: string): boolean {
-  return token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[');
-}
-
-function isWebSubscription(token: string): boolean {
-  return token.startsWith('{') && token.includes('"endpoint"');
-}
-
-async function sendWeb(tokens: string[], title: string, body: string) {
-  if (!tokens.length || !VAPID_PUBLIC || !VAPID_PRIVATE) return 0;
-  const vapid = {
-    subject: VAPID_SUBJECT,
-    publicKey: VAPID_PUBLIC,
-    privateKey: VAPID_PRIVATE,
-  };
-  let sent = 0;
-  for (const token of tokens) {
-    try {
-      const sub = JSON.parse(token) as {
-        endpoint: string;
-        keys: { p256dh: string; auth: string };
-      };
-      const payload = await buildPushPayload(
-        { data: JSON.stringify({ title, body }), options: { ttl: 3600 } },
-        sub,
-        vapid
-      );
-      const res = await fetch(sub.endpoint, payload);
-      if (res.status >= 200 && res.status < 300) sent += 1;
-    } catch (err) {
-      console.warn('[send-push web]', err);
-    }
-  }
-  return sent;
 }
 
 function isAuthorized(req: Request): boolean {
@@ -118,30 +88,19 @@ Deno.serve(async (req) => {
     const expoTokens = tokens.map((t: { token: string }) => t.token).filter(isExpoToken);
     const webTokens = tokens.map((t: { token: string }) => t.token).filter(isWebSubscription);
 
-    let expoSent = 0;
-    if (expoTokens.length) {
-      const messages = expoTokens.map((to: string) => ({
-        to,
-        sound: 'default',
-        title,
-        body: message,
-        priority: 'high',
-        channelId: kind === 'coach' ? 'coach' : 'default',
-      }));
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      };
-      if (EXPO_ACCESS_TOKEN) headers.Authorization = `Bearer ${EXPO_ACCESS_TOKEN}`;
-      const expoRes = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(messages),
-      });
-      if (expoRes.ok) expoSent = expoTokens.length;
-    }
-
-    const webSent = await sendWeb(webTokens, title, message);
+    const expoSent = await sendExpoAndPrune(
+      supabase,
+      expoTokens,
+      title,
+      message,
+      kind,
+      EXPO_ACCESS_TOKEN
+    );
+    const webSent = await sendWebAndPrune(supabase, webTokens, title, message, {
+      subject: VAPID_SUBJECT,
+      publicKey: VAPID_PUBLIC,
+      privateKey: VAPID_PRIVATE,
+    });
 
     return new Response(JSON.stringify({ sent: expoSent + webSent, expo: expoSent, web: webSent }), {
       status: 200,
