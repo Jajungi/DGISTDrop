@@ -25,6 +25,7 @@ import { SirenModal } from '@/src/components/ui/SirenModal';
 import {
   PostLoginOverlayGate,
 } from '@/src/components/site/SiteOverlayHost';
+import { AndroidManualRotateHint } from '@/src/components/layout/AndroidManualRotateHint';
 import { colors, fonts, typography } from '@/src/theme';
 import { hydrateAppStateFromDisk } from '@/src/services/hydrateApp';
 import { initCrossTabSync } from '@/src/services/crossTabSync';
@@ -34,6 +35,7 @@ import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { useFriendArrivalWatch } from '@/src/hooks/useFriendArrivalWatch';
 import { PushPermissionGate } from '@/src/components/profile/PushPermissionGate';
 import { ensurePwaServiceWorker } from '@/src/services/pwaInstall';
+import { lockInitialOrientation } from '@/src/services/pwaOrientation';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -71,6 +73,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === 'web') {
       void ensurePwaServiceWorker();
+      void lockInitialOrientation();
       return;
     }
     void import('@/src/services/localNotifications').then((m) => m.initLocalNotifications());
@@ -126,6 +129,7 @@ export default function RootLayout() {
         <SirenModal />
         <PushPermissionGate />
         <PostLoginOverlayGate />
+        <AndroidManualRotateHint />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
