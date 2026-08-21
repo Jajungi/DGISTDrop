@@ -323,6 +323,7 @@ export function CourtExpandView({
                     court={selectedCourt}
                     width={splitCourtSize.width}
                     borderRadius={borderRadius.md}
+                    isSelected
                   />
                   <CourtPlayerProfiles
                     players={selectedCourt.players}

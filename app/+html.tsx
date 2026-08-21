@@ -1,5 +1,6 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import { type PropsWithChildren } from 'react';
+import { darkPalette, lightPalette, paletteToCssVars } from '@/src/theme/palettes';
 
 /** Cloudflare Pages 기본 배포 URL — OG 이미지는 절대 경로 필요 */
 const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://dgistdrop.pages.dev';
@@ -17,10 +18,11 @@ export default function Root({ children }: PropsWithChildren) {
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
-        <meta name="theme-color" content="#1B4332" />
+        <meta name="theme-color" content="#F3F8F6" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#0F1112" media="(prefers-color-scheme: dark)" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Drop" />
         <meta name="description" content={SITE_DESC} />
 
@@ -53,10 +55,33 @@ export default function Root({ children }: PropsWithChildren) {
 const globalStyles = `
 *, *::before, *::after { box-sizing: border-box; }
 
+:root {
+  color-scheme: light;
+  ${paletteToCssVars(lightPalette)}
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    ${paletteToCssVars(darkPalette)}
+  }
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  ${paletteToCssVars(lightPalette)}
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  ${paletteToCssVars(darkPalette)}
+}
+
 html, body {
   margin: 0;
   padding: 0;
-  background-color: #F2F4F6;
+  background-color: var(--drop-background, #F3F8F6);
+  color: var(--drop-text, #2A3D45);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
@@ -74,7 +99,6 @@ html, body {
   overflow-x: hidden;
 }
 
-/* 모바일 웹: 뷰포트에 딱 맞춘 앱형 — 페이지 전체 스크롤 대신 내부 스크롤 */
 @media (max-width: 767px) {
   html, body {
     height: 100%;
@@ -95,17 +119,15 @@ html, body {
   }
 }
 
-/* 데스크톱: 전체 너비 웹앱 */
 @media (min-width: 768px) {
-  body { background-color: #E5E8EB; }
+  body { background-color: var(--drop-background, #F3F8F6); }
   #root > div, [data-expo-router-root] > div {
     width: 100%;
     max-width: none;
   }
 }
 
-/* 스크롤바 */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #C5CDD6; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--drop-borderStrong, #C5CDD6); border-radius: 3px; }
 `;

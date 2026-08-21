@@ -25,7 +25,7 @@ import {
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
-import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/theme';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -311,7 +311,7 @@ export function AdminDbResetPanel({ adminId }: AdminDbResetPanelProps) {
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.md },
-  warningCard: { gap: spacing.xs, borderColor: `${colors.error}40`, backgroundColor: '#FFF5F5' },
+  warningCard: { gap: spacing.xs, borderColor: withAlpha(colors.error, 0.25), backgroundColor: '#FFF5F5' },
   warningHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   warningTitle: { ...typography.bodyBold, color: colors.error },
   warningText: { ...typography.caption, color: colors.textSecondary, lineHeight: 20 },

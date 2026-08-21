@@ -14,10 +14,7 @@ import Svg, {
 } from 'react-native-svg';
 import type { Court } from '@/src/types';
 import {
-  COURT_FLOOR_COLORS,
-  COURT_FLOOR_DARK,
   COACH_COURT_ACCENT,
-  COURT_LINE_COLOR,
   COURT_NET_COLOR,
   COURT_VENUE_LIGHT,
   GAME_MODE_CONFIG,
@@ -27,14 +24,27 @@ import {
   getCourtHeight,
   getLandscapeCourtGeometry,
 } from '@/src/constants/court';
+import { useAppTheme } from '@/src/theme/ThemeProvider';
 
 interface CourtIllustrationProps {
   court: Court;
   width: number;
   borderRadius?: number;
+  /** false면 천장 램프·비네팅 등 고정 빛/그림자 없음 (데스크톱 마우스 조명용) */
+  bakedLighting?: boolean;
+  isSelected?: boolean;
+  isHovered?: boolean;
 }
 
-export function CourtIllustration({ court, width, borderRadius: radius = 0 }: CourtIllustrationProps) {
+export function CourtIllustration({
+  court,
+  width,
+  borderRadius: radius = 0,
+  bakedLighting = true,
+  isSelected = false,
+  isHovered = false,
+}: CourtIllustrationProps) {
+  const { colors: theme, scheme } = useAppTheme();
   const safeWidth = Number.isFinite(width) && width > 0 ? width : 0;
   const height = getCourtHeight(safeWidth);
   if (safeWidth < 2 || height < 2) {
@@ -45,13 +55,37 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
   const isEmpty = court.status === 'empty';
   const isReserved = court.status === 'reserved';
   const isCooling = court.status === 'just_finished';
-  const floorMain = COURT_FLOOR_COLORS[court.status];
-  const floorEdge = COURT_FLOOR_DARK[court.status];
-  const lineOpacity = isEmpty ? 0.45 : 1;
+  const tintFloor = bakedLighting;
+  const floorMain =
+    tintFloor && isSelected && isEmpty
+      ? theme.courtSelectedFloor
+      : tintFloor && isHovered && isEmpty
+        ? theme.courtFloorLight
+        : court.status === 'empty'
+          ? theme.courtEmptyFloor
+          : court.status === 'reserved'
+            ? theme.courtReservedFloor
+            : court.status === 'playing'
+              ? theme.courtPlayingFloor
+              : theme.courtFinishedFloor;
+  const floorEdge =
+    tintFloor && isSelected && isEmpty
+      ? theme.courtEmptyFloor
+      : tintFloor && isHovered && isEmpty
+        ? theme.courtEmptyFloor
+        : court.status === 'empty'
+          ? theme.courtEmptyFloorEdge
+          : court.status === 'reserved'
+            ? theme.courtReservedFloorEdge
+            : court.status === 'playing'
+              ? theme.courtPlayingFloorEdge
+              : theme.courtFinishedFloorEdge;
+  const lineOpacity = scheme === 'dark' ? 1 : isEmpty ? 0.45 : 1;
   /** 카드 전체 비네팅 — 최소한만 */
   const vignetteTop = isEmpty ? 0.05 : 0.02;
   const vignetteBottom = isEmpty ? 0.08 : 0.03;
 
+  const lineColor = theme.courtLine;
   const { x: bx, y: by, w: bw, h: bh } = getCourtBounds(width, height);
   const lines = getLandscapeCourtGeometry(width, height);
 
@@ -249,21 +283,33 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
         </Defs>
 
         {/* 바닥 + 마루 질감 */}
-        <Rect x={0} y={0} width={width} height={height} rx={radius} ry={radius} fill={`url(#floor-${gradId})`} />
+        <Rect
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+          rx={radius}
+          ry={radius}
+          fill={bakedLighting ? `url(#floor-${gradId})` : floorMain}
+        />
         <Rect x={0} y={0} width={width} height={height} rx={radius} ry={radius} fill={`url(#tex-${gradId})`} opacity={isEmpty ? 0.35 : 0.55} />
 
-        {/* 후면 벽 · 측면 여백 */}
-        <Rect x={0} y={0} width={width} height={wallH} fill="rgba(0,0,0,0.14)" />
-        <Rect x={0} y={by + bh} width={width} height={height - by - bh} fill="rgba(0,0,0,0.08)" />
-        <Rect x={0} y={by} width={bx} height={bh} fill="rgba(0,0,0,0.06)" />
-        <Rect x={bx + bw} y={by} width={width - bx - bw} height={bh} fill="rgba(0,0,0,0.06)" />
+        {/* 후면 벽 · 측면 여백 — 데스크톱 마우스 조명에선 고정 음영 제거 */}
+        {bakedLighting && (
+          <>
+            <Rect x={0} y={0} width={width} height={wallH} fill="rgba(0,0,0,0.14)" />
+            <Rect x={0} y={by + bh} width={width} height={height - by - bh} fill="rgba(0,0,0,0.08)" />
+            <Rect x={0} y={by} width={bx} height={bh} fill="rgba(0,0,0,0.06)" />
+            <Rect x={bx + bw} y={by} width={width - bx - bw} height={bh} fill="rgba(0,0,0,0.06)" />
+          </>
+        )}
 
         {/* 관람·대기 벤치 (측면) */}
         <Rect x={bx * 0.35} y={by + bh * 0.38} width={benchW} height={benchH} rx={1} fill="rgba(0,0,0,0.18)" opacity={lineOpacity} />
         <Rect x={width - bx * 0.35 - benchW} y={by + bh * 0.38} width={benchW} height={benchH} rx={1} fill="rgba(0,0,0,0.18)" opacity={lineOpacity} />
 
-        {/* 경기 중 — 천장 확산광 + 번지는 빛 웅덩이 */}
-        {isLit && (
+        {/* 경기 중 — 천장 확산광 + 번지는 빛 웅덩이 (모바일·고정 조명) */}
+        {bakedLighting && isLit && (
           <>
             <Rect x={0} y={0} width={width} height={height} rx={radius} ry={radius} fill={`url(#lit-wash-${gradId})`} />
             <Rect x={0} y={0} width={width} height={height} fill={`url(#lit-pool-l-${gradId})`} />
@@ -272,7 +318,7 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
         )}
 
         {/* 예약됨 — 은은한 대기 조명 */}
-        {isReserved && (
+        {bakedLighting && isReserved && (
           <>
             <Rect x={0} y={0} width={width} height={height} rx={radius} ry={radius} fill={`url(#reserve-wash-${gradId})`} />
             <Rect x={0} y={0} width={width} height={height} fill={`url(#reserve-pool-${gradId})`} />
@@ -297,7 +343,7 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
         />
 
         {/* 코트 라인 */}
-        <Rect x={bx} y={by} width={bw} height={bh} fill="none" stroke={COURT_LINE_COLOR} strokeWidth={lineW} opacity={lineOpacity} />
+        <Rect x={bx} y={by} width={bw} height={bh} fill="none" stroke={lineColor} strokeWidth={lineW} opacity={lineOpacity} />
         <Line
           x1={netX}
           y1={by}
@@ -315,19 +361,19 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
         <Line x1={netX - bw * 0.06} y1={by + 0.5} x2={netX + bw * 0.06} y2={by + 0.5} stroke="rgba(255,255,255,0.55)" strokeWidth={0.8} opacity={lineOpacity} />
 
         {/* 센터 서비스 마크 */}
-        <Line x1={netX - markLen} y1={lines.centerY} x2={netX + markLen} y2={lines.centerY} stroke={COURT_LINE_COLOR} strokeWidth={lineW} opacity={0.5 * lineOpacity} />
-        <Line x1={lines.shortServiceLeft} y1={by + markLen} x2={lines.shortServiceLeft} y2={by + bh - markLen} stroke={COURT_LINE_COLOR} strokeWidth={lineW * 0.5} opacity={0.25 * lineOpacity} />
-        <Line x1={lines.shortServiceRight} y1={by + markLen} x2={lines.shortServiceRight} y2={by + bh - markLen} stroke={COURT_LINE_COLOR} strokeWidth={lineW * 0.5} opacity={0.25 * lineOpacity} />
+        <Line x1={netX - markLen} y1={lines.centerY} x2={netX + markLen} y2={lines.centerY} stroke={lineColor} strokeWidth={lineW} opacity={0.5 * lineOpacity} />
+        <Line x1={lines.shortServiceLeft} y1={by + markLen} x2={lines.shortServiceLeft} y2={by + bh - markLen} stroke={lineColor} strokeWidth={lineW * 0.5} opacity={0.25 * lineOpacity} />
+        <Line x1={lines.shortServiceRight} y1={by + markLen} x2={lines.shortServiceRight} y2={by + bh - markLen} stroke={lineColor} strokeWidth={lineW * 0.5} opacity={0.25 * lineOpacity} />
 
         {/* 코트 중앙점 (서비스 개시) */}
-        <Circle cx={netX} cy={lines.centerY} r={Math.max(0.8, width * 0.008)} fill={COURT_LINE_COLOR} opacity={0.35 * lineOpacity} />
+        <Circle cx={netX} cy={lines.centerY} r={Math.max(0.8, width * 0.008)} fill={lineColor} opacity={0.35 * lineOpacity} />
 
         <Line
           x1={bx}
           y1={lines.singlesTop}
           x2={bx + bw}
           y2={lines.singlesTop}
-          stroke={COURT_LINE_COLOR}
+          stroke={lineColor}
           strokeWidth={lineW * 0.8}
           opacity={0.55 * lineOpacity}
           strokeDasharray="3 2"
@@ -337,7 +383,7 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
           y1={lines.singlesBottom}
           x2={bx + bw}
           y2={lines.singlesBottom}
-          stroke={COURT_LINE_COLOR}
+          stroke={lineColor}
           strokeWidth={lineW * 0.8}
           opacity={0.55 * lineOpacity}
           strokeDasharray="3 2"
@@ -347,7 +393,7 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
           y1={by}
           x2={lines.shortServiceLeft}
           y2={by + bh}
-          stroke={COURT_LINE_COLOR}
+          stroke={lineColor}
           strokeWidth={lineW * 0.75}
           opacity={0.45 * lineOpacity}
         />
@@ -356,7 +402,7 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
           y1={by}
           x2={lines.shortServiceRight}
           y2={by + bh}
-          stroke={COURT_LINE_COLOR}
+          stroke={lineColor}
           strokeWidth={lineW * 0.75}
           opacity={0.45 * lineOpacity}
         />
@@ -365,7 +411,7 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
           y1={by}
           x2={lines.longServiceLeft}
           y2={by + bh}
-          stroke={COURT_LINE_COLOR}
+          stroke={lineColor}
           strokeWidth={lineW * 0.7}
           opacity={0.35 * lineOpacity}
         />
@@ -374,7 +420,7 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
           y1={by}
           x2={lines.longServiceRight}
           y2={by + bh}
-          stroke={COURT_LINE_COLOR}
+          stroke={lineColor}
           strokeWidth={lineW * 0.7}
           opacity={0.35 * lineOpacity}
         />
@@ -383,7 +429,7 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
           y1={lines.centerY}
           x2={lines.shortServiceLeft}
           y2={lines.centerY}
-          stroke={COURT_LINE_COLOR}
+          stroke={lineColor}
           strokeWidth={lineW * 0.75}
           opacity={0.4 * lineOpacity}
         />
@@ -392,7 +438,7 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
           y1={lines.centerY}
           x2={lines.longServiceRight}
           y2={lines.centerY}
-          stroke={COURT_LINE_COLOR}
+          stroke={lineColor}
           strokeWidth={lineW * 0.75}
           opacity={0.4 * lineOpacity}
         />
@@ -511,29 +557,25 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
           </SvgText>
         )}
 
-        {/* 코트 끝(베이스라인·사이드) 은은한 페더 */}
-        <Rect x={bx} y={by} width={courtEndFade} height={bh} fill={`url(#court-end-l-${gradId})`} />
-        <Rect x={bx + bw - courtEndFade} y={by} width={courtEndFade} height={bh} fill={`url(#court-end-r-${gradId})`} />
-        <Rect x={bx} y={by} width={bw} height={courtSideFade} fill={`url(#court-side-t-${gradId})`} />
-        <Rect x={bx} y={by + bh - courtSideFade} width={bw} height={courtSideFade} fill={`url(#court-side-b-${gradId})`} />
+        {bakedLighting && (
+          <>
+            <Rect x={bx} y={by} width={courtEndFade} height={bh} fill={`url(#court-end-l-${gradId})`} />
+            <Rect x={bx + bw - courtEndFade} y={by} width={courtEndFade} height={bh} fill={`url(#court-end-r-${gradId})`} />
+            <Rect x={bx} y={by} width={bw} height={courtSideFade} fill={`url(#court-side-t-${gradId})`} />
+            <Rect x={bx} y={by + bh - courtSideFade} width={bw} height={courtSideFade} fill={`url(#court-side-b-${gradId})`} />
+            <Rect x={0} y={0} width={rimFade} height={height} fill={`url(#rim-l-${gradId})`} />
+            <Rect x={width - rimFade} y={0} width={rimFade} height={height} fill={`url(#rim-r-${gradId})`} />
+            <Rect x={0} y={0} width={width} height={rimFade} fill={`url(#rim-t-${gradId})`} />
+            <Rect x={0} y={height - rimFade} width={width} height={rimFade} fill={`url(#rim-b-${gradId})`} />
+            <Rect x={0} y={0} width={cornerSoft} height={cornerSoft} fill={`url(#corner-tl-${gradId})`} />
+            <Rect x={width - cornerSoft} y={0} width={cornerSoft} height={cornerSoft} fill={`url(#corner-tr-${gradId})`} />
+            <Rect x={0} y={height - cornerSoft} width={cornerSoft} height={cornerSoft} fill={`url(#corner-bl-${gradId})`} />
+            <Rect x={width - cornerSoft} y={height - cornerSoft} width={cornerSoft} height={cornerSoft} fill={`url(#corner-br-${gradId})`} />
+            <Rect x={0} y={0} width={width} height={height} rx={radius} ry={radius} fill={`url(#vignette-${gradId})`} />
+          </>
+        )}
 
-        {/* 카드 외곽 림 페더 */}
-        <Rect x={0} y={0} width={rimFade} height={height} fill={`url(#rim-l-${gradId})`} />
-        <Rect x={width - rimFade} y={0} width={rimFade} height={height} fill={`url(#rim-r-${gradId})`} />
-        <Rect x={0} y={0} width={width} height={rimFade} fill={`url(#rim-t-${gradId})`} />
-        <Rect x={0} y={height - rimFade} width={width} height={rimFade} fill={`url(#rim-b-${gradId})`} />
-
-        {/* 모서리 라운드 페더 */}
-        <Rect x={0} y={0} width={cornerSoft} height={cornerSoft} fill={`url(#corner-tl-${gradId})`} />
-        <Rect x={width - cornerSoft} y={0} width={cornerSoft} height={cornerSoft} fill={`url(#corner-tr-${gradId})`} />
-        <Rect x={0} y={height - cornerSoft} width={cornerSoft} height={cornerSoft} fill={`url(#corner-bl-${gradId})`} />
-        <Rect x={width - cornerSoft} y={height - cornerSoft} width={cornerSoft} height={cornerSoft} fill={`url(#corner-br-${gradId})`} />
-
-        {/* 가장자리 비네팅 (아주 약하게) */}
-        <Rect x={0} y={0} width={width} height={height} rx={radius} ry={radius} fill={`url(#vignette-${gradId})`} />
-
-        {/* 천장 램프 — 겹친 타원으로 부드러운 블룸(번짐) 표현 */}
-        {isLit && (
+        {bakedLighting && isLit && (
           <>
             <Ellipse cx={width * 0.34} cy={4} rx={13} ry={6} fill="#F4FBDC" opacity={0.16} />
             <Ellipse cx={width * 0.34} cy={4} rx={8} ry={3.4} fill="#F8FCE4" opacity={0.42} />
@@ -544,7 +586,7 @@ export function CourtIllustration({ court, width, borderRadius: radius = 0 }: Co
           </>
         )}
 
-        {isReserved && (
+        {bakedLighting && isReserved && (
           <>
             <Ellipse cx={width * 0.5} cy={5} rx={11} ry={5} fill="#FFE0A0" opacity={0.16} />
             <Ellipse cx={width * 0.5} cy={5} rx={6} ry={2.4} fill="#FFE8B4" opacity={0.42} />

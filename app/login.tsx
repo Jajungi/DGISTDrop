@@ -18,23 +18,51 @@ import { DropBrand } from '@/src/components/layout/DropBrand';
 import { Button } from '@/src/components/ui/Button';
 import { Avatar } from '@/src/components/ui/Avatar';
 import {
+  canQuickLogin,
   loadSavedLogin,
-  saveSavedLogin,
   type SavedLoginAccount,
 } from '@/src/services/quickLogin';
 import { SCHOOL_NAME, CLUB_NAME } from '@/src/constants';
 import { validateStudentId } from '@/src/utils/studentId';
 import { isSupabaseEnvConfigured, getSupabaseSetupHint } from '@/src/lib/supabaseEnv';
-import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { isSupabaseEnabled } from '@/src/lib/supabase';
+import { supabaseRestoreSession } from '@/src/services/supabase/auth';
+import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/theme';
 import { SiteOverlayHost } from '@/src/components/site/SiteOverlayHost';
 import { markPostLoginOverlay } from '@/src/components/site/SiteOverlayHost';
 import { PwaInstallCard } from '@/src/components/layout/PwaInstallCard';
 
 type Mode = 'login' | 'register' | 'guest';
 
+function RememberCheck({
+  checked,
+  onToggle,
+  label,
+}: {
+  checked: boolean;
+  onToggle: () => void;
+  label: string;
+}) {
+  return (
+    <Pressable
+      onPress={onToggle}
+      style={styles.rememberRow}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked }}
+    >
+      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+        {checked ? <Ionicons name="checkmark" size={14} color={colors.textLight} /> : null}
+      </View>
+      <Text style={styles.rememberLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export default function LoginScreen() {
   const login = useAuthStore((s) => s.login);
   const loginAsGuest = useAuthStore((s) => s.loginAsGuest);
+  const restoreSavedLogin = useAuthStore((s) => s.restoreSavedLogin);
+  const dismissSavedLogin = useAuthStore((s) => s.dismissSavedLogin);
   const register = useAuthStore((s) => s.register);
   const showToast = useNotificationStore((s) => s.showToast);
 
@@ -46,32 +74,41 @@ export default function LoginScreen() {
   const [guestName, setGuestName] = useState('');
   const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [savedAccount, setSavedAccount] = useState<SavedLoginAccount | null>(null);
   const [showSavedPrompt, setShowSavedPrompt] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const refreshSavedLogin = useCallback(async () => {
     const account = await loadSavedLogin();
+    let quick = account != null && canQuickLogin(account);
+    if (quick && isSupabaseEnabled()) {
+      quick = Boolean(await supabaseRestoreSession());
+    }
     setSavedAccount(account);
-    setShowSavedPrompt(account != null);
+    setShowSavedPrompt(quick);
+    if (quick && account.kind === 'guest') {
+      setMode('guest');
+      setGuestName(account.name);
+    } else if (account?.studentId) {
+      setStudentId(account.studentId);
+    }
+    if (account?.kind === 'guest') {
+      setGuestName(account.name);
+    }
   }, []);
 
   useEffect(() => {
     void refreshSavedLogin();
   }, [refreshSavedLogin]);
 
-  const completeLogin = async (id: string, pw: string, displayName?: string) => {
-    const result = await login(id, pw);
-    if (result.success) {
-      const user = useAuthStore.getState().currentUser;
-      await saveSavedLogin({
-        studentId: id.trim(),
-        name: displayName ?? user?.name ?? id,
-      });
+  const finishAuth = (ok: boolean, message: string) => {
+    if (ok) {
       markPostLoginOverlay();
       router.replace('/(tabs)');
-    } else {
-      showToast({ type: 'warning', title: '', message: result.message });
+      return;
     }
+    showToast({ type: 'warning', title: '', message });
   };
 
   const handleLogin = () => {
@@ -80,25 +117,44 @@ export default function LoginScreen() {
       showToast({ type: 'warning', title: '', message: idCheck.message });
       return;
     }
-    void completeLogin(idCheck.normalized, password);
+    setBusy(true);
+    void (async () => {
+      const result = await login(idCheck.normalized, password, rememberMe);
+      setBusy(false);
+      finishAuth(result.success, result.message);
+    })();
   };
 
   const handleSavedLogin = () => {
-    if (!savedAccount) return;
-    setStudentId(savedAccount.studentId);
-    setPassword('');
-    setShowSavedPrompt(false);
-    if (!password.trim()) {
-      showToast({ type: 'info', title: '', message: '비밀번호를 입력한 뒤 로그인해 주세요.' });
-    }
+    setBusy(true);
+    void (async () => {
+      const result = await restoreSavedLogin();
+      setBusy(false);
+      if (result.success) {
+        finishAuth(true, result.message);
+        return;
+      }
+      setShowSavedPrompt(false);
+      if (savedAccount?.kind === 'guest') {
+        setGuestName(savedAccount.name);
+        setMode('guest');
+      } else if (savedAccount?.studentId) {
+        setStudentId(savedAccount.studentId);
+        setMode('login');
+      }
+      showToast({ type: 'warning', title: '', message: result.message });
+    })();
   };
 
   const handleUseOtherAccount = () => {
     setShowSavedPrompt(false);
-    if (savedAccount) {
+    if (savedAccount?.kind === 'guest') {
+      setGuestName(savedAccount.name);
+    } else if (savedAccount?.studentId) {
       setStudentId(savedAccount.studentId);
     }
     setPassword('');
+    void dismissSavedLogin();
   };
 
   const handleRegister = () => {
@@ -111,6 +167,7 @@ export default function LoginScreen() {
       showToast({ type: 'warning', title: '', message: '비밀번호 확인이 일치하지 않아요.' });
       return;
     }
+    setBusy(true);
     void (async () => {
       const result = await register({
         studentId: idCheck.normalized,
@@ -118,6 +175,7 @@ export default function LoginScreen() {
         email,
         password,
       });
+      setBusy(false);
       showToast({
         type: result.success ? 'success' : 'warning',
         title: '',
@@ -134,18 +192,20 @@ export default function LoginScreen() {
   };
 
   const handleGuestLogin = () => {
+    setBusy(true);
     void (async () => {
-      const result = await loginAsGuest(guestName);
-      if (result.success) {
-        markPostLoginOverlay();
-        router.replace('/(tabs)');
-      } else {
-        showToast({ type: 'warning', title: '', message: result.message });
-      }
+      const result = await loginAsGuest(guestName, rememberMe);
+      setBusy(false);
+      finishAuth(result.success, result.message);
     })();
   };
 
   const supabaseReady = isSupabaseEnvConfigured();
+  const memberPrompt =
+    mode === 'login' && showSavedPrompt && savedAccount?.kind === 'member';
+  const guestPrompt =
+    mode === 'guest' && showSavedPrompt && savedAccount?.kind === 'guest';
+  const promptAccount = memberPrompt || guestPrompt ? savedAccount : null;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -181,53 +241,69 @@ export default function LoginScreen() {
               <Text style={[styles.tabText, mode === 'login' && styles.tabTextActive]}>로그인</Text>
             </Pressable>
             <Pressable
-              onPress={() => {
-                setMode('register');
-                setShowSavedPrompt(false);
-              }}
+              onPress={() => setMode('register')}
               style={[styles.tab, mode === 'register' && styles.tabActive]}
             >
               <Text style={[styles.tabText, mode === 'register' && styles.tabTextActive]}>회원가입</Text>
             </Pressable>
             <Pressable
-              onPress={() => {
-                setMode('guest');
-                setShowSavedPrompt(false);
-              }}
+              onPress={() => setMode('guest')}
               style={[styles.tab, mode === 'guest' && styles.tabActive]}
             >
               <Text style={[styles.tabText, mode === 'guest' && styles.tabTextActive]}>게스트</Text>
             </Pressable>
           </View>
 
-          {mode === 'login' && showSavedPrompt && savedAccount && (
+          {promptAccount ? (
             <View style={styles.savedCard}>
               <View style={styles.savedHeader}>
-                <Avatar name={savedAccount.name} color={colors.primary} size={48} />
+                <Avatar name={promptAccount.name} color={colors.primary} size={48} />
                 <View style={styles.savedMeta}>
-                  <Text style={styles.savedName}>{savedAccount.name}</Text>
-                  <Text style={styles.savedId}>{savedAccount.studentId}</Text>
+                  <Text style={styles.savedName}>{promptAccount.name}</Text>
+                  <Text style={styles.savedId}>
+                    {promptAccount.kind === 'guest'
+                      ? '게스트'
+                      : promptAccount.studentId}
+                  </Text>
                 </View>
               </View>
-              <Text style={styles.savedQuestion}>기존 계정으로 로그인하시겠습니까?</Text>
+              <Text style={styles.savedQuestion}>
+                {promptAccount.kind === 'guest'
+                  ? '기존 게스트로 입장하시겠습니까?'
+                  : '기존 계정으로 로그인하시겠습니까?'}
+              </Text>
+              {promptAccount.kind === 'guest' ? (
+                <Text style={styles.savedWarning}>
+                  게스트 계정은 주기적으로 삭제될 수 있어요.
+                </Text>
+              ) : null}
               <View style={styles.savedActions}>
-                <Button title="선택" onPress={handleSavedLogin} size="sm" style={styles.savedBtn} />
                 <Button
-                  title="다른 계정"
+                  title={promptAccount.kind === 'guest' ? '입장' : '로그인'}
+                  onPress={handleSavedLogin}
+                  size="sm"
+                  style={styles.savedBtn}
+                  loading={busy}
+                />
+                <Button
+                  title="아니요"
                   onPress={handleUseOtherAccount}
                   size="sm"
                   variant="outline"
                   style={styles.savedBtn}
+                  disabled={busy}
                 />
               </View>
             </View>
-          )}
-
+          ) : (
           <View style={styles.form}>
             {mode === 'guest' ? (
               <>
                 <Text style={styles.guestIntro}>
                   이름만 입력해 임시로 입장해요. 코트 예약·모집방 참여·이용 안내는 볼 수 있지만, 포인트·친구·랭크·기록은 사용할 수 없어요.
+                </Text>
+                <Text style={styles.guestWarning}>
+                  게스트 계정은 운영 과정에서 주기적으로 삭제될 수 있어요. 계속 쓰려면 회원가입을 권장해요.
                 </Text>
                 <Text style={styles.label}>이름</Text>
                 <TextInput
@@ -238,6 +314,11 @@ export default function LoginScreen() {
                   maxLength={12}
                   autoCapitalize="words"
                 />
+                <RememberCheck
+                  checked={rememberMe}
+                  onToggle={() => setRememberMe((v) => !v)}
+                  label="이 기기에서 게스트 기억하기"
+                />
                 <Button
                   title="게스트로 입장"
                   onPress={handleGuestLogin}
@@ -245,6 +326,7 @@ export default function LoginScreen() {
                   size="lg"
                   variant="outline"
                   style={styles.submit}
+                  loading={busy}
                 />
                 <Text style={styles.hint}>
                   정식 회원이 되면 포인트·전적·친구 기능을 모두 이용할 수 있어요.
@@ -312,7 +394,21 @@ export default function LoginScreen() {
             )}
 
             {mode === 'login' ? (
-              <Button title="로그인" onPress={handleLogin} fullWidth size="lg" style={styles.submit} />
+              <>
+                <RememberCheck
+                  checked={rememberMe}
+                  onToggle={() => setRememberMe((v) => !v)}
+                  label="이 기기에서 계정 기억하기"
+                />
+                <Button
+                  title="로그인"
+                  onPress={handleLogin}
+                  fullWidth
+                  size="lg"
+                  style={styles.submit}
+                  loading={busy}
+                />
+              </>
             ) : (
               <Button
                 title="회원가입"
@@ -321,6 +417,7 @@ export default function LoginScreen() {
                 size="lg"
                 variant="secondary"
                 style={styles.submit}
+                loading={busy}
               />
             )}
 
@@ -332,6 +429,7 @@ export default function LoginScreen() {
               </>
             )}
           </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
       <SiteOverlayHost surface="login" />
@@ -396,13 +494,19 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: spacing.sm,
   },
+  guestWarning: {
+    ...typography.caption,
+    color: colors.warning,
+    lineHeight: 20,
+    marginBottom: spacing.sm,
+  },
   savedCard: {
     marginBottom: spacing.lg,
     padding: spacing.lg,
     borderRadius: borderRadius.md,
     backgroundColor: colors.primaryLight,
     borderWidth: 1,
-    borderColor: colors.primary + '33',
+    borderColor: withAlpha(colors.primary, 0.2),
     gap: spacing.md,
   },
   savedHeader: {
@@ -417,6 +521,12 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  savedWarning: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   savedActions: {
     flexDirection: 'row',
@@ -447,6 +557,31 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     justifyContent: 'center',
+  },
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: spacing.md,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  rememberLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    flex: 1,
   },
   submit: { marginTop: spacing.lg },
   hint: {

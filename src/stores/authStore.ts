@@ -12,9 +12,16 @@ import { useNotificationStore } from './notificationStore';
 import { persistAppState } from '@/src/services/appState';
 import { recordAdminLog, recordAdminLogAsCurrentUser, recordAdminLogAsActor } from '@/src/services/adminLog';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
-import { supabaseLogin, supabaseLogout, supabaseRegister, supabaseGuestLogin, supabaseDeleteAccount } from '@/src/services/supabase/auth';
+import {
+  supabaseLogin,
+  supabaseLogout,
+  supabaseRegister,
+  supabaseGuestLogin,
+  supabaseDeleteAccount,
+  supabaseResumeRememberedSession,
+} from '@/src/services/supabase/auth';
 import { fetchAllProfiles, uploadAvatar, removeAvatar } from '@/src/services/supabase/profiles';
-import { clearSavedLogin } from '@/src/services/quickLogin';
+import { clearSavedLogin, loadSavedLogin, saveSavedLogin } from '@/src/services/quickLogin';
 import { INFINITE_DEV_POINTS } from '@/src/utils/responsive';
 import {
   createLocalGuestUser,
@@ -57,8 +64,14 @@ interface AuthState {
   peakResetDate: string | null;
   lastCleaningBonusMonth: string | null;
   credentials: Record<string, string>;
-  login: (studentId: string, password: string) => Promise<{ success: boolean; message: string }>;
-  loginAsGuest: (name: string) => Promise<{ success: boolean; message: string }>;
+  login: (
+    studentId: string,
+    password: string,
+    remember?: boolean
+  ) => Promise<{ success: boolean; message: string }>;
+  loginAsGuest: (name: string, remember?: boolean) => Promise<{ success: boolean; message: string }>;
+  restoreSavedLogin: () => Promise<{ success: boolean; message: string }>;
+  dismissSavedLogin: () => Promise<void>;
   logout: () => Promise<void>;
   register: (input: {
     studentId: string;
@@ -200,6 +213,28 @@ function removeUserFromState(
   if (!isSupabaseEnabled()) persistAppState();
 }
 
+async function persistRememberedAccount(
+  remember: boolean,
+  payload: {
+    kind: 'member' | 'guest';
+    name: string;
+    studentId?: string;
+    password?: string;
+  }
+): Promise<void> {
+  if (!remember) {
+    await clearSavedLogin();
+    return;
+  }
+  await saveSavedLogin({
+    kind: payload.kind,
+    name: payload.name,
+    studentId: payload.studentId,
+    password: isSupabaseEnabled() ? undefined : payload.password,
+    pendingConfirm: false,
+  });
+}
+
 function canDeleteUser(
   users: User[],
   target: User,
@@ -251,7 +286,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     get().resetPeakReservationsIfNewDay();
   },
 
-  login: async (studentId, password) => {
+  login: async (studentId, password, remember = false) => {
     const idCheck = validateStudentId(studentId);
     if (!idCheck.ok) {
       return { success: false, message: idCheck.message };
@@ -266,6 +301,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ users, currentUser: user, isAuthenticated: Boolean(user), isGuestSession: false, credentials: {} });
       await afterSupabaseAuth(user);
       get().resetPeakReservationsIfNewDay();
+      await persistRememberedAccount(remember, {
+        kind: 'member',
+        name: user?.name ?? idCheck.normalized,
+        studentId: idCheck.normalized,
+      });
       return { success: true, message: result.message };
     }
 
@@ -294,10 +334,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     set({ currentUser: user, isAuthenticated: true, isGuestSession: false });
     persistAppState();
+    await persistRememberedAccount(remember, {
+      kind: 'member',
+      name: user.name,
+      studentId: trimmed,
+      password,
+    });
     return { success: true, message: `${user.name}님, 환영합니다!` };
   },
 
-  loginAsGuest: async (name) => {
+  loginAsGuest: async (name, remember = false) => {
     const validation = validateGuestName(name);
     if (!validation.ok) {
       return { success: false, message: validation.message ?? '이름을 확인해 주세요.' };
@@ -322,11 +368,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       await afterSupabaseAuth(user);
       get().resetPeakReservationsIfNewDay();
+      await persistRememberedAccount(remember, { kind: 'guest', name: user.name });
       return { success: true, message: result.message };
     }
 
-    const guest = createLocalGuestUser(trimmed, get().users.length);
-    const users = [...get().users.filter((u) => !u.id.startsWith('guest-')), guest];
+    const existing = get().users.find(
+      (u) => u.membershipTier === 'guest' && u.name === trimmed
+    );
+    const guest = existing ?? createLocalGuestUser(trimmed, get().users.length);
+    const users = existing ? get().users : [...get().users, guest];
     await saveGuestSession({ userId: guest.id, name: guest.name });
     set({
       users,
@@ -335,14 +385,80 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isGuestSession: true,
     });
     persistAppState();
+    await persistRememberedAccount(remember, { kind: 'guest', name: guest.name });
     return { success: true, message: `${guest.name}님, 게스트로 입장했어요.` };
   },
 
-  logout: async () => {
+  restoreSavedLogin: async () => {
+    const account = await loadSavedLogin();
+    if (!account) {
+      return { success: false, message: '저장된 계정이 없어요.' };
+    }
+
+    if (isSupabaseEnabled()) {
+      const result = await supabaseResumeRememberedSession();
+      if (!result.success) {
+        await saveSavedLogin({ ...account, pendingConfirm: false });
+        return result;
+      }
+      const users = await fetchAllProfiles();
+      const user = users.find((u) => u.id === result.userId) ?? null;
+      const guest = isGuestUser(user);
+      if (guest && user) {
+        await saveGuestSession({ userId: user.id, name: user.name });
+      } else {
+        await clearGuestSession();
+      }
+      set({
+        users,
+        currentUser: user,
+        isAuthenticated: Boolean(user),
+        isGuestSession: guest,
+        credentials: {},
+      });
+      await afterSupabaseAuth(user);
+      get().resetPeakReservationsIfNewDay();
+      await persistRememberedAccount(true, {
+        kind: guest ? 'guest' : 'member',
+        name: user?.name ?? account.name,
+        studentId: user?.studentId ?? account.studentId,
+      });
+      return { success: true, message: result.message };
+    }
+
+    if (account.kind === 'guest') {
+      return get().loginAsGuest(account.name, true);
+    }
+    if (account.studentId && account.password) {
+      return get().login(account.studentId, account.password, true);
+    }
+    return { success: false, message: '저장된 로그인을 사용할 수 없어요. 다시 입력해 주세요.' };
+  },
+
+  dismissSavedLogin: async () => {
+    const saved = await loadSavedLogin();
+    if (saved) {
+      await saveSavedLogin({ ...saved, pendingConfirm: false });
+    }
     if (isSupabaseEnabled()) await supabaseLogout();
+  },
+
+  logout: async () => {
+    const saved = await loadSavedLogin();
+    const keepRemembered = Boolean(saved);
+    if (keepRemembered) {
+      await saveSavedLogin({ ...saved!, pendingConfirm: true });
+    } else if (isSupabaseEnabled()) {
+      await supabaseLogout();
+    }
     await clearGuestSession();
     await afterSupabaseAuth(null);
-    set({ currentUser: null, isAuthenticated: false, isGuestSession: false });
+    set({
+      currentUser: null,
+      isAuthenticated: false,
+      isGuestSession: false,
+      authHydrated: true,
+    });
     if (!isSupabaseEnabled()) persistAppState();
   },
 

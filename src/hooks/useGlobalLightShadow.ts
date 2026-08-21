@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, type LayoutChangeEvent, type ViewStyle, View } from 'react-native';
 import { colors } from '@/src/theme';
-import {
-  buildRealisticShadowCss,
-  computeLightShadowOffset,
-  useLightSourceStore,
-} from '@/src/stores/lightSourceStore';
+import { buildRealisticShadowCss } from '@/src/stores/lightSourceStore';
 
 const DEFAULT = { x: 0, y: 8, falloff: 0.2 };
 
@@ -16,14 +12,35 @@ function isValidLayout(width: number, height: number, x?: number, y?: number) {
   return true;
 }
 
+function readPointerDesktop(): boolean {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  return (
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches && window.innerWidth >= 768
+  );
+}
+
+/** 마우스 있는 데스크톱 웹만 — 모바일은 기존 정적 그림자 */
+export function usePointerDesktop(): boolean {
+  const [ok, setOk] = useState(readPointerDesktop);
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const mq = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const update = () => setOk(mq.matches && window.innerWidth >= 768);
+    update();
+    mq.addEventListener('change', update);
+    window.addEventListener('resize', update);
+    return () => {
+      mq.removeEventListener('change', update);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+  return ok;
+}
+
 export function useGlobalLightShadow(intensity = 1, elevated = false) {
   const ref = useRef<View>(null);
-  const [layout, setLayout] = useState({ x: 0, y: 0, width: 0, height: 0 });
-  const [shadow, setShadow] = useState(DEFAULT);
+  const pointerDesktop = usePointerDesktop();
   const measureGen = useRef(0);
-  const lightX = useLightSourceStore((s) => s.x);
-  const lightY = useLightSourceStore((s) => s.y);
-  const lightActive = useLightSourceStore((s) => s.active);
 
   const measureCard = useCallback(() => {
     const gen = ++measureGen.current;
@@ -33,10 +50,9 @@ export function useGlobalLightShadow(intensity = 1, elevated = false) {
       node.measureInWindow((x, y, width, height) => {
         if (gen !== measureGen.current) return;
         if (!isValidLayout(width, height, x, y)) return;
-        setLayout({ x, y, width, height });
       });
     } catch {
-      // measureInWindow can throw during unmount / detach
+      // ignore
     }
   }, []);
 
@@ -44,7 +60,6 @@ export function useGlobalLightShadow(intensity = 1, elevated = false) {
     (e: LayoutChangeEvent) => {
       const { width, height } = e.nativeEvent.layout;
       if (!isValidLayout(width, height)) return;
-      setLayout((prev) => ({ ...prev, width, height }));
       requestAnimationFrame(() => {
         requestAnimationFrame(measureCard);
       });
@@ -52,54 +67,14 @@ export function useGlobalLightShadow(intensity = 1, elevated = false) {
     [measureCard]
   );
 
-  useEffect(() => {
-    if (Platform.OS !== 'web') {
-      setShadow(DEFAULT);
-      return;
-    }
-    if (!isValidLayout(layout.width, layout.height, layout.x, layout.y)) {
-      setShadow(DEFAULT);
-      return;
-    }
+  const useMouseShadow = Platform.OS === 'web' && pointerDesktop;
 
-    const next = lightActive
-      ? computeLightShadowOffset(
-          lightX,
-          lightY,
-          layout.x,
-          layout.y,
-          layout.width,
-          layout.height,
-          intensity
-        )
-      : { ...DEFAULT, falloff: 0.25 };
-
-    if (!Number.isFinite(next.x) || !Number.isFinite(next.y) || !Number.isFinite(next.falloff)) {
-      setShadow(DEFAULT);
-      return;
-    }
-
-    setShadow(next);
-  }, [intensity, layout, lightActive, lightX, lightY]);
-
-  // 리사이즈·스크롤 후 위치가 어긋나지 않도록 주기적으로 재측정 (웹만)
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    const onResize = () => measureCard();
-    const onScroll = () => measureCard();
-    window.addEventListener('resize', onResize);
-    window.addEventListener('scroll', onScroll, true);
-    return () => {
-      window.removeEventListener('resize', onResize);
-      window.removeEventListener('scroll', onScroll, true);
-    };
-  }, [measureCard]);
-
-  const shadowStyle: ViewStyle =
-    Platform.OS === 'web'
+  // Desktop: luminosity-css / Ambient CSS handles shadow via CSS vars (no React mouse loop).
+  const shadowStyle: ViewStyle = useMouseShadow
+    ? ({ boxShadow: 'none' } as ViewStyle)
+    : Platform.OS === 'web'
       ? ({
-          boxShadow: buildRealisticShadowCss(shadow.x, shadow.y, shadow.falloff, elevated),
-          transition: 'box-shadow 0.12s ease-out',
+          boxShadow: buildRealisticShadowCss(0, 8, 0.25, elevated),
         } as ViewStyle)
       : {
           shadowColor: colors.chunkyShadow,
@@ -109,5 +84,12 @@ export function useGlobalLightShadow(intensity = 1, elevated = false) {
           elevation: 6,
         };
 
-  return { ref, onLayout, shadowStyle, layout, remeasure: measureCard };
+  return {
+    ref,
+    onLayout,
+    shadowStyle,
+    pointerDesktop: useMouseShadow,
+    remeasure: measureCard,
+    intensity,
+  };
 }

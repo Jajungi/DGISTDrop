@@ -92,9 +92,7 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     fontWeight: '700',
     fontSize: 10,
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadow: '0 1px 2px rgba(0,0,0,0.35)',
   },
   legendGrid: {
     flexDirection: 'row',

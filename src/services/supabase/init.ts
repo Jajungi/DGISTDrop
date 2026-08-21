@@ -1,5 +1,6 @@
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { loadSupabaseAuthBundle, supabaseRestoreSession } from '@/src/services/supabase/auth';
+import { loadSavedLogin } from '@/src/services/quickLogin';
 import { fetchCourts, subscribeCourts, subscribeProfiles } from '@/src/services/supabase/courts';
 import { fetchAllProfiles } from '@/src/services/supabase/profiles';
 import { getSupabase } from '@/src/lib/supabase';
@@ -109,13 +110,23 @@ export async function initSupabaseApp(): Promise<boolean> {
   }
 
   const sessionUserId = await supabaseRestoreSession();
+  const saved = await loadSavedLogin();
+  const waitForConfirm = Boolean(saved?.pendingConfirm && sessionUserId);
   const bundle = await loadSupabaseAuthBundle(sessionUserId);
 
-  const currentUser = sessionUserId
-    ? bundle.users.find((u) => u.id === sessionUserId) ?? null
-    : null;
+  const currentUser =
+    sessionUserId && !waitForConfirm
+      ? bundle.users.find((u) => u.id === sessionUserId) ?? null
+      : null;
 
-  useAuthStore.getState().hydrateAuth(bundle.users, [], sessionUserId, null, {}, null);
+  useAuthStore.getState().hydrateAuth(
+    bundle.users,
+    [],
+    currentUser?.id ?? null,
+    null,
+    {},
+    null
+  );
 
   useAuthStore.setState({
     currentUser,
@@ -167,7 +178,12 @@ export async function initSupabaseApp(): Promise<boolean> {
       await import('@/src/services/supabase/session').then(({ afterSupabaseAuth }) =>
         afterSupabaseAuth(null)
       );
-      useAuthStore.setState({ currentUser: null, isAuthenticated: false, isGuestSession: false });
+      useAuthStore.setState({
+        currentUser: null,
+        isAuthenticated: false,
+        isGuestSession: false,
+        authHydrated: true,
+      });
     }
   });
 

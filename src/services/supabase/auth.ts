@@ -197,9 +197,47 @@ export async function supabaseDeleteAccount(targetUserId?: string): Promise<Auth
   return { success: true, message: '계정이 삭제되었어요.' };
 }
 
-export async function supabaseLogout(): Promise<void> {
+export async function supabaseLogout(options?: { scope?: 'global' | 'local' }): Promise<void> {
   if (!isSupabaseEnabled()) return;
-  await getSupabase().auth.signOut();
+  await getSupabase().auth.signOut({ scope: options?.scope ?? 'global' });
+}
+
+/** 기억하기: 로그아웃 API를 호출하지 않고 UI만 내린 뒤, 살아 있는 세션으로 재입장 */
+export async function supabaseResumeRememberedSession(): Promise<AuthResult & { userId?: string }> {
+  if (!isSupabaseEnabled()) {
+    return { success: false, message: 'Supabase가 설정되지 않았어요.' };
+  }
+
+  let { data, error } = await getSupabase().auth.getSession();
+  if (error || !data.session) {
+    const refreshed = await getSupabase().auth.refreshSession();
+    data = refreshed.data;
+    error = refreshed.error;
+  }
+
+  if (error || !data.session?.user) {
+    return { success: false, message: '저장된 로그인이 만료됐어요. 다시 입력해 주세요.' };
+  }
+
+  const profile = await fetchProfileById(data.session.user.id);
+  if (!profile) {
+    return { success: false, message: '프로필을 불러오지 못했어요.' };
+  }
+
+  const blocked = memberStatusMessage(profile.memberStatus, profile.suspendedReason);
+  if (blocked) {
+    await getSupabase().auth.signOut();
+    return { success: false, message: blocked };
+  }
+
+  const guest = profile.membershipTier === 'guest';
+  return {
+    success: true,
+    message: guest
+      ? `${profile.name}님, 게스트로 입장했어요.`
+      : `${profile.name}님, 환영합니다!`,
+    userId: profile.id,
+  };
 }
 
 /** 익명 로그인 + 게스트 프로필 설정 (이름만 입력) */

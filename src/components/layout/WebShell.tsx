@@ -12,16 +12,15 @@ import { isStaffUser } from '@/src/utils/staffAccess';
 import { NAV_ITEMS, ADMIN_NAV_ITEM, WEB_BREAKPOINT } from '@/src/constants/nav';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
-const SIDEBAR_COLLAPSED = 56;
+const SIDEBAR_COLLAPSED = 64;
 const SIDEBAR_EXPANDED = 196;
-const MAIN_GAP_COLLAPSED = 8;
-const MAIN_GAP_EXPANDED = 20;
-const ANIM_MS = 150;
+const SHELL_GAP = 8;
+const ANIM_MS = 260;
 const HOVER_CLOSE_MS = 160;
 
 const sidebarTransition = Platform.select({
   web: {
-    transitionProperty: 'width',
+    transitionProperty: 'width, padding',
     transitionDuration: `${ANIM_MS}ms`,
     transitionTimingFunction: 'ease',
     willChange: 'width',
@@ -35,6 +34,24 @@ const mainTransition = Platform.select({
     transitionDuration: `${ANIM_MS}ms`,
     transitionTimingFunction: 'ease',
     willChange: 'margin-left',
+  } as object,
+  default: {},
+});
+
+const highlightTransition = Platform.select({
+  web: {
+    transitionProperty: 'transform',
+    transitionDuration: `${ANIM_MS}ms`,
+    transitionTimingFunction: 'ease',
+  } as object,
+  default: {},
+});
+
+const iconShiftTransition = Platform.select({
+  web: {
+    transitionProperty: 'transform',
+    transitionDuration: `${ANIM_MS}ms`,
+    transitionTimingFunction: 'ease',
   } as object,
   default: {},
 });
@@ -64,6 +81,7 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
   const hoverCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sidebarExpanded = sidebarPinned || hoverExpanded;
+  const sidebarWidth = sidebarExpanded ? SIDEBAR_EXPANDED : SIDEBAR_COLLAPSED;
   const navItems = (isStaff ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS).filter(
     (item) => !isGuest || item.href !== '/friends'
   );
@@ -112,7 +130,7 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
           style={[
             styles.sidebar,
             sidebarTransition,
-            { width: sidebarExpanded ? SIDEBAR_EXPANDED : SIDEBAR_COLLAPSED },
+            { width: sidebarWidth, paddingHorizontal: sidebarExpanded ? spacing.sm : 12 },
           ]}
           {...(Platform.OS === 'web'
             ? {
@@ -131,12 +149,31 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
               <Pressable
                 key={item.href}
                 onPress={() => handleNavPress(item.href)}
-                style={[styles.navRow, active && styles.navRowActive]}
+                style={styles.navRow}
                 accessibilityRole="button"
                 accessibilityLabel={
                   alerting ? `${item.label} (확인 필요 ${adminAlerts}건)` : item.label
                 }
               >
+                {active ? (
+                  <View
+                    pointerEvents="none"
+                    style={[
+                      styles.navHighlight,
+                      highlightTransition,
+                      {
+                        transform: [{ scaleX: sidebarExpanded ? 1 : 0 }],
+                      },
+                    ]}
+                  />
+                ) : null}
+                <View
+                  style={[
+                    styles.navShift,
+                    iconShiftTransition,
+                    { transform: [{ translateX: sidebarExpanded ? 4 : 0 }] },
+                  ]}
+                >
                 <View style={[styles.navIcon, active && styles.navIconActive]}>
                   <Ionicons
                     name={item.icon}
@@ -163,6 +200,7 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
                 >
                   {item.label}
                 </Text>
+                </View>
               </Pressable>
             );
           })}
@@ -172,7 +210,7 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
           style={[
             styles.main,
             mainTransition,
-            { marginLeft: sidebarExpanded ? MAIN_GAP_EXPANDED : MAIN_GAP_COLLAPSED },
+            { marginLeft: sidebarWidth + SHELL_GAP },
           ]}
         >
           {children}
@@ -192,29 +230,43 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     overflow: 'hidden',
-    paddingRight: spacing.md,
+    paddingRight: SHELL_GAP,
     paddingBottom: spacing.md,
+    position: 'relative',
   },
   sidebar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
     paddingVertical: 28,
     paddingHorizontal: spacing.sm,
     overflow: 'hidden',
-    flexShrink: 0,
     zIndex: 20,
   },
   navRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
     paddingVertical: 8,
-    paddingHorizontal: 4,
     borderRadius: borderRadius.md,
     marginBottom: 4,
     position: 'relative',
+    overflow: 'hidden',
     ...Platform.select({ web: { cursor: 'pointer' as const } }),
   },
-  navRowActive: {
+  navShift: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    zIndex: 1,
+  },
+  navHighlight: {
+    position: 'absolute',
+    inset: 0,
+    borderRadius: borderRadius.md,
     backgroundColor: colors.navHover,
+    zIndex: 0,
+    transformOrigin: '20px 50%',
   },
   navIcon: {
     width: 40,
@@ -223,6 +275,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    zIndex: 1,
   },
   navBadge: {
     position: 'absolute',
@@ -250,6 +303,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     flexShrink: 1,
+    zIndex: 1,
   },
   navLabelActive: {
     color: colors.text,

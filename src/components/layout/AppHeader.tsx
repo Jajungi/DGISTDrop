@@ -14,6 +14,7 @@ import { Avatar } from '@/src/components/ui/Avatar';
 import { NotificationPanel } from './NotificationPanel';
 import { DropBrand } from './DropBrand';
 import { HamburgerIcon } from './HamburgerIcon';
+import { ThemeToggleButton } from './ThemeToggleButton';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { colors, spacing, typography, shadows } from '@/src/theme';
 
@@ -123,7 +124,7 @@ export function AppHeader() {
             <HamburgerIcon active={sidebarExpanded} />
           </Pressable>
         )}
-        {!isMobile && <DropBrand compact={false} scale={scale} />}
+        {!isMobile && <DropBrand compact={false} scale={scale} style={{ marginRight: spacing.sm }} />}
         <View style={[styles.searchArea, isMobile && styles.searchAreaMobile]}>
           <View
             style={[
@@ -192,6 +193,7 @@ export function AppHeader() {
           )}
         </Pressable>
 
+        {!isMobile && <ThemeToggleButton />}
         <View
           style={styles.notifWrap}
           {...(Platform.OS === 'web'
@@ -248,7 +250,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceElevated,
     zIndex: 50,
   },
   headerMobile: {

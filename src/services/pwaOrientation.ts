@@ -10,6 +10,9 @@ type OrientationLockType =
   | 'landscape-primary'
   | 'landscape-secondary';
 
+/** lock()이 실제로 먹었는지. 실패하면 screen.orientation.type은 그냥 현재 화면일 뿐이라 힌트가 안 뜸. */
+let lockHeld = false;
+
 function getScreenOrientation(): ScreenOrientation | null {
   if (typeof screen === 'undefined') return null;
   return screen.orientation ?? null;
@@ -25,6 +28,10 @@ export function shouldUseManualRotateHint(): boolean {
   return typeof orient?.lock === 'function';
 }
 
+export function isOrientationLockHeld(): boolean {
+  return lockHeld;
+}
+
 export function getLockedUiOrientation(): UiOrientation {
   const type = getScreenOrientation()?.type ?? '';
   return type.startsWith('landscape') ? 'landscape' : 'portrait';
@@ -32,17 +39,23 @@ export function getLockedUiOrientation(): UiOrientation {
 
 /**
  * DeviceOrientation → 실제 기기 자세.
- * gamma > 0 : 왼쪽으로 기울임(landscape-left), gamma < 0 : 오른쪽(landscape-right)
+ * gamma > 0 : 오른쪽이 내려감(시계 방향) → landscape-right
+ * 히스테리시스로 경계에서 깜빡임 줄임.
  */
-export function physicalPoseFromDevice(beta: number | null, gamma: number | null): PhysicalPose | null {
-  if (beta == null || gamma == null || Number.isNaN(beta) || Number.isNaN(gamma)) return null;
-  if (Math.abs(gamma) >= 45) {
-    return gamma > 0 ? 'landscape-left' : 'landscape-right';
-  }
-  if (Math.abs(beta) <= 35 && Math.abs(gamma) >= 28) {
-    return gamma > 0 ? 'landscape-left' : 'landscape-right';
-  }
-  return 'portrait';
+export function physicalPoseFromDevice(
+  beta: number | null,
+  gamma: number | null,
+  prev: PhysicalPose | null
+): PhysicalPose | null {
+  if (beta == null || gamma == null || Number.isNaN(beta) || Number.isNaN(gamma)) return prev;
+  const absG = Math.abs(gamma);
+  const absB = Math.abs(beta);
+  const wasLandscape = prev === 'landscape-left' || prev === 'landscape-right';
+  const landscape = wasLandscape
+    ? absG >= 28 || (absB <= 42 && absG >= 20)
+    : absG >= 48 || (absB <= 32 && absG >= 32);
+  if (!landscape) return 'portrait';
+  return gamma >= 0 ? 'landscape-right' : 'landscape-left';
 }
 
 export function poseToUi(pose: PhysicalPose): UiOrientation {
@@ -56,27 +69,40 @@ export function iconRotationForPose(pose: PhysicalPose): number {
   return 0;
 }
 
-export async function lockUiOrientation(target: UiOrientation): Promise<boolean> {
+async function tryLock(types: OrientationLockType[]): Promise<boolean> {
   const orient = getScreenOrientation();
   if (!orient || typeof orient.lock !== 'function') return false;
-  const primary: OrientationLockType = target === 'landscape' ? 'landscape' : 'portrait';
-  const fallback: OrientationLockType =
-    target === 'landscape' ? 'landscape-primary' : 'portrait-primary';
-  try {
-    await orient.lock(primary);
-    return true;
-  } catch {
+  for (const type of types) {
     try {
-      await orient.lock(fallback);
+      await orient.lock(type);
+      lockHeld = true;
       return true;
     } catch {
-      return false;
+      // next candidate
     }
   }
+  return false;
 }
 
-/** 시작 시 현재(보통 세로)로 잠가서 자동 회전을 막음 */
-export async function lockInitialOrientation(): Promise<void> {
-  if (!shouldUseManualRotateHint()) return;
-  await lockUiOrientation(getLockedUiOrientation() === 'landscape' ? 'landscape' : 'portrait');
+export async function lockUiOrientation(
+  target: UiOrientation,
+  pose?: PhysicalPose | null
+): Promise<boolean> {
+  if (target === 'portrait') {
+    return tryLock(['portrait', 'portrait-primary']);
+  }
+  if (pose === 'landscape-left') {
+    return tryLock(['landscape-secondary', 'landscape', 'landscape-primary']);
+  }
+  if (pose === 'landscape-right') {
+    return tryLock(['landscape-primary', 'landscape', 'landscape-secondary']);
+  }
+  return tryLock(['landscape', 'landscape-primary', 'landscape-secondary']);
+}
+
+/** 시작 시 현재 방향으로 잠가 자동 회전을 막음. 제스처 밖에서는 브라우저가 막을 수 있음. */
+export async function lockInitialOrientation(): Promise<boolean> {
+  if (!shouldUseManualRotateHint()) return false;
+  const current = getLockedUiOrientation();
+  return lockUiOrientation(current);
 }

@@ -1,15 +1,25 @@
 import React, { useId, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Defs, Pattern, Rect, Line } from 'react-native-svg';
-import { COURT_COLUMNS, GYM_FLOOR, GYM_VENUE } from '@/src/constants/court';
+import { COURT_COLUMNS, GYM_VENUE } from '@/src/constants/court';
 import type { GymGridLayout } from '@/src/utils/gymGridGeometry';
 import { colors, typography } from '@/src/theme';
+import { useAppTheme } from '@/src/theme/ThemeProvider';
 
 interface GymFloorMapProps {
   layout: GymGridLayout;
 }
 
 export function GymFloorMap({ layout }: GymFloorMapProps) {
+  const { colors: theme } = useAppTheme();
+  const gym = {
+    base: theme.gymFloorBase,
+    aisle: theme.gymFloorAisle,
+    stage: theme.gymFloorStage,
+    entrance: theme.gymFloorEntrance,
+    divider: theme.gymFloorDivider,
+    stripe: theme.gymFloorStripe,
+  };
   const patternUid = useId().replace(/:/g, '');
   const patternId = `gym-floor-stripe-${patternUid}`;
 
@@ -46,21 +56,21 @@ export function GymFloorMap({ layout }: GymFloorMapProps) {
       <Svg width={safeW} height={safeH} style={StyleSheet.absoluteFill}>
         <Defs>
           <Pattern id={patternId} patternUnits="userSpaceOnUse" width={8} height={8}>
-            <Rect width={8} height={8} fill={GYM_FLOOR.base} />
-            <Line x1={0} y1={8} x2={8} y2={0} stroke={GYM_FLOOR.stripe} strokeWidth={0.6} />
+            <Rect width={8} height={8} fill={gym.base} />
+            <Line x1={0} y1={8} x2={8} y2={0} stroke={gym.stripe} strokeWidth={0.6} />
           </Pattern>
         </Defs>
 
         <Rect x={0} y={0} width={safeW} height={safeH} rx={4} ry={4} fill={`url(#${patternId})`} />
 
-        <Rect x={0} y={0} width={safeW} height={floorStageH} rx={4} fill={GYM_FLOOR.stage} opacity={0.55} />
+        <Rect x={0} y={0} width={safeW} height={floorStageH} rx={4} fill={gym.stage} opacity={0.55} />
 
         <Rect
           x={0}
           y={Math.max(0, safeH - 10)}
           width={safeW}
           height={10}
-          fill={GYM_FLOOR.entrance}
+          fill={gym.entrance}
           opacity={0.45}
         />
 
@@ -71,7 +81,7 @@ export function GymFloorMap({ layout }: GymFloorMapProps) {
             y1={floorStageH + 4}
             x2={x}
             y2={safeH - 8}
-            stroke={GYM_FLOOR.divider}
+            stroke={gym.divider}
             strokeWidth={1}
             strokeDasharray="4 5"
           />
@@ -84,7 +94,7 @@ export function GymFloorMap({ layout }: GymFloorMapProps) {
             y={y - aisleH / 2}
             width={courtsRowWidth}
             height={Math.max(0, aisleH)}
-            fill={GYM_FLOOR.aisle}
+            fill={gym.aisle}
             opacity={0.65}
             rx={3}
           />

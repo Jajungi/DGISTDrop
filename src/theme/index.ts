@@ -1,50 +1,95 @@
 import { Platform, StyleSheet } from 'react-native';
+import { lightPalette, type ThemePalette } from '@/src/theme/palettes';
 
-/** 크림/틸 팔레트 + Portfolio 대시보드 레이아웃 토큰 */
-export const colors = {
-  primary: '#3A756C',
-  primaryDark: '#2F5F57',
-  primaryLight: '#E8F4F1',
-  accent: '#4A8A80',
-  accentLight: '#F0FAF8',
-  background: '#F3F8F6',
-  surface: '#FFFFFF',
-  surfaceAlt: '#F6FAF8',
-  surfaceElevated: '#FFFFFF',
-  surfaceGlass: '#FFFFFF',
-  text: '#2A3D45',
-  textSecondary: '#5A6B72',
-  textMuted: '#9AA5AA',
-  textLight: '#FFFFFF',
-  textOnNeon: '#FFFFFF',
-  border: '#E6EBE9',
-  borderSubtle: '#EEF2F0',
-  borderStrong: '#D4DCD9',
-  divider: '#E9EBF0',
-  success: '#3A9E7A',
-  warning: '#E8A04A',
-  error: '#E05A68',
-  info: '#3A756C',
-  navHover: '#E8F4F1',
-  navActive: '#2F5F57',
-  searchShadow: 'rgba(136, 148, 171, 0.2)',
-  wave1: '#D4E8E2',
-  wave2: '#E4F0EC',
-  wave3: '#F0F7F5',
-  courtFloor: '#3D7560',
-  courtFloorLight: '#4A9070',
-  courtLine: 'rgba(255,255,255,0.9)',
-  courtEmpty: '#C8F7DC',
-  courtReserved: '#DCE8C0',
-  courtPlaying: '#D5DEFF',
-  courtFinished: '#E8EDF0',
-  centerCourt: '#DCE8C0',
-  chunkyShadow: 'rgba(42, 61, 69, 0.1)',
-  overlay: 'rgba(42, 61, 69, 0.35)',
-  tabBar: '#FFFFFF',
-  gymFloor: 'transparent',
-  neon: '#3A756C',
+export type { ThemePalette };
+export { lightPalette, darkPalette, PALETTE_KEYS } from '@/src/theme/palettes';
+
+function token<K extends keyof ThemePalette>(key: K): ThemePalette[K] {
+  if (Platform.OS === 'web') {
+    return `var(--drop-${key})` as ThemePalette[K];
+  }
+  return lightPalette[key];
+}
+
+/** 크림/틸 팔레트 — 웹은 시스템 라이트/다크 CSS 변수, 네이티브는 라이트 기본값 */
+export const colors: ThemePalette = {
+  primary: token('primary'),
+  primaryDark: token('primaryDark'),
+  primaryLight: token('primaryLight'),
+  accent: token('accent'),
+  accentLight: token('accentLight'),
+  background: token('background'),
+  surface: token('surface'),
+  surfaceAlt: token('surfaceAlt'),
+  surfaceElevated: token('surfaceElevated'),
+  surfaceGlass: token('surfaceGlass'),
+  text: token('text'),
+  textSecondary: token('textSecondary'),
+  textMuted: token('textMuted'),
+  textLight: token('textLight'),
+  textOnNeon: token('textOnNeon'),
+  border: token('border'),
+  borderSubtle: token('borderSubtle'),
+  borderStrong: token('borderStrong'),
+  divider: token('divider'),
+  success: token('success'),
+  warning: token('warning'),
+  error: token('error'),
+  info: token('info'),
+  navHover: token('navHover'),
+  navActive: token('navActive'),
+  searchShadow: token('searchShadow'),
+  wave1: token('wave1'),
+  wave2: token('wave2'),
+  wave3: token('wave3'),
+  courtFloor: token('courtFloor'),
+  courtFloorLight: token('courtFloorLight'),
+  courtLine: token('courtLine'),
+  courtEmpty: token('courtEmpty'),
+  courtReserved: token('courtReserved'),
+  courtPlaying: token('courtPlaying'),
+  courtFinished: token('courtFinished'),
+  centerCourt: token('centerCourt'),
+  chunkyShadow: token('chunkyShadow'),
+  overlay: token('overlay'),
+  tabBar: token('tabBar'),
+  gymFloor: token('gymFloor'),
+  neon: token('neon'),
+  gymFloorBase: token('gymFloorBase'),
+  gymFloorAisle: token('gymFloorAisle'),
+  gymFloorStage: token('gymFloorStage'),
+  gymFloorEntrance: token('gymFloorEntrance'),
+  gymFloorDivider: token('gymFloorDivider'),
+  gymFloorStripe: token('gymFloorStripe'),
+  courtEmptyFloor: token('courtEmptyFloor'),
+  courtSelectedFloor: token('courtSelectedFloor'),
+  courtReservedFloor: token('courtReservedFloor'),
+  courtPlayingFloor: token('courtPlayingFloor'),
+  courtFinishedFloor: token('courtFinishedFloor'),
+  courtEmptyFloorEdge: token('courtEmptyFloorEdge'),
+  courtReservedFloorEdge: token('courtReservedFloorEdge'),
+  courtPlayingFloorEdge: token('courtPlayingFloorEdge'),
+  courtFinishedFloorEdge: token('courtFinishedFloorEdge'),
+  spotlightRgb: token('spotlightRgb'),
 };
+
+/** CSS 변수에 hex 알파를 붙이지 않고 (`var(--drop-primary)33` 금지) 투명도를 적용 */
+export function withAlpha(color: string, alpha: number): string {
+  const a = Math.max(0, Math.min(1, alpha));
+  if (Platform.OS === 'web' || color.startsWith('var(')) {
+    return `color-mix(in srgb, ${color} ${Math.round(a * 100)}%, transparent)`;
+  }
+  if (color.startsWith('#') && (color.length === 7 || color.length === 4)) {
+    const hex = color.length === 4
+      ? `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`
+      : color;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+  return color;
+}
 
 export const fonts = {
   mono: 'SpaceMono_700Bold',

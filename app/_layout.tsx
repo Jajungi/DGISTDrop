@@ -27,6 +27,7 @@ import {
 } from '@/src/components/site/SiteOverlayHost';
 import { AndroidManualRotateHint } from '@/src/components/layout/AndroidManualRotateHint';
 import { colors, fonts, typography } from '@/src/theme';
+import { ThemeProvider, useAppTheme } from '@/src/theme/ThemeProvider';
 import { hydrateAppStateFromDisk } from '@/src/services/hydrateApp';
 import { initCrossTabSync } from '@/src/services/crossTabSync';
 import { initServerSync } from '@/src/services/serverSync';
@@ -94,9 +95,18 @@ export default function RootLayout() {
   if (!loaded && !error) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <ThemeProvider>
+      <RootLayoutInner />
+    </ThemeProvider>
+  );
+}
+
+function RootLayoutInner() {
+  const { scheme } = useAppTheme();
+  return (
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaProvider>
-        <StatusBar style="dark" />
+        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
         <Stack
           screenOptions={{
             headerStyle: { backgroundColor: colors.surface },

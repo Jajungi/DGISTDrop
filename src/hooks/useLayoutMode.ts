@@ -37,7 +37,7 @@ export function useLayoutMode() {
   const isNarrow = responsive.isNarrow;
   const scaledBorderRadius = getScaledBorderRadius(width, isDesktop);
 
-  const sidebarWidth = isDesktop ? 56 : 0;
+  const sidebarWidth = isDesktop ? 64 : 0;
   const outerPaddingH = isDesktop ? spacing.md : scaledSpacing.xs;
   const panelPaddingH = isDesktop ? spacing.lg : scaledSpacing.sm;
   const panelPaddingHTotal = outerPaddingH * 2 + panelPaddingH * 2;

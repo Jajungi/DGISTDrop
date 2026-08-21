@@ -11,7 +11,8 @@ import { useFriendStore } from '@/src/stores/friendStore';
 import { useFriendPrefsStore } from '@/src/stores/friendPrefsStore';
 import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
-import { colors, spacing, typography } from '@/src/theme';
+import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { useAppTheme, type ThemePreference } from '@/src/theme/ThemeProvider';
 import type { UserNotificationPrefs } from '@/src/services/supabase/notificationPrefs';
 
 export default function SettingsScreen() {
@@ -27,6 +28,7 @@ export default function SettingsScreen() {
   const hydratePrefs = useNotificationPrefsStore((s) => s.hydrate);
   const setChannel = useNotificationPrefsStore((s) => s.setChannel);
   const showToast = useNotificationStore((s) => s.showToast);
+  const { preference, setPreference } = useAppTheme();
 
   useEffect(() => {
     if (!currentUser) return;
@@ -72,6 +74,36 @@ export default function SettingsScreen() {
             userId={currentUser.id}
             onToast={(type, message) => showToast({ type, title: '', message })}
           />
+
+          <Card style={styles.card}>
+            <Text style={styles.sectionTitle}>화면</Text>
+            <Text style={styles.hint}>라이트, 다크, 또는 기기 설정을 따릅니다.</Text>
+            <View style={styles.themeChoices}>
+              {(
+                [
+                  { id: 'light', label: '라이트' },
+                  { id: 'dark', label: '다크' },
+                  { id: 'system', label: '시스템' },
+                ] as { id: ThemePreference; label: string }[]
+              ).map((opt) => {
+                const on = preference === opt.id;
+                return (
+                  <Pressable
+                    key={opt.id}
+                    onPress={() => setPreference(opt.id)}
+                    style={[styles.themeChoice, on && styles.themeChoiceOn]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={`${opt.label} 모드`}
+                  >
+                    <Text style={[styles.themeChoiceText, on && styles.themeChoiceTextOn]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Card>
 
           <Card style={styles.card}>
             <Text style={styles.sectionTitle}>받을 알림</Text>
@@ -187,6 +219,33 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { ...typography.caption, color: colors.textMuted, lineHeight: 18 },
   card: { gap: spacing.sm },
+  themeChoices: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  themeChoice: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    ...Platform.select({ web: { cursor: 'pointer' as const } }),
+  },
+  themeChoiceOn: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  themeChoiceText: {
+    ...typography.bodyBold,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  themeChoiceTextOn: {
+    color: colors.primary,
+  },
   sectionTitle: { ...typography.bodyBold, color: colors.text },
   hint: { ...typography.caption, color: colors.textMuted, lineHeight: 18 },
   prefRow: {

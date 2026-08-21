@@ -6,7 +6,7 @@
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "badmin",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "description": "DGIST 배드민턴 동아리 Drop — 코트 예약·출석·매칭·포인트·레슨",
     "primaryColor": "#1B4332",
     "ios": {

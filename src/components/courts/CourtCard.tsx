@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import type { Court } from '@/src/types';
 import { CourtIllustration } from './CourtIllustration';
 import { CourtPlayerProfiles } from './CourtPlayerProfiles';
 import { LightShadowView } from '@/src/components/ui/LightShadowView';
+import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { GameModeBadge } from './GameModeBadge';
 import { CourtGameProgress } from './CourtGameProgress';
 import { getCourtHeight, getCourtColumnLabel } from '@/src/constants/court';
@@ -36,6 +37,7 @@ export function CourtCard({
   hPad = 3,
   chromeTop = 14,
 }: CourtCardProps) {
+  const { isDesktop } = useLayoutMode();
   const safeWidth = Number.isFinite(courtWidth) && courtWidth > 0 ? courtWidth : 96;
   const courtHeight = getCourtHeight(safeWidth);
   const slotWidth = safeWidth + hPad * 2;
@@ -53,12 +55,15 @@ export function CourtCard({
   const elapsed = formatElapsed(court.startedAt);
   const cleanupLeft = formatCleanupRemaining(court.finishedAt);
   const colLabel = getCourtColumnLabel(court.id);
+  const [hovered, setHovered] = useState(false);
 
   if (courtHeight <= 0) return null;
 
   return (
     <Pressable
       onPress={() => onPress(court)}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
       accessibilityRole="button"
       accessibilityLabel={`${court.id}번 코트`}
       style={({ pressed }) => [
@@ -92,9 +97,24 @@ export function CourtCard({
         ]}
         intensity={isSelected ? 1.1 : 1}
         elevated={isPlaying}
+        enableGlow
+        borderRadius={radius}
       >
-        <View style={[styles.courtClip, { width: safeWidth, height: courtHeight, borderRadius: radius }]}>
-          <CourtIllustration court={court} width={safeWidth} borderRadius={radius} />
+        <View
+          style={[
+            styles.courtClip,
+            { width: safeWidth, height: courtHeight, borderRadius: radius },
+            !isDesktop && styles.courtClipMobileAmbient,
+          ]}
+        >
+          <CourtIllustration
+            court={court}
+            width={safeWidth}
+            borderRadius={radius}
+            bakedLighting={!isDesktop}
+            isSelected={isSelected}
+            isHovered={!isDesktop && hovered}
+          />
 
           <CourtGameProgress court={court} courtWidth={safeWidth} />
 
@@ -229,6 +249,13 @@ const styles = StyleSheet.create({
   courtClip: {
     overflow: 'hidden',
     position: 'relative',
+    // 모바일만 기존 인셋 암부. 데스크톱은 마우스 표면 빛으로 대체.
+    ...Platform.select({
+      web: {},
+      default: {},
+    }),
+  },
+  courtClipMobileAmbient: {
     ...Platform.select({
       web: {
         boxShadow: 'inset 0 0 18px rgba(0,0,0,0.06), inset 0 0 6px rgba(0,0,0,0.04)',

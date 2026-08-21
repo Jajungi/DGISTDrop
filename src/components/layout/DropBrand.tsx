@@ -1,28 +1,31 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { SCHOOL_NAME, CLUB_NAME } from '@/src/constants';
-import { typography, colors, spacing } from '@/src/theme';
+import { typography, colors } from '@/src/theme';
 
 const dropLogo = require('../../../assets/images/drop-logo.png');
 
 interface DropBrandProps {
   compact?: boolean;
   scale?: number;
+  style?: StyleProp<ViewStyle>;
 }
 
-export function DropBrand({ compact, scale = 1 }: DropBrandProps) {
-  const logoSize = Math.round((compact ? 30 : 36) * scale);
-  const clubSize = Math.round((compact ? 14 : 16) * scale);
+export function DropBrand({ compact, scale = 1, style }: DropBrandProps) {
+  const logoSize = Math.round((compact ? 22 : 26) * scale);
+  const clubSize = Math.round((compact ? 13 : 15) * scale);
   const clubLine = Math.round((compact ? 16 : 18) * scale);
 
   return (
-    <View style={[styles.wrap, compact && styles.wrapCompact]}>
-      <Image
-        source={dropLogo}
-        style={[styles.logo, { width: logoSize, height: logoSize }]}
-        resizeMode="contain"
-        accessibilityLabel="Drop 로고"
-      />
+    <View style={[styles.wrap, compact && styles.wrapCompact, style]}>
+      <View style={[styles.logoBox, { width: logoSize, height: logoSize }]}>
+        <Image
+          source={dropLogo}
+          style={styles.logo}
+          resizeMode="contain"
+          accessibilityLabel="Drop 로고"
+        />
+      </View>
       <View style={styles.textCol}>
         <Text
           style={[styles.club, compact && styles.clubCompact, { fontSize: clubSize, lineHeight: clubLine }]}
@@ -40,39 +43,41 @@ const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginRight: spacing.sm,
+    justifyContent: 'center',
+    gap: 7,
   },
   wrapCompact: {
     marginRight: 0,
     gap: 6,
     flexShrink: 1,
   },
-  logo: {
-    width: 36,
-    height: 36,
+  logoBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  logoCompact: {
-    width: 30,
-    height: 30,
+  logo: {
+    width: '100%',
+    height: '100%',
   },
   textCol: {
+    justifyContent: 'center',
     gap: 0,
   },
   club: {
     ...typography.bodyBold,
     color: colors.text,
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 18,
   },
   clubCompact: {
-    fontSize: 14,
+    fontSize: 13,
     lineHeight: 16,
   },
   school: {
     ...typography.small,
     color: colors.textMuted,
-    fontSize: 10,
-    lineHeight: 12,
+    fontSize: 9,
+    lineHeight: 11,
   },
 });

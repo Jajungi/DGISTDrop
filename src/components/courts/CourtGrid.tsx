@@ -61,22 +61,22 @@ export function CourtGrid({
   const blockWidth = Math.max(floorWidth, entranceGutter + rowEntranceGap + courtsRowWidth);
 
   return (
-    <LightShadowCapture>
-      <SoftEdgeFade size={28} disableSideFade={needsHorizontalScroll}>
-        <View
-          style={[
-            styles.container,
-            {
-              width: needsHorizontalScroll ? blockWidth : gridRenderWidth,
-              minHeight: gymLayout.floorHeight + 36,
-            },
-            needsHorizontalScroll && styles.containerScroll,
-          ]}
-        >
+    <SoftEdgeFade size={28} disableSideFade={needsHorizontalScroll}>
+      <View
+        style={[
+          styles.container,
+          {
+            width: needsHorizontalScroll ? blockWidth : gridRenderWidth,
+            minHeight: gymLayout.floorHeight + 36,
+          },
+          needsHorizontalScroll && styles.containerScroll,
+        ]}
+      >
+        <LightShadowCapture>
           <View style={[styles.alignedBlock, { width: blockWidth, alignSelf: 'center' }]}>
             <GymFloorMap layout={gymLayout} />
 
-            <View style={{ paddingTop: floorContentTop, width: blockWidth }}>
+            <View style={{ paddingTop: floorContentTop, width: blockWidth, zIndex: 2 }}>
               {GYM_COURT_ROWS.map((row, rowIdx) => (
                 <View
                   key={rowIdx}
@@ -139,9 +139,9 @@ export function CourtGrid({
               )}
             </View>
           </View>
-        </View>
-      </SoftEdgeFade>
-    </LightShadowCapture>
+        </LightShadowCapture>
+      </View>
+    </SoftEdgeFade>
   );
 }
 
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignSelf: 'center',
     maxWidth: '100%',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   containerScroll: {
     alignSelf: 'flex-start',
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   rowWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 1,
+    zIndex: 2,
   },
   entranceCol: {
     alignItems: 'center',
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   coachingRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    zIndex: 1,
+    zIndex: 2,
   },
   coachingLinkArea: {
     alignItems: 'flex-start',

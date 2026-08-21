@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Platform, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '@/src/theme';
+import { useAppTheme } from '@/src/theme/ThemeProvider';
 
 interface SoftEdgeFadeProps {
   children: React.ReactNode;
@@ -26,14 +26,16 @@ function toRgba(hex: string, alpha: number): string {
 /** 콘텐츠 외곽을 배경색으로 은은히 페이드 — 날카로운 잘림·모서리 완화 */
 export function SoftEdgeFade({
   children,
-  fadeColor = colors.surface,
+  fadeColor,
   size = 26,
   disableSideFade = false,
   style,
 }: SoftEdgeFadeProps) {
-  const solid = toRgba(fadeColor, 0.92);
-  const soft = toRgba(fadeColor, 0.45);
-  const clear = toRgba(fadeColor, 0);
+  const { colors: theme } = useAppTheme();
+  const resolved = fadeColor && fadeColor.startsWith('#') ? fadeColor : theme.surface;
+  const solid = toRgba(resolved, 0.92);
+  const soft = toRgba(resolved, 0.45);
+  const clear = toRgba(resolved, 0);
 
   const mask = disableSideFade
     ? 'linear-gradient(to bottom, transparent 0%, #000 6%, #000 94%, transparent 100%)'

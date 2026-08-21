@@ -7,9 +7,17 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-/** Chrome “앱 설치” 조건: fetch 핸들러 존재. 네트워크 우선, 실패 시 그대로 둠 */
+/**
+ * Chrome “앱 설치” 조건: fetch 핸들러가 있어야 함.
+ * 문서(navigate) 요청은 가로채지 않음 — Expo 개발 서버가 SW fetch에 403을 줍니다.
+ */
 self.addEventListener('fetch', (event) => {
-  event.respondWith(fetch(event.request));
+  if (event.request.mode === 'navigate') return;
+  event.respondWith(
+    fetch(event.request).catch(
+      () => new Response('', { status: 504, statusText: 'offline' })
+    )
+  );
 });
 
 self.addEventListener('push', (event) => {

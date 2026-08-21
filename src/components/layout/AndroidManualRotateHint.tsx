@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   getLockedUiOrientation,
   iconRotationForPose,
+  isOrientationLockHeld,
   lockInitialOrientation,
   lockUiOrientation,
   physicalPoseFromDevice,
@@ -14,59 +15,81 @@ import {
 } from '@/src/services/pwaOrientation';
 
 /**
- * 안드로이드 내비 바 수동 회전 버튼을 흉내:
- * 기기를 돌리면 왼쪽 아래에 작게 뜨고, 아이콘이 회전 방향으로 기울어짐.
- * 탭하면 그 방향으로 화면 잠금.
+ * 안드로이드 내비 바 수동 회전을 흉내:
+ * 웹앱이 방향을 잠근 뒤, 기기를 돌리면 왼쪽 아래에 아이콘이 뜨고
+ * 탭하면 그 방향으로 다시 잠근다.
  */
 export function AndroidManualRotateHint() {
   const insets = useSafeAreaInsets();
   const [active, setActive] = useState(false);
+  const [held, setHeld] = useState(false);
   const [locked, setLocked] = useState<UiOrientation>('portrait');
   const [pose, setPose] = useState<PhysicalPose | null>(null);
+  const poseRef = useRef<PhysicalPose | null>(null);
+  const poseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const syncLockState = useCallback(() => {
+    setHeld(isOrientationLockHeld());
+    setLocked(getLockedUiOrientation());
+  }, []);
 
   useEffect(() => {
-    if (Platform.OS !== 'web') return;
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
     if (!shouldUseManualRotateHint()) return;
 
     setActive(true);
-    setLocked(getLockedUiOrientation());
-    void lockInitialOrientation().then(() => setLocked(getLockedUiOrientation()));
+    void lockInitialOrientation().then(syncLockState);
+
+    const armOnGesture = () => {
+      if (isOrientationLockHeld()) return;
+      void lockInitialOrientation().then(syncLockState);
+    };
+    window.addEventListener('pointerdown', armOnGesture, { passive: true });
 
     const orient = typeof screen !== 'undefined' ? screen.orientation : null;
-    const onOrientChange = () => setLocked(getLockedUiOrientation());
+    const onOrientChange = () => syncLockState();
     orient?.addEventListener?.('change', onOrientChange);
 
     const onDeviceOrient = (e: DeviceOrientationEvent) => {
-      const next = physicalPoseFromDevice(e.beta, e.gamma);
-      if (next) setPose(next);
+      const next = physicalPoseFromDevice(e.beta, e.gamma, poseRef.current);
+      if (!next || next === poseRef.current) return;
+      if (poseTimer.current) clearTimeout(poseTimer.current);
+      poseTimer.current = setTimeout(() => {
+        poseRef.current = next;
+        setPose(next);
+      }, 80);
     };
     window.addEventListener('deviceorientation', onDeviceOrient);
 
     return () => {
+      window.removeEventListener('pointerdown', armOnGesture);
       orient?.removeEventListener?.('change', onOrientChange);
       window.removeEventListener('deviceorientation', onDeviceOrient);
+      if (poseTimer.current) clearTimeout(poseTimer.current);
     };
-  }, []);
+  }, [syncLockState]);
 
   const show = useMemo(() => {
-    if (!active || pose == null) return false;
+    if (!active || !held || pose == null) return false;
     return poseToUi(pose) !== locked;
-  }, [active, pose, locked]);
+  }, [active, held, pose, locked]);
 
   const iconDeg = pose ? iconRotationForPose(pose) : 0;
 
   const onPress = useCallback(async () => {
     if (!pose) return;
     const target = poseToUi(pose);
-    const ok = await lockUiOrientation(target);
-    if (ok) setLocked(getLockedUiOrientation());
+    const ok = await lockUiOrientation(target, pose);
+    if (ok) {
+      setHeld(true);
+      setLocked(target);
+    }
   }, [pose]);
 
   if (!show) return null;
 
   return (
     <View
-      pointerEvents="box-none"
       style={[
         styles.host,
         {
@@ -103,16 +126,18 @@ const styles = StyleSheet.create({
   host: {
     position: 'absolute',
     zIndex: 10060,
+    pointerEvents: 'box-none',
   },
   btn: {
     width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    pointerEvents: 'auto',
     ...(Platform.OS === 'web'
       ? ({
           cursor: 'pointer',
-          filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.35))',
+          filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35))',
         } as object)
       : null),
   },
