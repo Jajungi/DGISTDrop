@@ -9,6 +9,7 @@ import {
   lockUiOrientation,
   physicalPoseFromDevice,
   poseToUi,
+  requestDeviceOrientationPermission,
   shouldUseManualRotateHint,
   type PhysicalPose,
   type UiOrientation,
@@ -41,10 +42,10 @@ export function AndroidManualRotateHint() {
     void lockInitialOrientation().then(syncLockState);
 
     const armOnGesture = () => {
-      if (isOrientationLockHeld()) return;
+      void requestDeviceOrientationPermission();
       void lockInitialOrientation().then(syncLockState);
     };
-    window.addEventListener('pointerdown', armOnGesture, { passive: true });
+    window.addEventListener('pointerdown', armOnGesture, { once: true, passive: true });
 
     const orient = typeof screen !== 'undefined' ? screen.orientation : null;
     const onOrientChange = () => syncLockState();

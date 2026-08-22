@@ -15,8 +15,17 @@ export function detectClientDevice(): ClientDevice {
   if (typeof navigator === 'undefined') return 'desktop';
   const ua = navigator.userAgent;
   if (/iPad|iPhone|iPod/.test(ua)) return 'ios';
+  if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) return 'ios';
   if (/Android/i.test(ua)) return 'android';
   return 'desktop';
+}
+
+/** 폰·태블릿 웹. 가로는 768px을 넘어도 데스크톱 셸을 쓰지 않는다. */
+export function isPhoneLikeWeb(): boolean {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  const device = detectClientDevice();
+  if (device === 'ios' || device === 'android') return true;
+  return window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 }
 
 export interface PushGuideCopy {

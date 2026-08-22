@@ -1,7 +1,6 @@
-import { detectClientDevice, isStandalonePwa } from '@/src/utils/clientDevice';
-
 export type UiOrientation = 'portrait' | 'landscape';
 export type PhysicalPose = 'portrait' | 'landscape-left' | 'landscape-right';
+export type CssOrient = 'portrait' | 'landscape-left' | 'landscape-right';
 
 type OrientationLockType =
   | 'portrait'
@@ -10,37 +9,52 @@ type OrientationLockType =
   | 'landscape-primary'
   | 'landscape-secondary';
 
-/** lock()이 실제로 먹었는지. 실패하면 screen.orientation.type은 그냥 현재 화면일 뿐이라 힌트가 안 뜸. */
-let lockHeld = false;
+/** 네이티브 lock() 성공 여부. 웹앱은 거의 실패하므로 CSS 폴백을 씀. */
+let nativeLockHeld = false;
+let cssOrient: CssOrient = 'portrait';
+const listeners = new Set<() => void>();
+
+function emit() {
+  listeners.forEach((fn) => fn());
+}
+
+export function subscribeAppOrientation(fn: () => void) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
+export function getCssOrient(): CssOrient {
+  return cssOrient;
+}
 
 function getScreenOrientation(): ScreenOrientation | null {
   if (typeof screen === 'undefined') return null;
   return screen.orientation ?? null;
 }
 
-/** 설치된 모바일 웹앱에서만 (크롬 탭의 시스템 버튼과 겹치지 않게) */
+/** 설치된 모바일 웹앱에서 OS 회전을 가로채지 않음. 크롬 탭처럼 시스템 수동 회전을 씀. */
 export function shouldUseManualRotateHint(): boolean {
-  if (typeof window === 'undefined') return false;
-  if (!isStandalonePwa()) return false;
-  const device = detectClientDevice();
-  if (device !== 'android' && device !== 'ios') return false;
-  const orient = getScreenOrientation();
-  return typeof orient?.lock === 'function';
+  return false;
 }
 
 export function isOrientationLockHeld(): boolean {
-  return lockHeld;
+  return shouldUseManualRotateHint();
 }
 
 export function getLockedUiOrientation(): UiOrientation {
-  const type = getScreenOrientation()?.type ?? '';
-  return type.startsWith('landscape') ? 'landscape' : 'portrait';
+  if (cssOrient !== 'portrait') return 'landscape';
+  if (nativeLockHeld) {
+    const type = getScreenOrientation()?.type ?? '';
+    return type.startsWith('landscape') ? 'landscape' : 'portrait';
+  }
+  return 'portrait';
 }
 
 /**
  * DeviceOrientation → 실제 기기 자세.
  * gamma > 0 : 오른쪽이 내려감(시계 방향) → landscape-right
- * 히스테리시스로 경계에서 깜빡임 줄임.
  */
 export function physicalPoseFromDevice(
   beta: number | null,
@@ -62,11 +76,21 @@ export function poseToUi(pose: PhysicalPose): UiOrientation {
   return pose === 'portrait' ? 'portrait' : 'landscape';
 }
 
-/** 아이콘이 돌아갈 각도 (안드로이드 수동 회전 힌트처럼) */
 export function iconRotationForPose(pose: PhysicalPose): number {
   if (pose === 'landscape-left') return -90;
   if (pose === 'landscape-right') return 90;
   return 0;
+}
+
+function setCssOrient(next: CssOrient) {
+  cssOrient = next;
+  if (typeof document === 'undefined') return;
+  if (next === 'portrait') {
+    document.documentElement.removeAttribute('data-app-orient');
+  } else {
+    document.documentElement.setAttribute('data-app-orient', next);
+  }
+  emit();
 }
 
 async function tryLock(types: OrientationLockType[]): Promise<boolean> {
@@ -75,34 +99,61 @@ async function tryLock(types: OrientationLockType[]): Promise<boolean> {
   for (const type of types) {
     try {
       await orient.lock(type);
-      lockHeld = true;
+      nativeLockHeld = true;
       return true;
     } catch {
-      // next candidate
+      // next
     }
   }
   return false;
+}
+
+function applyCssLock(target: UiOrientation, pose?: PhysicalPose | null) {
+  nativeLockHeld = false;
+  if (target === 'portrait') {
+    setCssOrient('portrait');
+    return;
+  }
+  setCssOrient(pose === 'landscape-left' ? 'landscape-left' : 'landscape-right');
 }
 
 export async function lockUiOrientation(
   target: UiOrientation,
   pose?: PhysicalPose | null
 ): Promise<boolean> {
+  let types: OrientationLockType[];
   if (target === 'portrait') {
-    return tryLock(['portrait', 'portrait-primary']);
+    types = ['portrait', 'portrait-primary'];
+  } else if (pose === 'landscape-left') {
+    types = ['landscape-secondary', 'landscape', 'landscape-primary'];
+  } else if (pose === 'landscape-right') {
+    types = ['landscape-primary', 'landscape', 'landscape-secondary'];
+  } else {
+    types = ['landscape', 'landscape-primary', 'landscape-secondary'];
   }
-  if (pose === 'landscape-left') {
-    return tryLock(['landscape-secondary', 'landscape', 'landscape-primary']);
+
+  const native = await tryLock(types);
+  if (native) {
+    setCssOrient('portrait');
+    return true;
   }
-  if (pose === 'landscape-right') {
-    return tryLock(['landscape-primary', 'landscape', 'landscape-secondary']);
-  }
-  return tryLock(['landscape', 'landscape-primary', 'landscape-secondary']);
+  applyCssLock(target, pose);
+  return true;
 }
 
-/** 시작 시 현재 방향으로 잠가 자동 회전을 막음. 제스처 밖에서는 브라우저가 막을 수 있음. */
 export async function lockInitialOrientation(): Promise<boolean> {
-  if (!shouldUseManualRotateHint()) return false;
-  const current = getLockedUiOrientation();
-  return lockUiOrientation(current);
+  return false;
+}
+
+export async function requestDeviceOrientationPermission(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const DOE = DeviceOrientationEvent as unknown as {
+    requestPermission?: () => Promise<string>;
+  };
+  if (typeof DOE.requestPermission !== 'function') return;
+  try {
+    await DOE.requestPermission();
+  } catch {
+    // 거부해도 CSS 고정은 동작
+  }
 }

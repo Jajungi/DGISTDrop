@@ -26,7 +26,7 @@ export default function CourtsScreen() {
   const { remaining } = useActivityStatus();
   const { isAtGym } = useGeoLocation();
   useCourtRealtime();
-  const { expandAreaHeight, needsVerticalScroll, isDesktop, isLandscape } = useLayoutMode();
+  const { expandAreaHeight, needsVerticalScroll, isDesktop } = useLayoutMode();
 
   const courts = useCourtStore((s) => s.courts);
   const selectedCourtId = useCourtStore((s) => s.selectedCourtId);
@@ -241,9 +241,7 @@ export default function CourtsScreen() {
           ]}
           // 모바일 확대 중에는 바깥 스크롤 잠금 — 상세(예약) 영역만 스크롤
           scrollEnabled={
-            isLandscape && selectedCourtId === null
-              ? false
-              : selectedCourtId === null || isDesktop
+            selectedCourtId === null || isDesktop
           }
           nestedScrollEnabled={isDesktop}
           showsVerticalScrollIndicator={
@@ -304,7 +302,7 @@ export default function CourtsScreen() {
             />
           </View>
 
-          {selectedCourtId === null && needsVerticalScroll && !isLandscape && (
+          {selectedCourtId === null && needsVerticalScroll && (
             <Text style={styles.scrollHint}>아래로 스크롤해 전체 코트를 볼 수 있어요</Text>
           )}
         </ScrollView>

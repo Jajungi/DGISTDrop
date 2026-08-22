@@ -127,6 +127,45 @@ html, body {
   }
 }
 
+/* 웹앱은 orientation.lock이 자주 실패함. 세로 잠금 후 가로는 CSS로 강제 */
+html[data-app-orient="landscape-right"] body,
+html[data-app-orient="landscape-left"] body {
+  position: fixed;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+html[data-app-orient="landscape-right"] body {
+  top: 0;
+  left: 100vw;
+  width: 100dvh;
+  height: 100dvw;
+  transform: rotate(90deg);
+  transform-origin: top left;
+}
+html[data-app-orient="landscape-left"] body {
+  top: 100dvh;
+  left: 0;
+  width: 100dvh;
+  height: 100dvw;
+  transform: rotate(-90deg);
+  transform-origin: top left;
+}
+html[data-app-orient="landscape-right"] #root,
+html[data-app-orient="landscape-right"] [data-expo-router-root],
+html[data-app-orient="landscape-left"] #root,
+html[data-app-orient="landscape-left"] [data-expo-router-root],
+html[data-app-orient="landscape-right"] #root > div,
+html[data-app-orient="landscape-right"] [data-expo-router-root] > div,
+html[data-app-orient="landscape-left"] #root > div,
+html[data-app-orient="landscape-left"] [data-expo-router-root] > div {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+}
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--drop-borderStrong, #C5CDD6); border-radius: 3px; }

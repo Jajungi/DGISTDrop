@@ -2,14 +2,14 @@ import React, { useRef, useState } from 'react';
 import { View, StyleSheet, Platform, Text, Pressable } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useWindowDimensions } from 'react-native';
+import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { AppHeader } from './AppHeader';
 import { useShellStore } from '@/src/stores/shellStore';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useCourtStore } from '@/src/stores/courtStore';
 import { useAdminAlertCount } from '@/src/hooks/useAdminAlerts';
 import { isStaffUser } from '@/src/utils/staffAccess';
-import { NAV_ITEMS, ADMIN_NAV_ITEM, WEB_BREAKPOINT } from '@/src/constants/nav';
+import { NAV_ITEMS, ADMIN_NAV_ITEM } from '@/src/constants/nav';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 const SIDEBAR_COLLAPSED = 64;
@@ -66,11 +66,10 @@ const labelTransition = Platform.select({
 });
 
 export function WebShell({ children }: { children?: React.ReactNode }) {
-  const { width } = useWindowDimensions();
+  const { isDesktop } = useLayoutMode();
   const pathname = usePathname();
   const router = useRouter();
   const sidebarPinned = useShellStore((s) => s.sidebarExpanded);
-  const isDesktop = Platform.OS === 'web' && width >= WEB_BREAKPOINT;
   const currentUser = useAuthStore((s) => s.currentUser);
   const isStaff = isStaffUser(currentUser);
   const isGuest = useAuthStore((s) => s.isGuestSession);

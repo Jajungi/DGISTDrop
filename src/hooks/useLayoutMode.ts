@@ -1,10 +1,12 @@
-import { useWindowDimensions, Platform } from 'react-native';
+import { Platform } from 'react-native';
+import { useAppWindowSize } from '@/src/hooks/useAppWindowSize';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getCourtHeight, COURT_ASPECT, GYM_COURT_ROWS } from '@/src/constants/court';
 import { WEB_BREAKPOINT } from '@/src/constants/nav';
 import { spacing } from '@/src/theme';
 import { useActivityStatus } from '@/src/hooks/useActivityStatus';
 import { getResponsiveMetrics, getScaledBorderRadius } from '@/src/utils/responsive';
+import { isPhoneLikeWeb } from '@/src/utils/clientDevice';
 import {
   buildGymGridLayout,
   GYM_ROW_ENTRANCE_GAP,
@@ -20,7 +22,7 @@ const MOBILE_MIN_COURT = 96;
 const DESKTOP_MIN_COURT = 40;
 
 export function useLayoutMode() {
-  const { width: rawWidth, height: rawHeight } = useWindowDimensions();
+  const { width: rawWidth, height: rawHeight, cssLandscape } = useAppWindowSize();
   const insets = useSafeAreaInsets();
   const { isActive } = useActivityStatus();
 
@@ -28,7 +30,7 @@ export function useLayoutMode() {
   const height = Number.isFinite(rawHeight) && rawHeight > 0 ? rawHeight : 800;
 
   const isWeb = Platform.OS === 'web';
-  const isDesktop = isWeb && width >= WEB_BREAKPOINT;
+  const isDesktop = isWeb && width >= WEB_BREAKPOINT && !cssLandscape && !isPhoneLikeWeb();
   const isMobile = !isDesktop;
   const isLandscape = isMobile && width > height * 1.08;
   const responsive = getResponsiveMetrics(isLandscape ? Math.min(width, height) : width, isDesktop);
@@ -111,14 +113,12 @@ export function useLayoutMode() {
   const courtWidthFromHeight =
     availableForRows > 0 ? (availableForRows / rows) * COURT_ASPECT : MOBILE_MIN_COURT;
 
-  const minCourt = isDesktop ? DESKTOP_MIN_COURT : isLandscape ? 56 : MOBILE_MIN_COURT;
+  const minCourt = isDesktop ? DESKTOP_MIN_COURT : isLandscape ? 72 : MOBILE_MIN_COURT;
   const fitFromWidth = Math.max(1, courtWidthFromWidth);
   const fitFromHeight = Math.max(1, courtWidthFromHeight);
   let courtWidth = Math.max(
     minCourt,
-    Math.floor(
-      isDesktop ? fitFromWidth : isLandscape ? Math.min(fitFromWidth, fitFromHeight) : fitFromHeight
-    )
+    Math.floor(isDesktop || isLandscape ? fitFromWidth : fitFromHeight)
   );
 
   const layoutInput = {
@@ -146,13 +146,9 @@ export function useLayoutMode() {
   let gridContentHeight = measureContentHeight(gym);
 
   if (isLandscape) {
-    const overflow = Math.max(
-      gym.intrinsicFloorWidth / Math.max(1, gridPanelWidth),
-      gridContentHeight / Math.max(1, gridAreaHeight),
-      1
-    );
-    if (overflow > 1.01) {
-      courtWidth = Math.max(48, Math.floor(courtWidth / overflow));
+    const hOverflow = gym.intrinsicFloorWidth / Math.max(1, gridPanelWidth);
+    if (hOverflow > 1.01) {
+      courtWidth = Math.max(minCourt, Math.floor(courtWidth / hOverflow));
       gym = buildGymGridLayout({ ...layoutInput, courtWidth });
       gridContentHeight = measureContentHeight(gym);
     }
@@ -169,7 +165,7 @@ export function useLayoutMode() {
 
   const fitsOnScreen = gridContentHeight <= gridAreaHeight + SHADOW_BLEED;
   const expandAreaHeight = Math.max(gridContentHeight, gridAreaHeight);
-  const needsVerticalScroll = isLandscape ? false : !fitsOnScreen;
+  const needsVerticalScroll = !fitsOnScreen;
 
   return {
     isWeb,
