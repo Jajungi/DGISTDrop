@@ -1,4 +1,4 @@
-/* Drop PWA service worker — 웹 푸시 + Android/Chrome 앱 설치 조건 */
+/* Drop PWA service worker — v20260824-attendance */
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -7,22 +7,61 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-/**
- * Chrome “앱 설치” 조건: fetch 핸들러가 있어야 함.
- * 요청은 가로채지 않는다 — 실패를 504로 바꿔 개발 서버/탭 요청을 깨지 않기 위해.
- */
 self.addEventListener('fetch', () => {});
 
-self.addEventListener('push', (event) => {
-  let payload = { title: 'Drop', body: '새 알림이 있습니다.', data: {}, kind: '' };
+function asObject(value) {
+  return value && typeof value === 'object' ? value : {};
+}
+
+function readPushPayload(event) {
+  const base = { title: 'Drop', body: '새 알림이 있습니다.', data: {}, kind: '', showAttendance: false };
+  if (!event.data) return base;
+
+  let raw = null;
   try {
-    if (event.data) payload = { ...payload, ...event.data.json() };
+    raw = event.data.json();
   } catch {
-    if (event.data) payload.body = event.data.text();
+    try {
+      raw = JSON.parse(event.data.text());
+    } catch {
+      return { ...base, body: event.data.text() };
+    }
+  }
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return { ...base, body: raw };
+    }
   }
 
-  const kind = payload.kind || payload.data?.kind || '';
-  const isAttendance = kind === 'activity' || kind === 'attendance';
+  const data = asObject(raw && raw.data);
+  const kind = raw.kind || data.kind || '';
+  const showAttendance =
+    raw.showAttendance === true ||
+    raw.showAttendance === '1' ||
+    data.showAttendance === true ||
+    data.showAttendance === '1';
+
+  return {
+    title: raw.title || data.title || base.title,
+    body: raw.body || data.body || raw.message || base.body,
+    data,
+    kind,
+    showAttendance,
+  };
+}
+
+function isAttendancePayload(payload) {
+  const kind = String(payload.kind || '').toLowerCase();
+  if (kind === 'activity' || kind === 'attendance') return true;
+  if (payload.showAttendance) return true;
+  return String(payload.title || '').includes('활동');
+}
+
+self.addEventListener('push', (event) => {
+  const payload = readPushPayload(event);
+  const isAttendance = isAttendancePayload(payload);
 
   event.waitUntil(
     self.registration.showNotification(payload.title, {
@@ -30,7 +69,8 @@ self.addEventListener('push', (event) => {
       icon: '/icon-192.png',
       badge: '/icon-192.png',
       tag: isAttendance ? 'drop-attendance' : 'drop-activity',
-      data: { ...(payload.data ?? {}), kind: isAttendance ? 'attendance' : kind },
+      renotify: true,
+      data: { ...payload.data, kind: isAttendance ? 'attendance' : payload.kind },
       actions: isAttendance
         ? [
             { action: 'going', title: '참석' },

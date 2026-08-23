@@ -17,6 +17,7 @@ import {
   DEFAULT_PUSH_SETTINGS,
   type PushNotifySettings,
   type PushNotifyLog,
+  type PushTokenStats,
 } from '@/src/services/supabase/pushSettings';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 
@@ -32,7 +33,17 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
   const [sub, setSub] = useState<PushSub>('status');
   const [settings, setSettings] = useState<PushNotifySettings>(DEFAULT_PUSH_SETTINGS);
   const [logs, setLogs] = useState<PushNotifyLog[]>([]);
-  const [tokenStats, setTokenStats] = useState({ total: 0, users: 0, android: 0, web: 0 });
+  const [tokenStats, setTokenStats] = useState<PushTokenStats>({
+    total: 0,
+    users: 0,
+    app: 0,
+    web: 0,
+    other: 0,
+    android: 0,
+    removable: 0,
+    extraWeb: 0,
+    heavy: [],
+  });
   const [pruning, setPruning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -117,11 +128,13 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
       await fetchAll();
       const parts: string[] = [];
       if (result.unapproved) parts.push(`미승인·게스트 ${result.unapproved}`);
+      if (result.invalid) parts.push(`형식 오류 ${result.invalid}`);
+      if (result.extraWeb) parts.push(`여분 웹 ${result.extraWeb}`);
       if (result.old_logs) parts.push(`옛 기록 ${result.old_logs}`);
       onToast(
         'success',
         result.removed === 0 && result.old_logs === 0
-          ? '지울 등록이 없어요.'
+          ? '지울 등록이 없어요. 지금 숫자는 승인 회원이 알림을 켠 기기입니다. 더 이상 안 받는 구독은 알림을 보낼 때 빠집니다.'
           : `기기 ${result.removed}대 정리${parts.length ? ` (${parts.join(' · ')})` : ''}`
       );
     } catch (err) {
@@ -196,7 +209,8 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
           <View style={[styles.dot, settings.enabled ? styles.online : styles.offline]} />
           <Text style={styles.statusText}>푸시 {settings.enabled ? 'ON' : 'OFF'}</Text>
           <Text style={styles.statusText}>
-            등록 {tokenStats.users}명 · 기기 {tokenStats.total} (앱 {tokenStats.android} · 웹 {tokenStats.web})
+            등록 {tokenStats.users}명 · 기기 {tokenStats.total} (앱 {tokenStats.app} · 웹 {tokenStats.web}
+            {tokenStats.other ? ` · 기타 ${tokenStats.other}` : ''})
           </Text>
         </View>
       </Card>
@@ -246,7 +260,7 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
                 <Text style={styles.statLabel}>기기</Text>
               </View>
               <View style={styles.stat}>
-                <Text style={styles.statValue}>{tokenStats.android}</Text>
+                <Text style={styles.statValue}>{tokenStats.app}</Text>
                 <Text style={styles.statLabel}>앱</Text>
               </View>
               <View style={styles.stat}>
@@ -254,8 +268,34 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
                 <Text style={styles.statLabel}>웹</Text>
               </View>
             </View>
+            <View style={styles.statRow}>
+              <View style={styles.stat}>
+                <Text style={styles.statValue}>{tokenStats.removable}</Text>
+                <Text style={styles.statLabel}>미승인·게스트</Text>
+              </View>
+              <View style={styles.stat}>
+                <Text style={styles.statValue}>{tokenStats.extraWeb}</Text>
+                <Text style={styles.statLabel}>여분 웹</Text>
+              </View>
+              {tokenStats.other > 0 ? (
+                <View style={styles.stat}>
+                  <Text style={styles.statValue}>{tokenStats.other}</Text>
+                  <Text style={styles.statLabel}>기타</Text>
+                </View>
+              ) : null}
+            </View>
+            {tokenStats.heavy.length > 0 ? (
+              <View style={styles.heavyBox}>
+                <Text style={styles.heavyTitle}>기기 많은 사람</Text>
+                {tokenStats.heavy.map((person) => (
+                  <Text key={person.userId} style={styles.heavyLine}>
+                    {person.name} · {person.total}대 (앱 {person.app} · 웹 {person.web})
+                  </Text>
+                ))}
+              </View>
+            ) : null}
             <Text style={styles.hint}>
-              한 사람이 폰·태블릿·브라우저 여러 대에서 알림을 켜면 기기 수가 사람보다 많습니다. 그건 정상입니다. 정리는 미승인·게스트만 지우고, 만료된 기기는 다음에 알림을 보낼 때 자동으로 빠집니다.
+              앱은 스토어/APK, 웹은 브라우저·홈화면 웹앱입니다. 한 사람이 폰·노트북에서 알림을 켜면 웹 구독이 여러 개일 수 있습니다. 정리는 미승인·게스트, 형식 오류, 같은 사람의 웹 구독 중 최근 3개를 넘는 것만 지웁니다. 더 이상 안 받는 구독은 알림을 보낼 때 빠집니다.
             </Text>
             <Button
               title={pruning ? '정리 중…' : '못 쓰는 등록 정리'}
@@ -454,6 +494,14 @@ const styles = StyleSheet.create({
   },
   statValue: { ...typography.h3, color: colors.primary },
   statLabel: { ...typography.small, color: colors.textMuted, marginTop: 2 },
+  heavyBox: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: borderRadius.sm,
+    padding: spacing.md,
+    gap: 4,
+  },
+  heavyTitle: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
+  heavyLine: { ...typography.small, color: colors.text },
   cancelBanner: {
     backgroundColor: withAlpha(colors.warning, 0.16),
     borderWidth: 1,

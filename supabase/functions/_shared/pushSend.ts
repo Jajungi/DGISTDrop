@@ -44,28 +44,56 @@ async function deleteTokens(supabase: SupabaseClient, tokens: string[]): Promise
   return unique.length;
 }
 
+export type ExpoPushTarget = { token: string; platform?: string | null };
+
+function normalizeExpoTargets(tokens: Array<string | ExpoPushTarget>): ExpoPushTarget[] {
+  return tokens.map((item) => (typeof item === 'string' ? { token: item } : item));
+}
+
+function isAndroidPlatform(platform?: string | null): boolean {
+  return (platform ?? '').toLowerCase() === 'android';
+}
+
 export async function sendExpoAndPrune(
   supabase: SupabaseClient,
-  tokens: string[],
+  tokens: Array<string | ExpoPushTarget>,
   title: string,
   body: string,
   kind?: string,
   expoAccessToken?: string | null
 ): Promise<PushSendResult> {
-  if (!tokens.length) return { sent: 0, pruned: 0 };
+  const targets = normalizeExpoTargets(tokens);
+  if (!targets.length) return { sent: 0, pruned: 0 };
 
   const isAttendance = kind === 'activity' || kind === 'attendance';
-  const messages = tokens.map((to) => ({
-    to,
-    sound: 'default',
-    title,
-    body,
-    priority: 'high',
-    channelId: kind === 'coach' ? 'coach' : 'default',
-    ...(isAttendance
-      ? { categoryId: 'attendance', data: { kind: 'attendance' } }
-      : { data: { kind: kind ?? 'system' } }),
-  }));
+  const messages = targets.map(({ token, platform }) => {
+    if (isAttendance && isAndroidPlatform(platform)) {
+      return {
+        to: token,
+        priority: 'high',
+        channelId: 'default',
+        categoryId: 'attendance',
+        _contentAvailable: true,
+        data: {
+          kind: 'attendance',
+          title,
+          body,
+          presentLocal: '1',
+        },
+      };
+    }
+    return {
+      to: token,
+      sound: 'default',
+      title,
+      body,
+      priority: 'high',
+      channelId: kind === 'coach' ? 'coach' : 'default',
+      ...(isAttendance
+        ? { categoryId: 'attendance', data: { kind: 'attendance' } }
+        : { data: { kind: kind ?? 'system' } }),
+    };
+  });
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -98,7 +126,7 @@ export async function sendExpoAndPrune(
 
   for (let i = 0; i < tickets.length; i++) {
     const ticket = tickets[i];
-    const token = tokens[i];
+    const token = targets[i]?.token;
     if (!ticket || !token) continue;
     if (ticket.status === 'ok') {
       sent += 1;
@@ -138,8 +166,19 @@ export async function sendWebAndPrune(
         dead.push(token);
         continue;
       }
+      const resolvedKind = kind ?? 'system';
+      const showAttendance = resolvedKind === 'activity' || resolvedKind === 'attendance';
       const payload = await buildPushPayload(
-        { data: JSON.stringify({ title, body, kind: kind ?? 'system', data: { kind: kind ?? 'system' } }), options: { ttl: 3600 } },
+        {
+          data: JSON.stringify({
+            title,
+            body,
+            kind: resolvedKind,
+            showAttendance,
+            data: { kind: resolvedKind, showAttendance },
+          }),
+          options: { ttl: 3600 },
+        },
         sub,
         vapid
       );

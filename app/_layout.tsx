@@ -21,6 +21,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
 import '@/src/services/bindStoreServices';
+import '@/src/services/notificationBackgroundTask';
 import { ToastContainer } from '@/src/components/ui/ToastContainer';
 import { SirenModal } from '@/src/components/ui/SirenModal';
 import {

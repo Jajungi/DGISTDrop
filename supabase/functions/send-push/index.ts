@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
 
     const { data: tokens, error } = await supabase
       .from('push_tokens')
-      .select('token')
+      .select('token, platform')
       .eq('user_id', userId);
 
     if (error) throw error;
@@ -85,7 +85,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ sent: 0 }), { status: 200 });
     }
 
-    const expoTokens = tokens.map((t: { token: string }) => t.token).filter(isExpoToken);
+    const expoTokens = tokens
+      .filter((t: { token: string }) => isExpoToken(t.token))
+      .map((t: { token: string; platform?: string | null }) => ({
+        token: t.token,
+        platform: t.platform,
+      }));
     const webTokens = tokens.map((t: { token: string }) => t.token).filter(isWebSubscription);
 
     const expoRes = await sendExpoAndPrune(

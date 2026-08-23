@@ -16,7 +16,7 @@ export async function ensurePwaServiceWorker(): Promise<void> {
   }
 
   try {
-    await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.register('/sw.js?v=20260824-attendance');
   } catch (err) {
     console.warn('[pwa] service worker 등록 실패', err);
   }

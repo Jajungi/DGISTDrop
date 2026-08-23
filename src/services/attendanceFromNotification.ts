@@ -2,19 +2,18 @@ import { Platform } from 'react-native';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { isGuestUser } from '@/src/utils/guestAccess';
+import {
+  parseAttendanceIntent,
+  savePendingAttendanceIntent,
+  takePendingAttendanceIntent,
+} from '@/src/services/attendanceIntentPending';
 
-const PENDING_KEY = 'drop-attendance-intent';
-
-export function parseAttendanceIntent(value: unknown): 'going' | 'not_going' | null {
-  return value === 'going' || value === 'not_going' ? value : null;
-}
+export { parseAttendanceIntent };
 
 export function applyAttendanceIntentFromNotification(intent: 'going' | 'not_going') {
   const user = useAuthStore.getState().currentUser;
   if (!user || isGuestUser(user) || user.memberStatus !== 'approved') {
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem(PENDING_KEY, intent);
-    }
+    void savePendingAttendanceIntent(intent);
     return;
   }
   const result = useAuthStore.getState().setAttendanceIntent(user.id, intent);
@@ -28,11 +27,9 @@ export function applyAttendanceIntentFromNotification(intent: 'going' | 'not_goi
   });
 }
 
-export function flushPendingAttendanceIntent() {
-  if (typeof sessionStorage === 'undefined') return;
-  const pending = parseAttendanceIntent(sessionStorage.getItem(PENDING_KEY));
+export async function flushPendingAttendanceIntent() {
+  const pending = await takePendingAttendanceIntent();
   if (!pending) return;
-  sessionStorage.removeItem(PENDING_KEY);
   applyAttendanceIntentFromNotification(pending);
 }
 
@@ -48,6 +45,13 @@ function consumeAttendanceQuery() {
   } catch {
     /* ignore */
   }
+}
+
+function handleNotificationResponse(response: {
+  actionIdentifier: string;
+}) {
+  const action = parseAttendanceIntent(response.actionIdentifier);
+  if (action) applyAttendanceIntentFromNotification(action);
 }
 
 /** 푸시 버튼·알림함에서 고른 참석/불참을 로그인 후 반영 */
@@ -67,17 +71,13 @@ export function bindAttendanceNotificationListeners(): () => void {
   let expoSub: { remove: () => void } | undefined;
   if (Platform.OS !== 'web') {
     void import('expo-notifications').then((Notifications) => {
+      void Notifications.getLastNotificationResponseAsync().then((response) => {
+        if (!response) return;
+        handleNotificationResponse(response);
+        void Notifications.clearLastNotificationResponseAsync();
+      });
       expoSub = Notifications.addNotificationResponseReceivedListener((response) => {
-        const action = parseAttendanceIntent(response.actionIdentifier);
-        const dataKind = (response.notification.request.content.data as { kind?: string } | undefined)
-          ?.kind;
-        if (action) {
-          applyAttendanceIntentFromNotification(action);
-          return;
-        }
-        if (dataKind === 'attendance') {
-          /* 본문만 탭하면 앱만 열고, 참석/불참은 버튼으로 */
-        }
+        handleNotificationResponse(response);
       });
     });
   }

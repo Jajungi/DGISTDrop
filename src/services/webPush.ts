@@ -46,7 +46,7 @@ export async function registerWebPushForUser(userId: string): Promise<boolean> {
     }
     if (permission !== 'granted') return false;
 
-    const reg = await navigator.serviceWorker.register('/sw.js');
+    const reg = await navigator.serviceWorker.register('/sw.js?v=20260824-attendance');
     await navigator.serviceWorker.ready;
 
     let subscription = await reg.pushManager.getSubscription();

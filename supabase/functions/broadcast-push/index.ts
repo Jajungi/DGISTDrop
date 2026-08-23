@@ -120,7 +120,12 @@ Deno.serve(async (req) => {
       (t: { user_id: string }) => approvedIds.has(t.user_id) && !prefOff.has(t.user_id)
     );
 
-    const expoTokens = filtered.map((t: { token: string }) => t.token).filter(isExpoToken);
+    const expoTokens = filtered
+      .filter((t: { token: string }) => isExpoToken(t.token))
+      .map((t: { token: string; platform?: string | null }) => ({
+        token: t.token,
+        platform: t.platform,
+      }));
     const webTokens = filtered.map((t: { token: string }) => t.token).filter(isWebSubscription);
 
     const expoRes = await sendExpoAndPrune(

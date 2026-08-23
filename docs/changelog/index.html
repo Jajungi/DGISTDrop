@@ -180,7 +180,7 @@
         <tr><th>작성 주체</th><td>DGIST 배드민턴 동아리 Drop</td></tr>
         <tr><th>열람 대상</th><td>동아리 운영진</td></tr>
         <tr><th>개정일</th><td>2026-08-24</td></tr>
-        <tr><th>대상 범위</th><td>v0.1 ~ v1.2 (Git 저장소 및 미푸시 반영분 포함)</td></tr>
+        <tr><th>대상 범위</th><td>v0.1 ~ v1.3 (Git 저장소 및 미푸시 반영분 포함)</td></tr>
         <tr><th>근거 저장소</th><td>https://github.com/Jajungi/DGISTDrop</td></tr>
       </table>
     </div>
@@ -211,7 +211,7 @@
       <tbody>
         <tr><td class="toc-no">1</td><td>개요</td><td>—</td><td></td></tr>
         <tr><td class="toc-no">2</td><td>목차</td><td>—</td><td></td></tr>
-        <tr><td class="toc-no">3</td><td>버전별 변경 내역</td><td>v0.1–v1.2</td><td></td></tr>
+        <tr><td class="toc-no">3</td><td>버전별 변경 내역</td><td>v0.1–v1.3</td><td></td></tr>
         
       <tr>
         <td class="toc-no">3.1</td>
@@ -284,6 +284,12 @@
         <td>v1.2 이용 문구·이력·탭 안내</td>
         <td class="toc-date">2026-08-24</td>
         <td class="toc-page"><a href="#v1.2">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.13</td>
+        <td>v1.3 안드로이드 활동 알림 버튼</td>
+        <td class="toc-date">2026-08-24</td>
+        <td class="toc-page"><a href="#v1.3">이동</a></td>
       </tr>
       </tbody>
     </table>
@@ -795,6 +801,37 @@
         <tr>
           <td class="col-no">16</td>
           <td class="col-what">모바일 탭에서 href와 커스텀 버튼을 같이 써서 첫 로드에 나던 오류를 없앰. 숨기는 탭만 href: null, 보이는 탭만 커스텀 버튼을 씀.</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v1.3">
+        <h2 class="h2">3.13　v1.3　안드로이드 활동 알림 버튼</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-08-24</td><th>항목 수</th><td>3</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>활동 푸시에서 참석·불참을 알림 자체에서 고를 수 있게 함.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">웹앱 활동 알림(자동·수동)을 펼치면 참석/불참 버튼이 붙도록 서비스 워커와 발송 값을 맞춤. 버튼을 누르면 오늘 참석 의사가 반영됨.</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">안드로이드 스토어/APK 앱의 활동·출석 푸시를 펼치면 참석/불참 버튼이 보임. 버튼을 누르면 오늘 참석 의사가 반영됨.</td>
+        </tr>
+        <tr>
+          <td class="col-no">3</td>
+          <td class="col-what">관리 → 알림 등록 현황을 토큰 모양으로 앱/웹/기타로 나누고, 미승인·게스트와 같은 사람의 여분 웹 구독(최근 3개 초과)을 따로 세어 정리할 수 있게 함. 기기 많은 사람 목록을 보여 줌.</td>
         </tr></tbody>
         </table>
       </section>

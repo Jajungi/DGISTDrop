@@ -84,37 +84,201 @@ export async function fetchPushNotifyLogs(limit = 20): Promise<PushNotifyLog[]> 
   return (data ?? []) as PushNotifyLog[];
 }
 
-export async function fetchPushTokenStats(): Promise<{
+export type PushTokenKind = 'app' | 'web' | 'other';
+
+export type PushTokenHeavyUser = {
+  userId: string;
+  name: string;
+  total: number;
+  app: number;
+  web: number;
+};
+
+export type PushTokenStats = {
   total: number;
   users: number;
-  android: number;
+  app: number;
   web: number;
-}> {
-  const { data, error } = await getSupabase().from('push_tokens').select('platform, user_id');
-  if (error) throw error;
-  const rows = data ?? [];
+  other: number;
+  android: number;
+  removable: number;
+  extraWeb: number;
+  heavy: PushTokenHeavyUser[];
+};
+
+type PushTokenRow = {
+  token: string;
+  platform?: string | null;
+  user_id: string;
+  updated_at?: string | null;
+  created_at?: string | null;
+};
+
+type ProfileLite = {
+  id: string;
+  name?: string | null;
+  member_status?: string | null;
+  membership_tier?: string | null;
+};
+
+const WEB_KEEP_PER_USER = 3;
+
+export function classifyPushToken(token: string, platform?: string | null): PushTokenKind {
+  if (token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[')) return 'app';
+  if (token.startsWith('{') && token.includes('"endpoint"')) return 'web';
+  if (platform === 'web') return 'web';
+  if (platform === 'android' || platform === 'ios') return 'app';
+  return 'other';
+}
+
+function isApprovedMember(profile: ProfileLite | undefined): boolean {
+  if (!profile) return false;
+  if (profile.member_status !== 'approved') return false;
+  return (profile.membership_tier ?? 'guest') !== 'guest';
+}
+
+function tokenTime(row: PushTokenRow): number {
+  const raw = row.updated_at || row.created_at;
+  const ms = raw ? Date.parse(raw) : 0;
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function extraWebTokens(rows: PushTokenRow[]): string[] {
+  const byUser = new Map<string, PushTokenRow[]>();
+  for (const row of rows) {
+    if (classifyPushToken(row.token, row.platform) !== 'web') continue;
+    const list = byUser.get(row.user_id) ?? [];
+    list.push(row);
+    byUser.set(row.user_id, list);
+  }
+  const extra: string[] = [];
+  for (const list of byUser.values()) {
+    if (list.length <= WEB_KEEP_PER_USER) continue;
+    list.sort((a, b) => tokenTime(b) - tokenTime(a));
+    extra.push(...list.slice(WEB_KEEP_PER_USER).map((row) => row.token));
+  }
+  return extra;
+}
+
+function summarizeTokens(rows: PushTokenRow[], profiles: ProfileLite[]): PushTokenStats {
+  const profileById = new Map(profiles.map((p) => [p.id, p]));
+  let app = 0;
+  let web = 0;
+  let other = 0;
+  let removable = 0;
+  const perUser = new Map<string, PushTokenHeavyUser>();
+
+  for (const row of rows) {
+    const kind = classifyPushToken(row.token, row.platform);
+    if (kind === 'app') app += 1;
+    else if (kind === 'web') web += 1;
+    else other += 1;
+
+    const profile = profileById.get(row.user_id);
+    if (!isApprovedMember(profile)) removable += 1;
+
+    const current = perUser.get(row.user_id) ?? {
+      userId: row.user_id,
+      name: profile?.name?.trim() || '이름 없음',
+      total: 0,
+      app: 0,
+      web: 0,
+    };
+    current.total += 1;
+    if (kind === 'app') current.app += 1;
+    if (kind === 'web') current.web += 1;
+    perUser.set(row.user_id, current);
+  }
+
+  const heavy = [...perUser.values()]
+    .filter((u) => u.total >= 2)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 8);
+
   return {
     total: rows.length,
-    users: new Set(rows.map((r) => r.user_id)).size,
-    android: rows.filter((r) => r.platform === 'android').length,
-    web: rows.filter((r) => r.platform === 'web').length,
+    users: perUser.size,
+    app,
+    web,
+    other,
+    android: app,
+    removable,
+    extraWeb: extraWebTokens(rows).length,
+    heavy,
   };
+}
+
+async function fetchTokenRows(): Promise<PushTokenRow[]> {
+  const { data, error } = await getSupabase()
+    .from('push_tokens')
+    .select('token, platform, user_id, updated_at, created_at');
+  if (error) throw error;
+  return (data ?? []) as PushTokenRow[];
+}
+
+async function fetchProfileLites(userIds: string[]): Promise<ProfileLite[]> {
+  if (!userIds.length) return [];
+  const unique = [...new Set(userIds)];
+  const rows: ProfileLite[] = [];
+  for (let i = 0; i < unique.length; i += 80) {
+    const { data, error } = await getSupabase()
+      .from('profiles')
+      .select('id, name, member_status, membership_tier')
+      .in('id', unique.slice(i, i + 80));
+    if (error) throw error;
+    rows.push(...((data ?? []) as ProfileLite[]));
+  }
+  return rows;
+}
+
+export async function fetchPushTokenStats(): Promise<PushTokenStats> {
+  const rows = await fetchTokenRows();
+  const profiles = await fetchProfileLites([...new Set(rows.map((r) => r.user_id))]);
+  return summarizeTokens(rows, profiles);
+}
+
+async function deleteTokenChunks(tokens: string[]): Promise<number> {
+  const unique = [...new Set(tokens.filter(Boolean))];
+  if (!unique.length) return 0;
+  let removed = 0;
+  for (let i = 0; i < unique.length; i += 80) {
+    const chunk = unique.slice(i, i + 80);
+    const { error, count } = await getSupabase()
+      .from('push_tokens')
+      .delete({ count: 'exact' })
+      .in('token', chunk);
+    if (error) throw error;
+    removed += count ?? chunk.length;
+  }
+  return removed;
 }
 
 export async function prunePushTokens(): Promise<{
   unapproved: number;
-  duplicates: number;
+  invalid: number;
+  extraWeb: number;
   old_logs: number;
   removed: number;
 }> {
   const { data, error } = await getSupabase().rpc('rpc_prune_push_tokens');
   if (error) throw error;
   const raw = (data ?? {}) as Record<string, unknown>;
+  const unapproved = Number(raw.unapproved) || 0;
+  const oldLogs = Number(raw.old_logs) || 0;
+
+  const rows = await fetchTokenRows();
+  const invalid = rows
+    .filter((row) => classifyPushToken(row.token, row.platform) === 'other')
+    .map((row) => row.token);
+  const extraWeb = extraWebTokens(rows.filter((row) => !invalid.includes(row.token)));
+  const cleaned = await deleteTokenChunks([...invalid, ...extraWeb]);
+
   return {
-    unapproved: Number(raw.unapproved) || 0,
-    duplicates: Number(raw.duplicates) || 0,
-    old_logs: Number(raw.old_logs) || 0,
-    removed: Number(raw.removed) || 0,
+    unapproved,
+    invalid: invalid.length,
+    extraWeb: extraWeb.length,
+    old_logs: oldLogs,
+    removed: unapproved + cleaned,
   };
 }
 

@@ -13,6 +13,6 @@ export function useAttendanceFromNotification() {
 
   useEffect(() => {
     if (!authHydrated || !currentUserId) return;
-    flushPendingAttendanceIntent();
+    void flushPendingAttendanceIntent();
   }, [authHydrated, currentUserId]);
 }
