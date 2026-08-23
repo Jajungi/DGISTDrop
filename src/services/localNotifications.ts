@@ -33,6 +33,19 @@ export async function initLocalNotifications(): Promise<void> {
       finalStatus = status;
     }
 
+    await Notifications.setNotificationCategoryAsync('attendance', [
+      {
+        identifier: 'going',
+        buttonTitle: '참석',
+        options: { opensAppToForeground: true },
+      },
+      {
+        identifier: 'not_going',
+        buttonTitle: '불참',
+        options: { opensAppToForeground: true },
+      },
+    ]);
+
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: '기본',

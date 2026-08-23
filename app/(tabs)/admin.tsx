@@ -6,7 +6,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { AdminDashboard } from '@/src/components/admin/AdminDashboard';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
-import { isStaffUser } from '@/src/utils/staffAccess';
+import { isStaffUser, roleBadgeLabel } from '@/src/utils/staffAccess';
 import { colors, spacing, typography } from '@/src/theme';
 
 export default function AdminTabScreen() {
@@ -17,8 +17,7 @@ export default function AdminTabScreen() {
     return <Redirect href="/(tabs)" />;
   }
 
-  const roleLabel =
-    currentUser!.membershipTier === 'admin' ? '관리자' : '운영자';
+  const roleLabel = roleBadgeLabel(currentUser);
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>

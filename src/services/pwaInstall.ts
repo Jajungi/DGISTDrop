@@ -1,89 +1,23 @@
 import { Platform } from 'react-native';
-import { detectClientDevice, isStandalonePwa } from '@/src/utils/clientDevice';
 
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-};
-
-let deferredPrompt: BeforeInstallPromptEvent | null = null;
-let listenersReady = false;
-const changeListeners = new Set<() => void>();
-
-function notify() {
-  changeListeners.forEach((fn) => fn());
-}
-
-function ensureListeners() {
-  if (listenersReady || Platform.OS !== 'web' || typeof window === 'undefined') return;
-  listenersReady = true;
-
-  window.addEventListener('beforeinstallprompt', (event) => {
-    event.preventDefault();
-    deferredPrompt = event as BeforeInstallPromptEvent;
-    notify();
-  });
-
-  window.addEventListener('appinstalled', () => {
-    deferredPrompt = null;
-    notify();
-  });
-}
-
-/** Chrome가 “앱 설치”를 띄우려면 SW가 미리 등록돼 있어야 합니다. */
+/** 웹 푸시용 서비스 워커만 등록한다. 설치 유도 UI는 쓰지 않는다. */
 export async function ensurePwaServiceWorker(): Promise<void> {
   if (Platform.OS !== 'web' || typeof navigator === 'undefined') return;
   if (!('serviceWorker' in navigator)) return;
-  ensureListeners();
+
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((reg) => reg.unregister()));
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+
   try {
     await navigator.serviceWorker.register('/sw.js');
   } catch (err) {
     console.warn('[pwa] service worker 등록 실패', err);
   }
-}
-
-export function subscribePwaInstallAvailability(listener: () => void): () => void {
-  ensureListeners();
-  changeListeners.add(listener);
-  return () => {
-    changeListeners.delete(listener);
-  };
-}
-
-export function canPromptPwaInstall(): boolean {
-  ensureListeners();
-  return deferredPrompt != null;
-}
-
-export async function promptPwaInstall(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
-  ensureListeners();
-  if (!deferredPrompt) return 'unavailable';
-  const promptEvent = deferredPrompt;
-  deferredPrompt = null;
-  await promptEvent.prompt();
-  const { outcome } = await promptEvent.userChoice;
-  notify();
-  return outcome;
-}
-
-export type PwaInstallPlacement = 'login' | 'settings';
-
-/**
- * login: iOS/Android만 (모바일에서 설치 추천)
- * settings: 모바일 + 데스크톱 (PC는 설정에서만 안내)
- * 이미 설치(standalone)면 숨김
- */
-export function shouldShowPwaInstallGuide(placement: PwaInstallPlacement = 'settings'): boolean {
-  if (Platform.OS !== 'web') return false;
-  if (isStandalonePwa()) return false;
-  const device = detectClientDevice();
-  if (placement === 'login') {
-    return device === 'android' || device === 'ios';
-  }
-  return device === 'android' || device === 'ios' || device === 'desktop';
-}
-
-/** @deprecated use shouldShowPwaInstallGuide */
-export function shouldShowAndroidInstallGuide(): boolean {
-  return shouldShowPwaInstallGuide('login') && detectClientDevice() === 'android';
 }

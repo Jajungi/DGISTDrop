@@ -10,6 +10,9 @@ import { useCourtStore } from '@/src/stores/courtStore';
 import { useAdminAlertCount } from '@/src/hooks/useAdminAlerts';
 import { isStaffUser } from '@/src/utils/staffAccess';
 import { NAV_ITEMS, ADMIN_NAV_ITEM } from '@/src/constants/nav';
+import { TAB_TOUR_STEPS } from '@/src/constants/tabTour';
+import { useTabTourStore } from '@/src/stores/tabTourStore';
+import { TourAnchor } from '@/src/utils/tourAnchors';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 const SIDEBAR_COLLAPSED = 64;
@@ -76,6 +79,9 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
   const selectedCourtId = useCourtStore((s) => s.selectedCourtId);
   const selectCourt = useCourtStore((s) => s.selectCourt);
   const adminAlerts = useAdminAlertCount();
+  const tourHref = useTabTourStore((s) =>
+    s.activeIndex === null ? null : TAB_TOUR_STEPS[s.activeIndex]?.href ?? null
+  );
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const hoverCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -106,6 +112,7 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
   }
 
   const handleNavPress = (href: string) => {
+    if (useTabTourStore.getState().activeIndex !== null) return;
     const onCourts =
       href === '/' &&
       (pathname === '/' || pathname === '/(tabs)' || pathname === '/(tabs)/');
@@ -145,10 +152,10 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
                 : pathname.includes(item.href.replace('/', ''));
             const alerting = item.href === '/admin' && adminAlerts > 0;
             return (
+              <TourAnchor key={item.href} href={item.href}>
               <Pressable
-                key={item.href}
                 onPress={() => handleNavPress(item.href)}
-                style={styles.navRow}
+                style={[styles.navRow, tourHref === item.href && styles.navRowTour]}
                 accessibilityRole="button"
                 accessibilityLabel={
                   alerting ? `${item.label} (확인 필요 ${adminAlerts}건)` : item.label
@@ -156,11 +163,11 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
               >
                 {active ? (
                   <View
-                    pointerEvents="none"
                     style={[
                       styles.navHighlight,
                       highlightTransition,
                       {
+                        pointerEvents: 'none',
                         transform: [{ scaleX: sidebarExpanded ? 1 : 0 }],
                       },
                     ]}
@@ -192,15 +199,15 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
                     styles.navLabel,
                     active && styles.navLabelActive,
                     labelTransition,
-                    { opacity: sidebarExpanded ? 1 : 0 },
+                    { opacity: sidebarExpanded ? 1 : 0, pointerEvents: 'none' },
                   ]}
                   numberOfLines={1}
-                  pointerEvents="none"
                 >
                   {item.label}
                 </Text>
                 </View>
               </Pressable>
+              </TourAnchor>
             );
           })}
         </View>
@@ -252,6 +259,11 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     ...Platform.select({ web: { cursor: 'pointer' as const } }),
+  },
+  navRowTour: {
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
   navShift: {
     flexDirection: 'row',

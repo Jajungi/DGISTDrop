@@ -12,8 +12,8 @@ import type {
   AdminLogEntry,
   CoachAnnouncement,
 } from '@/src/types';
-import { notifyCrossTabSync } from '@/src/services/crossTabSync';
-import { notifyServerSync } from '@/src/services/serverSync';
+import { notifyCrossTabSync } from '@/src/services/tabSyncNotify';
+import { notifyServerSync } from '@/src/services/syncNotify';
 
 const APP_STATE_KEY = '@badmin/app-state';
 

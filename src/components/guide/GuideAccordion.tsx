@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, LayoutAnimation, Platform, UIManager } from 'react-native';
 import type { GuideSection } from '@/src/constants/guideContent';
+import { CHANGELOG_SITE_URL, changelogHrefForOrigin } from '@/src/constants/changelogSite';
+import { useAuthStore } from '@/src/stores/authStore';
+import { useTabTourStore } from '@/src/stores/tabTourStore';
+import { isGuestUser } from '@/src/utils/guestAccess';
 import { InteractiveRulesCourt } from './InteractiveRulesCourt';
 import { GuidePointsTable } from './GuidePointsTable';
 import { TierDistribution } from './TierDistribution';
 import { colors, borderRadius, spacing, typography } from '@/src/theme';
+import { ExternalLink } from '@/components/ExternalLink';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -21,6 +26,14 @@ export function GuideAccordion({ sections }: GuideAccordionProps) {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpanded(expanded === id ? null : id);
   };
+
+  const changelogHref =
+    Platform.OS === 'web' && typeof window !== 'undefined'
+      ? changelogHrefForOrigin(window.location.origin)
+      : CHANGELOG_SITE_URL;
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const isGuest = useAuthStore((s) => s.isGuestSession) || isGuestUser(currentUser);
+  const replayTour = useTabTourStore((s) => s.replay);
 
   return (
     <View style={styles.container}>
@@ -72,6 +85,19 @@ export function GuideAccordion({ sections }: GuideAccordionProps) {
           </View>
         );
       })}
+      {!isGuest ? (
+          <Pressable
+            onPress={replayTour}
+            style={styles.historyLink}
+            accessibilityRole="button"
+            accessibilityLabel="탭 안내 다시 보기"
+          >
+          <Text style={styles.historyLinkText}>탭 안내 다시 보기</Text>
+        </Pressable>
+      ) : null}
+      <ExternalLink href={changelogHref} style={styles.historyLink}>
+        <Text style={styles.historyLinkText}>소프트웨어 변경 이력</Text>
+      </ExternalLink>
     </View>
   );
 }
@@ -126,4 +152,16 @@ const styles = StyleSheet.create({
   },
   itemTitle: { ...typography.bodyBold, color: colors.text, marginBottom: 6, fontSize: 14 },
   itemContent: { ...typography.caption, color: colors.textSecondary, lineHeight: 21 },
+  historyLink: {
+    alignSelf: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    ...Platform.select({ web: { cursor: 'pointer' as const } }),
+  },
+  historyLinkText: {
+    ...typography.small,
+    color: colors.textMuted,
+    fontSize: 11,
+    letterSpacing: 0.2,
+  },
 });

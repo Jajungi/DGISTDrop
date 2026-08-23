@@ -30,6 +30,34 @@ export async function reserveCourtRemote(params: {
   if (error) throw error;
 }
 
+export async function setCourtOccupancyRemote(courtId: number, occupied: boolean): Promise<void> {
+  const { error } = await getSupabase().rpc('rpc_set_court_occupancy', {
+    p_court_id: courtId,
+    p_occupied: occupied,
+  });
+  if (error) throw error;
+}
+
+export function mapCourtRpcError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  const m = raw.toLowerCase();
+  if (m.includes('reservation disabled')) return '지금은 현황 모드예요. 예약할 수 없어요.';
+  if (m.includes('already has an active court')) {
+    return '이미 다른 코트를 이용 중이에요. 반납한 뒤 다시 예약해 주세요.';
+  }
+  if (m.includes('court not available') || m.includes('court already in use')) {
+    return '이 코트는 이미 사용 중이에요.';
+  }
+  if (m.includes('staff only')) return '운영진만 코트 현황을 바꿀 수 있어요.';
+  if (m.includes('insufficient points')) return '포인트가 부족해요.';
+  if (m.includes('outside gym fence') || m.includes('location required')) {
+    return '체육관 근처에서만 예약할 수 있어요.';
+  }
+  if (m.includes('peak reservation')) return '피크타임 예약 횟수를 모두 썼어요.';
+  if (m.includes('034_')) return raw;
+  return raw.replace(/^.*error:\s*/i, '') || '코트 요청에 실패했어요.';
+}
+
 export async function upsertCourt(court: Court): Promise<void> {
   const row = mapCourtToDb(court);
   // 9개 코트는 고정 행이므로 UPDATE만 (RLS INSERT 권한 불필요)

@@ -4,6 +4,11 @@ export function getTodayKey(date = new Date()): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** 한국 날짜 YYYY-MM-DD — 참석 의사·게스트 일일 삭제와 맞춤 */
+export function getSeoulTodayKey(date = new Date()): string {
+  return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+}
+
 /** 예: 23일(금) */
 export function formatCompactDayLabel(date = new Date()): string {
   const d = date.getDate();

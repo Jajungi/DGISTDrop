@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Changelog — Drop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0c0c0c;
+      --bg-2: #171717;
+      --bg-3: #1c1c1c;
+      --line: #2e2e2e;
+      --ink: #ededed;
+      --muted: #7e7e7e;
+      --soft: #b4b4b4;
+      --green: #3ecf8e;
+      --green-dim: rgba(62, 207, 142, 0.12);
+      --gone: #f87171;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "IBM Plex Sans", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 15px;
+      line-height: 1.75;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: 56px 56px;
+      opacity: 0.12;
+      mask-image: radial-gradient(ellipse 80% 50% at 50% -10%, #000 30%, transparent 75%);
+    }
+    a { color: var(--green); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .top {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 28px;
+      height: 52px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(12,12,12,.86);
+      backdrop-filter: blur(12px);
+    }
+    .brand {
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 0 rgba(62, 207, 142, 0.55);
+      animation: pulse 2.4s ease-out infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(62, 207, 142, 0.45); }
+      70% { box-shadow: 0 0 0 8px rgba(62, 207, 142, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(62, 207, 142, 0); }
+    }
+    .brand span { color: var(--muted); font-weight: 400; font-size: 13px; }
+    .layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      max-width: 1040px;
+      margin: 0 auto;
+      min-height: calc(100vh - 52px);
+    }
+    nav.side {
+      position: sticky;
+      top: 52px;
+      align-self: start;
+      height: calc(100vh - 52px);
+      overflow: auto;
+      padding: 28px 12px 48px 16px;
+      border-right: 1px solid var(--line);
+    }
+    nav.side h2 {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 14px 8px;
+      font-weight: 600;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    nav.side a {
+      display: block;
+      color: var(--soft);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-bottom: 2px;
+      border-left: 2px solid transparent;
+    }
+    nav.side a:hover { background: var(--bg-2); text-decoration: none; color: var(--ink); }
+    nav.side a.on {
+      background: var(--green-dim);
+      color: var(--green);
+      border-left-color: var(--green);
+    }
+    nav.side a .id {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 12px;
+      margin-right: 8px;
+      color: var(--muted);
+    }
+    nav.side a.on .id { color: var(--green); }
+    main {
+      padding: 40px 36px 96px 32px;
+      min-width: 0;
+    }
+    .prose { max-width: 42rem; }
+    .hero h1 {
+      font-size: 40px;
+      letter-spacing: -0.045em;
+      margin: 0 0 14px;
+      font-weight: 600;
+      line-height: 1.15;
+    }
+    .hero .typed {
+      display: inline-block;
+      border-right: 2px solid var(--green);
+      padding-right: 2px;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { border-color: transparent; } }
+    .hero p#lede {
+      color: var(--soft);
+      margin: 0 0 18px;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      color: var(--muted);
+      font-size: 12px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      margin-bottom: 28px;
+    }
+    .tree-wrap {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--bg-3), var(--bg-2));
+      border-radius: 10px;
+      padding: 16px 12px 10px;
+      margin: 0 0 48px;
+      overflow-x: auto;
+    }
+    .tree-wrap p {
+      margin: 0 0 12px 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    svg.tree { display: block; width: 100%; max-width: 420px; height: auto; }
+    svg.tree .lane {
+      stroke-dasharray: 480;
+      stroke-dashoffset: 480;
+      animation: draw 1.2s cubic-bezier(.2,.7,.2,1) forwards;
+    }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    svg.tree circle { cursor: pointer; }
+    svg.tree circle:hover { filter: drop-shadow(0 0 6px currentColor); }
+    .release {
+      margin: 0 0 56px;
+      scroll-margin-top: 76px;
+    }
+    .release.in {
+      animation: rise 0.45s ease;
+    }
+    @keyframes rise {
+      from { opacity: 0.55; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    .release h2 {
+      font-size: 22px;
+      letter-spacing: -0.035em;
+      margin: 0 0 8px;
+      font-weight: 600;
+    }
+    .ver {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      color: var(--green);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .purpose { color: var(--soft); margin: 0 0 18px; }
+    .story {
+      border-left: 2px solid var(--green);
+      padding: 2px 0 2px 16px;
+      margin: 0 0 22px;
+      color: var(--ink);
+    }
+    .story p { margin: 0 0 12px; }
+    .story p:last-child { margin-bottom: 0; }
+    .item {
+      padding: 18px 0;
+      border-top: 1px solid var(--line);
+    }
+    .item h3 {
+      font-size: 15.5px;
+      font-weight: 600;
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+    }
+    .item h3 .n {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+      min-width: 1.6em;
+      flex-shrink: 0;
+    }
+    .kv {
+      margin: 0 0 10px;
+      display: grid;
+      grid-template-columns: 52px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+    }
+    .kv .k {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      padding-top: 2px;
+    }
+    .kv.now .k { color: var(--green); }
+    .kv.gone .k { color: var(--gone); }
+    .kv .v { color: var(--ink); }
+    .kv.gone .v { color: #fca5a5; text-decoration: line-through; text-decoration-color: rgba(248,113,113,.45); }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      nav.side {
+        position: relative;
+        top: 0;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        padding: 10px 14px;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+      }
+      nav.side h2 { display: none; }
+      nav.side a { display: inline-block; border-left: 0; }
+      main { padding: 24px 16px 72px; }
+      .hero h1 { font-size: 28px; }
+      .kv { grid-template-columns: 1fr; gap: 2px; }
+      .prose { max-width: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="dot"></span> Drop <span>Changelog</span></div>
+    <a href="https://dgistdrop.com">dgistdrop.com</a>
+  </header>
+  <div class="layout">
+    <nav class="side" id="side"></nav>
+    <main>
+      <section class="hero prose">
+        <h1><span class="typed">Version history</span></h1>
+        <p id="lede"></p>
+        <div class="meta" id="meta"></div>
+      </section>
+      <section class="tree-wrap">
+        <p>위가 이른 버전, 아래가 최근임. 사이드바·본문과 동일함. 가로는 주제. 점을 누르면 해당 구간으로 이동함.</p>
+        <div id="tree"></div>
+      </section>
+      <div id="releases" class="prose"></div>
+    </main>
+  </div>
+  <script>
+    const DATA = /*__CHANGELOG_JSON__*/ null;
+    const TRACKS = [
+      { id: 'push', label: '알림', color: '#6ee7b7', test: (t) => /푸시|알림|카카오|기기|챗봇/.test(t) },
+      { id: 'court', label: '코트', color: '#a3a3a3', test: (t) => /코트|현황|예약|회전|테마|출석|참석|올 사람/.test(t) },
+      { id: 'auth', label: '권한', color: '#f87171', test: (t) => /권한|운영자|관리자|게스트|명단|학번|RLS|보안|anon/.test(t) },
+      { id: 'social', label: '친구', color: '#93c5fd', test: (t) => /친구|모집|합류|도착|로비|파트너/.test(t) },
+    ];
+    function esc(s) {
+      return String(s ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function paras(s) {
+      return String(s ?? '')
+        .split(/\n\n+/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) => `<p>${esc(p)}</p>`)
+        .join('');
+    }
+    function blob(r) {
+      return [r.title, r.purpose, r.story, ...(r.changes || []).map((c) => [c.what, c.was, c.now, c.gone].join(' '))].join(' ');
+    }
+    const releases = DATA.releases || [];
+
+    document.getElementById('lede').textContent =
+      DATA.intro +
+      ' 각 항목은 이전 상태, 변경 내용, 삭제 항목을 구분하여 기재함. 삭제가 없으면 삭제 줄은 생략함.';
+    document.getElementById('meta').innerHTML =
+      `<span>${esc(DATA.org)}</span><span>${esc(DATA.docNo)}</span><span>updated ${esc(DATA.updated)}</span><span>v${esc(releases[0]?.id)} → v${esc(releases[releases.length - 1]?.id)}</span>`;
+
+    document.getElementById('side').innerHTML =
+      `<h2>Releases</h2>` +
+      releases.map((r) =>
+        `<a href="#v${esc(r.id)}" data-id="${esc(r.id)}"><span class="id">v${esc(r.id)}</span>${esc(r.title)}</a>`
+      ).join('');
+
+    function drawTree() {
+      const padL = 44, padT = 28, colW = 72, rowH = 26;
+      const w = padL + TRACKS.length * colW + 8;
+      const h = padT + releases.length * rowH + 8;
+      const xOf = (ti) => padL + ti * colW + colW / 2;
+      const yOf = (i) => padT + i * rowH + 6;
+      let svg = `<svg class="tree" viewBox="0 0 ${w} ${h}" role="img" aria-label="버전별 주제 흐름. 위가 이른 버전.">`;
+      TRACKS.forEach((track, ti) => {
+        svg += `<text x="${xOf(ti)}" y="16" text-anchor="middle" fill="${track.color}" font-size="11" font-family="IBM Plex Mono,monospace">${esc(track.label)}</text>`;
+        const pts = [];
+        releases.forEach((r, i) => { if (track.test(blob(r))) pts.push(i); });
+        for (let k = 1; k < pts.length; k++) {
+          svg += `<path class="lane" d="M${xOf(ti)} ${yOf(pts[k-1])} L${xOf(ti)} ${yOf(pts[k])}" fill="none" stroke="${track.color}" stroke-width="1.5" style="animation-delay:${ti * 90}ms"/>`;
+        }
+        pts.forEach((i) => {
+          const r = releases[i];
+          svg += `<circle data-id="${esc(r.id)}" cx="${xOf(ti)}" cy="${yOf(i)}" r="4.5" fill="${track.color}"/>`;
+        });
+      });
+      releases.forEach((r, i) => {
+        svg += `<text x="4" y="${yOf(i) + 4}" fill="#7e7e7e" font-size="10" font-family="IBM Plex Mono,monospace">v${esc(r.id)}</text>`;
+      });
+      svg += '</svg>';
+      document.getElementById('tree').innerHTML = svg;
+      document.querySelectorAll('#tree circle').forEach((el) => {
+        el.addEventListener('click', () => {
+          document.getElementById('v' + el.getAttribute('data-id'))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+    }
+
+    function kv(cls, label, text) {
+      if (!text) return '';
+      return `<div class="kv ${cls}"><span class="k">${label}</span><span class="v">${esc(text)}</span></div>`;
+    }
+
+    document.getElementById('releases').innerHTML = releases.map((r) => {
+      const items = (r.changes || []).map((c, i) => {
+        const hasParts = c.was || c.now || c.gone;
+        return `<article class="item">
+          <h3><span class="n">${String(i + 1).padStart(2, '0')}</span>${esc(c.what)}</h3>
+          ${hasParts ? kv('', '이전', c.was) + kv('now', '변경', c.now) + kv('gone', '삭제', c.gone) : ''}
+        </article>`;
+      }).join('');
+      const lead = r.story
+        ? `<div class="story">${paras(r.story)}</div>`
+        : `<p class="purpose">${esc(r.purpose)}</p>`;
+      return `<section class="release" id="v${esc(r.id)}">
+        <div class="ver">v${esc(r.id)} · ${esc(r.date)}</div>
+        <h2>${esc(r.title)}</h2>
+        ${lead}
+        ${items}
+      </section>`;
+    }).join('');
+
+    const links = [...document.querySelectorAll('nav.side a')];
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) e.target.classList.add('in');
+        if (!e.isIntersecting) return;
+        const id = e.target.id.replace(/^v/, '');
+        links.forEach((a) => a.classList.toggle('on', a.getAttribute('data-id') === id));
+      });
+    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.12 });
+    document.querySelectorAll('.release').forEach((el) => io.observe(el));
+
+    drawTree();
+  </script>
+</body>
+</html>

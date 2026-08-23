@@ -17,8 +17,9 @@ import { ClubEventBanner } from '@/src/components/guide/ClubEventBanner';
 import { SystemNoticeBanner } from '@/src/components/guide/SystemNoticeBanner';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { SiteOverlayHost } from '@/src/components/site/SiteOverlayHost';
-import { isActivityTime } from '@/src/services/activityTime';
-import { getEffectiveSchedule } from '@/src/utils/dateFormat';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
+import { isGoingToday } from '@/src/utils/attendanceIntent';
+import { isStaffUser } from '@/src/utils/staffAccess';
 import { colors } from '@/src/theme';
 import type { Court, GameMode, NantaHalf } from '@/src/types';
 
@@ -43,6 +44,7 @@ export default function CourtsScreen() {
   const leaveWaitQueue = useCourtStore((s) => s.leaveWaitQueue);
   const removeWaitEntry = useCourtStore((s) => s.removeWaitEntry);
   const refreshCourts = useCourtStore((s) => s.refreshCourts);
+  const setCourtOccupancy = useCourtStore((s) => s.setCourtOccupancy);
 
   const currentUser = useAuthStore((s) => s.currentUser);
   const users = useAuthStore((s) => s.users);
@@ -51,16 +53,15 @@ export default function CourtsScreen() {
   const showToast = useNotificationStore((s) => s.showToast);
   const submitMatchResult = useNotificationStore((s) => s.submitMatchResult);
 
-  /** 스태프/데모 예외 없이, 실제 활동 시간대 기준 */
-  const inActivityWindow = isActivityTime();
-  const attendanceCount = authHydrated
-    ? inActivityWindow
-      ? users.filter((u) => u.isAtGym && u.memberStatus === 'approved').length
-      : users.filter(
-          (u) => u.memberStatus === 'approved' && Boolean(getEffectiveSchedule(u).start)
-        ).length
+  const reservationEnabled = useFeatureFlagsStore((s) => s.reservationEnabled);
+  const occupancyMode = !reservationEnabled;
+  const isStaff = isStaffUser(currentUser);
+
+  const goingPeople = authHydrated ? users.filter((u) => isGoingToday(u)) : [];
+  const goingCount = authHydrated ? goingPeople.length : undefined;
+  const atGymCount = authHydrated
+    ? users.filter((u) => u.isAtGym && u.memberStatus === 'approved').length
     : undefined;
-  const attendanceLabel = inActivityWindow ? '지금' : '갈 예정';
 
   const [refreshing, setRefreshing] = useState(false);
   const [showScoreSheet, setShowScoreSheet] = useState(false);
@@ -184,7 +185,15 @@ export default function CourtsScreen() {
     onRecordScore: () => setShowScoreSheet(true),
     isCurrentUserOnCourt,
     isHost,
-    canPerformActions: checkGeoFence(),
+    canPerformActions: occupancyMode ? isStaff : checkGeoFence(),
+    occupancyMode,
+    isStaff,
+    onSetOccupancy: (occupied: boolean) => {
+      if (!selectedCourt) return;
+      const result = setCourtOccupancy(selectedCourt.id, occupied);
+      showToast({ type: result.success ? 'success' : 'warning', title: '', message: result.message });
+      if (result.success) handleClose();
+    },
   };
 
   const handleSubmitScore = (scoreA: number, scoreB: number) => {
@@ -270,8 +279,10 @@ export default function CourtsScreen() {
             onFilterChange={setFilter}
             myUserId={currentUser?.id}
             isAtGym={isAtGym}
-            attendanceCount={attendanceCount}
-            attendanceLabel={attendanceLabel}
+            goingCount={goingCount}
+            goingPeople={goingPeople}
+            atGymCount={atGymCount}
+            occupancyMode={occupancyMode}
             remaining={remaining}
             isExpanded={selectedCourtId !== null}
           />
@@ -298,6 +309,7 @@ export default function CourtsScreen() {
               }}
               filter={filter}
               myUserId={currentUser?.id}
+              occupancyMode={occupancyMode}
               detailProps={contentProps}
             />
           </View>

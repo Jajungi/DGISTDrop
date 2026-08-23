@@ -15,7 +15,6 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return output;
 }
 
-/** iOS Safari는 홈 화면 추가(PWA) 후에만 웹 푸시가 동작합니다. */
 export function getWebPushAvailability(): {
   supported: boolean;
   reason?: string;
@@ -24,16 +23,13 @@ export function getWebPushAvailability(): {
     return { supported: false, reason: '웹 환경이 아닙니다.' };
   }
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    return { supported: false, reason: '이 브라우저는 웹 푸시를 지원하지 않습니다.' };
+    return { supported: false, reason: '이 브라우저는 알림을 지원하지 않습니다.' };
   }
   if (!VAPID_PUBLIC_KEY) {
-    return { supported: false, reason: '웹 푸시 키가 아직 설정되지 않았어요.' };
+    return { supported: false, reason: '알림 키가 아직 설정되지 않았어요.' };
   }
   if (detectClientDevice() === 'ios' && !isStandalonePwa()) {
-    return {
-      supported: false,
-      reason: 'iPhone/iPad는 Safari에서 [공유 → 홈 화면에 추가] 후, 그 아이콘으로 열고 알림을 켤 수 있어요.',
-    };
+    return { supported: false, reason: '이 환경에서는 알림을 켤 수 없어요.' };
   }
   return { supported: true };
 }

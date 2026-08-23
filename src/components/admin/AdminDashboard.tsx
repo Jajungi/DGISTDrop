@@ -19,7 +19,7 @@ import { useAdminAlertStore } from '@/src/stores/adminAlertStore';
 import { useAdminAlerts } from '@/src/hooks/useAdminAlerts';
 import { Ionicons } from '@expo/vector-icons';
 import { recordAdminLogAsActor } from '@/src/services/adminLog';
-import { persistAppState } from '@/src/services/appState';
+import { persistAppState } from '@/src/services/persistGate';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
 import { Avatar } from '@/src/components/ui/Avatar';
@@ -33,6 +33,7 @@ import { AdminDbResetPanel } from '@/src/components/admin/AdminDbResetPanel';
 import { AdminPushPanel } from '@/src/components/admin/AdminPushPanel';
 import { AdminFieldOpsPanel } from '@/src/components/admin/AdminFieldOpsPanel';
 import { GAME_MODE_CONFIG } from '@/src/constants/court';
+import { isAdminUser, isOperatorUser, roleBadgeLabel } from '@/src/utils/staffAccess';
 import { getEffectiveSchedule, getTodayKey, formatTodayLabel } from '@/src/utils/dateFormat';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import type { AdminLogCategory, User, Court, MatchResult } from '@/src/types';
@@ -100,6 +101,10 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
   const setInfinitePoints = useAppStore((s) => s.setInfinitePoints);
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
   const setEloFeaturesEnabled = useFeatureFlagsStore((s) => s.setEloFeaturesEnabled);
+  const pointsOn = useFeatureFlagsStore((s) => s.pointsFeaturesEnabled);
+  const setPointsFeaturesEnabled = useFeatureFlagsStore((s) => s.setPointsFeaturesEnabled);
+  const reservationEnabled = useFeatureFlagsStore((s) => s.reservationEnabled);
+  const setReservationEnabled = useFeatureFlagsStore((s) => s.setReservationEnabled);
   const adminAlerts = useAdminAlerts();
   const dismissAlert = useAdminAlertStore((s) => s.dismiss);
 
@@ -155,10 +160,12 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
   };
 
   const currentUser = useAuthStore((s) => s.currentUser);
-  const isAdminActor =
-    currentUser?.id === adminId
-      ? currentUser.membershipTier === 'admin'
-      : users.find((u) => u.id === adminId)?.membershipTier === 'admin';
+  const isAdminActor = isAdminUser(
+    currentUser?.id === adminId ? currentUser : users.find((u) => u.id === adminId)
+  );
+  const isOperatorActor = isOperatorUser(
+    currentUser?.id === adminId ? currentUser : users.find((u) => u.id === adminId)
+  );
 
   const groups: { key: AdminGroup; label: string; badge?: number }[] = [
     { key: 'home', label: '홈', badge: adminAlerts.length || undefined },
@@ -177,7 +184,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
         (unconfirmedMatches.length + pendingLessonUsers.length + activeQueue.length) ||
         undefined,
     },
-    { key: 'points', label: '포인트' },
+    ...(pointsOn ? [{ key: 'points' as AdminGroup, label: '포인트' }] : []),
     { key: 'settings', label: '설정' },
     { key: 'push', label: '알림' },
     { key: 'logs', label: '로그' },
@@ -319,6 +326,8 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
         <View style={styles.sectionBody}>
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>개발자 모드</Text>
+            {pointsOn ? (
+              <>
             <DevToggle
               label="무한 포인트 모드"
               hint="ON: 999,999P 부여 · OFF: 켜기 전 포인트로 복귀 (실제 차감·적립은 정상 동작)"
@@ -326,9 +335,35 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
               onToggle={() => setInfinitePoints(!infinitePoints)}
             />
             <View style={styles.devDivider} />
+              </>
+            ) : null}
+            {isOperatorActor ? (
+              <>
+            <DevToggle
+              label="예약 기능 (데모)"
+              hint="ON: 이름·게임 수로 코트를 예약합니다. OFF: 사용 중/비움만 보이고 운영진이 점유를 바꿉니다."
+              value={reservationEnabled}
+              onToggle={() => {
+                void setReservationEnabled(!reservationEnabled).then((r) =>
+                  showToast({ type: r.success ? 'info' : 'warning', title: '', message: r.message })
+                );
+              }}
+            />
+            <View style={styles.devDivider} />
+            <DevToggle
+              label="포인트 상점 기능 (데모)"
+              hint="OFF: 포인트 화면·적립·차감이 숨겨집니다. 코트 현황 모드와 함께 끄는 것을 권장합니다."
+              value={pointsOn}
+              onToggle={() => {
+                void setPointsFeaturesEnabled(!pointsOn).then((r) =>
+                  showToast({ type: r.success ? 'info' : 'warning', title: '', message: r.message })
+                );
+              }}
+            />
+            <View style={styles.devDivider} />
             <DevToggle
               label="Elo · 랭크 (실험적 기능)"
-              hint="OFF: 브론즈 등 티어, Elo 추이·순위표, 랭크 할인·모집 랭크 제한이 모두 숨겨집니다. 경기 승패·포인트는 그대로입니다."
+              hint="OFF: 브론즈 등 티어, Elo 추이·순위표, 랭크 할인·모집 랭크 제한이 모두 숨겨집니다."
               value={eloOn}
               onToggle={() => {
                 void setEloFeaturesEnabled(!eloOn).then((r) =>
@@ -336,6 +371,10 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
                 );
               }}
             />
+              </>
+            ) : (
+            <Text style={styles.demoHint}>예약·포인트 상점·Elo 스위치는 운영자만 바꿀 수 있어요.</Text>
+            )}
           </Card>
 
           <AdminDbResetPanel adminId={adminId} />
@@ -1004,6 +1043,7 @@ function MemberCard({
   onToggle?: () => void;
   actions?: React.ReactNode;
 }) {
+  const pointsOn = useFeatureFlagsStore((s) => s.pointsFeaturesEnabled);
   return (
     <Pressable onPress={onToggle} style={styles.itemCard}>
       <View style={styles.itemRow}>
@@ -1021,9 +1061,9 @@ function MemberCard({
       {expanded && (
         <View style={styles.detailBox}>
           <DetailRow label="이메일" value={user.email} />
-          <DetailRow label="등급" value={user.membershipTier} />
+          <DetailRow label="등급" value={roleBadgeLabel(user)} />
           {isEloFeaturesEnabled() ? <DetailRow label="Elo" value={String(user.elo)} /> : null}
-          <DetailRow label="포인트" value={`${user.points}P`} />
+          {pointsOn ? <DetailRow label="포인트" value={`${user.points}P`} /> : null}
           <DetailRow label="전적" value={`${user.wins}승 ${user.losses}패`} />
           <DetailRow label="가입일" value={new Date(user.createdAt).toLocaleDateString('ko-KR')} />
           <DetailRow label="출석(오늘)" value={user.isAtGym ? '체육관' : '미도착'} />

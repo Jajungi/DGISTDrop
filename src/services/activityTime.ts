@@ -32,6 +32,14 @@ function hasExtraActivityOn(dateISO: string): boolean {
     .events.some((e) => e.kind === 'extra' && isClubEventActiveOn(e, dateISO));
 }
 
+export function isActivityDay(now: Date = new Date()): boolean {
+  const dateISO = todayLocalISODate(now);
+  if (isClosedOn(dateISO)) return false;
+  if (hasExtraActivityOn(dateISO)) return true;
+  const day = now.getDay();
+  return schedule().some((s) => s.day === day);
+}
+
 export function isActivityTime(now: Date = new Date()): boolean {
   const dateISO = todayLocalISODate(now);
   if (isClosedOn(dateISO)) return false;

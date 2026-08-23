@@ -40,6 +40,7 @@ interface CourtExpandViewProps {
   onRegisterRemeasure?: (remeasure: () => void) => void;
   filter?: 'all' | 'empty' | 'mine';
   myUserId?: string;
+  occupancyMode?: boolean;
   detailProps: Omit<
     CourtDetailContentProps,
     | 'court'
@@ -70,6 +71,7 @@ export function CourtExpandView({
   onRegisterRemeasure,
   filter,
   myUserId,
+  occupancyMode = false,
   detailProps,
 }: CourtExpandViewProps) {
   const { headerHeight, tabBarHeight, needsHorizontalScroll, isDesktop, scaledBorderRadius } = useLayoutMode();
@@ -257,6 +259,7 @@ export function CourtExpandView({
               myUserId={myUserId}
               registerCourtRef={registerCourtRef}
               showCoachingLink={!selectedCourtId}
+              occupancyMode={occupancyMode}
             />
           </ScrollView>
         ) : (
@@ -268,6 +271,7 @@ export function CourtExpandView({
             myUserId={myUserId}
             registerCourtRef={registerCourtRef}
             showCoachingLink={!selectedCourtId}
+            occupancyMode={occupancyMode}
           />
         )}
       </Animated.View>
@@ -289,7 +293,7 @@ export function CourtExpandView({
               { pointerEvents: selectedCourtId ? 'box-none' : 'none' },
             ]}
           >
-            <View style={styles.detailHeader} pointerEvents="box-none">
+            <View style={[styles.detailHeader, { pointerEvents: 'box-none' }]}>
               <TouchGuard>
                 <Pressable onPress={requestClose} style={styles.backBtn}>
                   <Text style={styles.backText}>← 코트 목록</Text>

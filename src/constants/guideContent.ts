@@ -7,6 +7,8 @@ export interface GuideItem {
   category?: string;
   /** 있으면 해당 기기에서만 이용 안내에 표시 */
   forDevices?: Array<'ios' | 'android' | 'desktop' | 'native'>;
+  /** 켜진 기능에 맞춰 표시. occupancy = 예약 기능이 꺼진 기본 현황 모드 */
+  when?: 'occupancy' | 'reservation' | 'points' | 'elo';
 }
 
 export interface GuideSection {
@@ -32,22 +34,40 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: '앱 이용 방법',
     icon: '📱',
     intro:
-      'Drop은 S1 체육관 현장 활동을 위한 코트·파트너·출석·포인트 앱입니다. 아래 순서로 이용하면 됩니다.',
+      'Drop은 S1 체육관 현장 활동용입니다. 홈에서 코트 현황을 보고, 활동일에는 참석 여부를 남기고, 친구·모집·출석을 씁니다.',
     items: [
       {
+        title: '코트 현황',
+        when: 'occupancy',
+        content:
+          '홈에 코트 9면이 나옵니다. 비어 있음 / 사용 중만 보입니다. 코트를 누르면 확대됩니다. 사용 여부는 운영진이 바꿉니다.',
+      },
+      {
         title: '코트 예약',
+        when: 'reservation',
         content:
           '홈 화면에서 원하는 코트를 누르면 확대됩니다. 오른쪽에서 경기 유형(난타/경기)·게임 수를 고른 뒤 예약하세요. 확대를 닫으려면 왼쪽 코트 영역을 다시 누르거나, 모바일에서는 바깥을 누르세요.',
       },
       {
         title: '난타 vs 경기',
+        when: 'reservation',
         content:
           '난타는 반코트만 사용하며 Elo·전적에 반영되지 않습니다. 경기는 코트 전체를 쓰며, 경기 후 점수를 입력하면 Elo·전적·포인트가 반영됩니다. 점수를 입력하지 않으면 친선으로 처리됩니다.',
       },
       {
         title: '빈자리 합류',
+        when: 'reservation',
         content:
           '자리가 비어 있는 코트에 [합류 신청]을 보낼 수 있습니다. 예약자가 수락하면 참가하고, 거절되면 알림으로 안내됩니다.',
+      },
+      {
+        title: '오늘 참석',
+        content:
+          '정기 활동일(기본 월·수, 운영진이 달력에 넣은 날 포함)에만 참석/불참을 묻습니다. 알림의 참석·불참, MY 기록의 오늘 참석, 또는 앱을 열었을 때 팝업으로 고릅니다. 참석이면 도착 예정 시간을 넣을 수 있습니다. 그 시간은 친구 탭에만 보이고, 홈의 「올 사람」은 참석 인원만 셉니다.',
+      },
+      {
+        title: '출석 (지금)',
+        content: `${GYM_NAME} 반경 약 500m 안에서 헤더의 출석을 누르면 오늘 현장 출석으로 기록됩니다. 홈의 「지금」은 이렇게 위치 인증한 인원입니다.`,
       },
       {
         title: '파트너 모집 · 친구',
@@ -56,36 +76,24 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       },
       {
         title: '위치 인증 (지오펜스)',
-        content: `${GYM_NAME} 반경 약 500m 안에서만 코트 예약·모집방 생성·합류 신청이 가능합니다. 멀리서 미리 독점하는 것을 막기 위함입니다.`,
+        when: 'occupancy',
+        content: `${GYM_NAME} 반경 약 500m 안에서만 출석·모집방 생성이 가능합니다.`,
+      },
+      {
+        title: '위치 인증 (지오펜스)',
+        when: 'reservation',
+        content: `${GYM_NAME} 반경 약 500m 안에서만 코트 예약·모집방 생성·합류 신청이 가능합니다.`,
       },
       {
         title: '활동 알림 (푸시)',
         content:
-          '접속 기기에 맞는 방법이 안내됩니다. 프로필 → 설정에서 알림을 켜고, 종류별로 받을지 고를 수 있습니다.',
-      },
-      {
-        title: '홈 화면에 추가 (iPhone Safari)',
-        forDevices: ['ios'],
-        content:
-          '1) Safari로 Drop 열기(다른 브라우저 X) → 2) [공유](□↑) → 3) [홈 화면에 추가](없으면 시트 스크롤) → 4) [웹앱] 확인 후 [추가] → 5) 홈 화면 Drop 아이콘으로 접속 → 6) 설정에서 [알림 켜기]. Safari 탭 안에서는 푸시가 오지 않습니다.',
-      },
-      {
-        title: '홈 화면에 추가 (Android)',
-        forDevices: ['android'],
-        content:
-          '【Chrome】 메뉴(⋮) → [앱 설치] / [홈 화면에 추가] / [바로가기 만들기]. 【다른 브라우저】 [현재 페이지 추가] → [웹앱] 선택. 이후 Drop 아이콘으로 열고 알림을 켜세요. Play 스토어 앱은 나중에 다시 준비할 예정입니다. 로그인·설정에도 설치 안내가 있습니다.',
-      },
-      {
-        title: 'PC에서 앱으로 설치 (선택)',
-        forDevices: ['desktop'],
-        content:
-          '필수는 아닙니다. Chrome·Edge 메뉴(⋮) → [캐스팅, 저장, 공유] → [Drop 설치하기](또는 페이지를 앱으로 설치). 주소창 설치 아이콘으로도 가능합니다. 프로필 → 설정에도 안내가 있습니다.',
+          '프로필 → 설정에서 알림을 켜고, 종류별로 받을지 고를 수 있습니다.',
       },
       {
         title: 'PC에서 알림 켜기',
         forDevices: ['desktop'],
         content:
-          'Chrome 또는 Edge에서 이 사이트 알림을 허용하면 됩니다. 앱 설치는 필수가 아닙니다. 안 오면 주소창 왼쪽 자물쇠 → 알림이 허용인지 확인하세요.',
+          'Chrome 또는 Edge에서 알림을 허용하면 됩니다. 안 오면 주소창 왼쪽 자물쇠 → 알림이 허용인지 확인하세요.',
       },
       {
         title: '앱에서 알림이 안 올 때',
@@ -317,24 +325,29 @@ export const GUIDE_SECTIONS: GuideSection[] = [
           'PLACEHOLDER_ACTIVITY_SCHEDULE',
       },
       {
-        title: '정회원 (동아리비 납부 필수)',
+        title: '정회원',
         content:
-          '정식 가입·회비 인증이 완료된 활동 회원입니다. 출석 인증 시 +150P가 지급되며, 코트 예약·모집·포인트·친구·랭크 등 모든 기능을 이용할 수 있습니다.',
+          '정식 가입·회비 인증이 완료된 활동 회원입니다. 출석·친구·모집 등 회원 기능을 이용할 수 있습니다.',
       },
       {
-        title: '준회원 (동아리비 납부 필수)',
+        title: '준회원',
         content:
-          '회비는 납부했으나 정회원 승인을 대기 중인 상태입니다. 코트 예약이 가능하며, 출석 시 +100P가 적용됩니다.',
+          '회비는 납부했으나 정회원 승인을 대기 중인 상태입니다. 출석·코트 현황 확인은 가능합니다.',
       },
       {
         title: '게스트 (임시 입장)',
         content:
-          '학번 회원가입 없이 이름으로 입장한 임시 이용자입니다. 체육관 근처에서 코트 예약·합류는 가능하지만, 포인트·친구·랭크·모집방 생성 등 회원 전용 기능은 사용할 수 없습니다. 정식 이용을 원하면 회원가입을 해 주세요.',
+          '학번 회원가입 없이 이름으로 입장한 당일 임시 이용자입니다. 코트 현황·모집방 참여·이용 안내는 볼 수 있습니다. 친구·모집방 생성·포인트·랭크는 사용할 수 없습니다. 서울 날짜가 바뀌면 계정이 삭제됩니다. 계속 쓰려면 회원가입을 하세요.',
+      },
+      {
+        title: '회비 등급과 운영 권한',
+        content:
+          '회비 등급(게스트 / 준회원 / 정회원)과 운영 권한(관리자 / 운영자)은 별개입니다. 정회원으로 바꿔도 관리자·운영자는 빠지지 않습니다. 화면 배지는 운영자 > 관리자 > 회비 등급 순입니다.',
       },
       {
         title: '가입 · 승인',
         content:
-          '운영진 설정에 따라 가입 즉시 이용하거나, 승인 대기 후 이용할 수 있습니다. 승인·거절·역할(관리자·운영진) 부여는 관리 화면에서 처리합니다.',
+          '운영진 설정에 따라 가입 즉시 이용하거나, 승인 대기 후 이용할 수 있습니다. 승인·거절·역할(관리자·운영자) 부여는 관리 화면에서 처리합니다.',
       },
       {
         title: '전용 신발 착용',
@@ -357,16 +370,19 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       },
       {
         title: '티어별 예약 할인',
+        when: 'reservation',
         content:
           '실력(랭크)이 Gold 이상이면 코트 예약 차감 포인트에 최대 30% 할인이 적용됩니다. (일반 20p · 중앙 30p 기준)',
       },
       {
         title: '동시 예약 제한',
+        when: 'reservation',
         content:
           '한 번에 하나의 코트만 예약·이용할 수 있어요. 코트를 반납한 뒤 다른 코트를 예약할 수 있습니다.',
       },
       {
         title: '피크타임 제한',
+        when: 'reservation',
         content: '19~20시 피크타임에는 1일 최대 2회까지만 예약할 수 있습니다.',
       },
     ],
@@ -405,15 +421,23 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     items: [
       {
         title: '위치 기반 인증 (Geo-fencing)',
+        when: 'occupancy',
+        content: `${GYM_NAME} 반경 약 500m 이내에서만 출석·모집방 생성이 가능합니다.`,
+      },
+      {
+        title: '위치 기반 인증 (Geo-fencing)',
+        when: 'reservation',
         content: `${GYM_NAME} 반경 약 500m 이내에서만 코트 예약·모집방 생성·합류 신청이 가능합니다.`,
       },
       {
         title: '게임 수 준수 및 즉시 반납',
+        when: 'reservation',
         content:
           "시간제가 아닌 '게임 수' 기준으로 코트를 점유합니다. 예약한 목표 게임 수가 끝나면 지체 없이 [게임 완료 / 코트 반납]을 눌러 대기 중인 다음 조에게 코트를 인계해 주세요.",
       },
       {
         title: '빈자리 합류 문화',
+        when: 'reservation',
         content:
           '2~3명이 연습 중인 코트에 [합류 신청]이 오면 앱에서 수락·거절할 수 있습니다. 가능하면 열린 마음으로 함께 치는 것을 권장합니다.',
       },
@@ -454,13 +478,13 @@ const ACTIVITY_SCHEDULE_PLACEHOLDER = 'PLACEHOLDER_ACTIVITY_SCHEDULE';
 
 /**
  * 설정에 저장된 정기 활동 시간 문구를 넣은 이용 안내 섹션.
- * @param scheduleLabel 예: "매주 화·목 18:30–21:50"
+ * @param scheduleLabel 예: "매주 월·수 18:30–21:40"
  */
 export function getGuideSections(scheduleLabel: string): GuideSection[] {
   const scheduleContent =
     `${scheduleLabel}에 ${GYM_NAME}에서 정기 활동이 진행됩니다. ` +
     '정기 활동 시간이 아니면 홈 상단에 안내 배너가 표시됩니다. ' +
-    '코트 예약·합류 등 기능은 그대로 이용할 수 있으며, 자세한 규칙은 이 이용 안내를 참고하세요.';
+    '코트 현황 확인 등 기능은 그대로 이용할 수 있습니다.';
 
   return GUIDE_SECTIONS.map((section) => {
     if (section.id !== 'club') return section;

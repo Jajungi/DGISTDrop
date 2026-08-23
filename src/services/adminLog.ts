@@ -1,6 +1,6 @@
-import { useAuthStore } from '@/src/stores/authStore';
 import { useAdminLogStore } from '@/src/stores/adminLogStore';
-import { persistAppState } from '@/src/services/appState';
+import { persistAppState } from '@/src/services/persistGate';
+import { runtime } from '@/src/stores/runtimeAccess';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import type { AdminLogCategory } from '@/src/types';
 
@@ -32,7 +32,7 @@ export function recordAdminLog(input: RecordAdminLogInput) {
 export function recordAdminLogAsCurrentUser(
   input: Omit<RecordAdminLogInput, 'actorId' | 'actorName'>
 ) {
-  const actor = useAuthStore.getState().currentUser;
+  const actor = runtime().getCurrentUser();
   recordAdminLog({
     ...input,
     actorId: actor?.id,
@@ -44,7 +44,7 @@ export function recordAdminLogAsActor(
   actorId: string,
   input: Omit<RecordAdminLogInput, 'actorId' | 'actorName'>
 ) {
-  const actor = useAuthStore.getState().users.find((u) => u.id === actorId);
+  const actor = runtime().getUsers().find((u) => u.id === actorId);
   recordAdminLog({
     ...input,
     actorId,

@@ -39,7 +39,7 @@ function formatAuthError(error: AuthError): string {
     return '비밀번호가 요구 조건을 만족하지 않아요. 6자 이상으로 설정해 주세요.';
   }
   if (m.includes('invalid student id') || m.includes('student id required')) {
-    return '학번은 연도 4자리 + 숫자 5자리 형식이에요. (예: 202410001)';
+    return '학번은 연도 4자리 + 숫자 5자리 형식이에요. (예: 202600000)';
   }
   if (m.includes('cannot delete last admin')) {
     return '마지막 관리자 계정은 삭제할 수 없어요.';

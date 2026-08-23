@@ -9,7 +9,7 @@ import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCoachingStore } from '@/src/stores/coachingStore';
 import { useAdminLogStore } from '@/src/stores/adminLogStore';
 import { createEmptyCourts } from '@/src/services/courtService';
-import { persistAppState } from '@/src/services/appState';
+import { persistAppState } from '@/src/services/persistGate';
 import type { User } from '@/src/types';
 
 export type DbResetScope =

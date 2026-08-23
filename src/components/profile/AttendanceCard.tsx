@@ -7,6 +7,7 @@ import { useGeoLocation } from '@/src/hooks/useGeoLocation';
 import { Button } from '@/src/components/ui/Button';
 import { getDistanceToGym } from '@/src/services/geoFence';
 import { GYM_LOCATION } from '@/src/constants';
+import { isStaffUser } from '@/src/utils/staffAccess';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 function todayKey() {
@@ -31,7 +32,7 @@ export function AttendanceCard() {
     (r) => r.userId === currentUser.id && r.date === today
   );
 
-  const isAdmin = currentUser.membershipTier === 'admin';
+  const isAdmin = isStaffUser(currentUser);
   const distance = location ? getDistanceToGym(location) : null;
   const canCheckIn = checkGeoFence();
 

@@ -42,6 +42,40 @@ export async function fetchEloFeaturesEnabled(): Promise<boolean> {
   return raw !== false;
 }
 
+export async function fetchReservationEnabled(): Promise<boolean> {
+  if (!isSupabaseEnabled()) return false;
+  const { data, error } = await getSupabase()
+    .from('club_metadata')
+    .select('reservation_enabled')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error) {
+    if (__DEV__ && !isMissingColumnError(error.message)) {
+      console.warn('[club] fetchReservationEnabled', error.message);
+    }
+    return false;
+  }
+  const raw = (data as { reservation_enabled?: boolean | null } | null)?.reservation_enabled;
+  return raw === true;
+}
+
+export async function fetchPointsFeaturesEnabled(): Promise<boolean> {
+  if (!isSupabaseEnabled()) return true;
+  const { data, error } = await getSupabase()
+    .from('club_metadata')
+    .select('points_features_enabled')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error) {
+    if (__DEV__ && !isMissingColumnError(error.message)) {
+      console.warn('[club] fetchPointsFeaturesEnabled', error.message);
+    }
+    return true;
+  }
+  const raw = (data as { points_features_enabled?: boolean | null } | null)?.points_features_enabled;
+  return raw !== false;
+}
+
 export async function setEloFeaturesEnabledRemote(enabled: boolean): Promise<boolean> {
   const { data, error } = await getSupabase().rpc('rpc_set_elo_features_enabled', {
     p_enabled: enabled,
@@ -55,6 +89,65 @@ export async function setEloFeaturesEnabledRemote(enabled: boolean): Promise<boo
     throw error;
   }
   return Boolean(data ?? enabled);
+}
+
+export async function setReservationEnabledRemote(enabled: boolean): Promise<boolean> {
+  const { data, error } = await getSupabase().rpc('rpc_set_reservation_enabled', {
+    p_enabled: enabled,
+  });
+  if (error) {
+    if (isMissingColumnError(error.message) || error.message?.includes('rpc_set_reservation_enabled')) {
+      throw new Error(
+        '코트 현황 모드 DB가 아직 없어요. Supabase에서 034_roles_occupancy_attendance.sql 을 실행해 주세요.'
+      );
+    }
+    throw error;
+  }
+  return Boolean(data ?? enabled);
+}
+
+export async function setPointsFeaturesEnabledRemote(enabled: boolean): Promise<boolean> {
+  const { data, error } = await getSupabase().rpc('rpc_set_points_features_enabled', {
+    p_enabled: enabled,
+  });
+  if (error) {
+    if (
+      isMissingColumnError(error.message) ||
+      error.message?.includes('rpc_set_points_features_enabled')
+    ) {
+      throw new Error(
+        '포인트 기능 스위치 DB가 아직 없어요. Supabase에서 034_roles_occupancy_attendance.sql 을 실행해 주세요.'
+      );
+    }
+    throw error;
+  }
+  return Boolean(data ?? enabled);
+}
+
+export async function purgeStaleGuestsRemote(): Promise<number> {
+  const { data, error } = await getSupabase().rpc('rpc_purge_stale_guests');
+  if (error) {
+    if (isMissingColumnError(error.message) || error.message?.includes('rpc_purge_stale_guests')) {
+      return 0;
+    }
+    throw error;
+  }
+  const raw = data as { deleted?: number } | null;
+  return raw?.deleted ?? 0;
+}
+
+export function subscribeClubFlags(onChange: () => void): () => void {
+  const client = getSupabase();
+  const channel = client
+    .channel('club-metadata-flags')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'club_metadata' }, () => {
+      onChange();
+    })
+    .subscribe();
+
+  return () => {
+    void client.removeChannel(channel);
+  };
 }
 
 export async function setOpenRegistrationRemote(enabled: boolean): Promise<boolean> {

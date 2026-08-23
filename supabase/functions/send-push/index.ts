@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     const expoTokens = tokens.map((t: { token: string }) => t.token).filter(isExpoToken);
     const webTokens = tokens.map((t: { token: string }) => t.token).filter(isWebSubscription);
 
-    const expoSent = await sendExpoAndPrune(
+    const expoRes = await sendExpoAndPrune(
       supabase,
       expoTokens,
       title,
@@ -96,16 +96,24 @@ Deno.serve(async (req) => {
       kind,
       EXPO_ACCESS_TOKEN
     );
-    const webSent = await sendWebAndPrune(supabase, webTokens, title, message, {
+    const webRes = await sendWebAndPrune(supabase, webTokens, title, message, {
       subject: VAPID_SUBJECT,
       publicKey: VAPID_PUBLIC,
       privateKey: VAPID_PRIVATE,
-    });
+    }, kind);
 
-    return new Response(JSON.stringify({ sent: expoSent + webSent, expo: expoSent, web: webSent }), {
+    return new Response(
+      JSON.stringify({
+        sent: expoRes.sent + webRes.sent,
+        expo: expoRes.sent,
+        web: webRes.sent,
+        pruned: expoRes.pruned + webRes.pruned,
+      }),
+      {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-    });
+    }
+    );
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
   }

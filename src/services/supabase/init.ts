@@ -14,7 +14,7 @@ import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCoachingStore } from '@/src/stores/coachingStore';
 import { useAdminLogStore } from '@/src/stores/adminLogStore';
 import { createEmptyCourts } from '@/src/services/courtService';
-import { fetchOpenRegistration, fetchActivitySchedule, fetchSiteOverlays, fetchClubEvents, fetchLobbyExpiry, fetchEloFeaturesEnabled, fetchPeakHours } from '@/src/services/supabase/club';
+import { fetchOpenRegistration, fetchActivitySchedule, fetchSiteOverlays, fetchClubEvents, fetchLobbyExpiry, fetchEloFeaturesEnabled, fetchPeakHours, fetchReservationEnabled, fetchPointsFeaturesEnabled, purgeStaleGuestsRemote, subscribeClubFlags } from '@/src/services/supabase/club';
 import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { useSiteOverlayStore } from '@/src/stores/siteOverlayStore';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
@@ -23,9 +23,11 @@ import { usePeakHoursStore } from '@/src/stores/peakHoursStore';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
 import { useFriendPrefsStore } from '@/src/stores/friendPrefsStore';
+import { afterSupabaseAuth } from '@/src/services/supabase/authBridge';
 
 let courtsUnsub: (() => void) | null = null;
 let profilesUnsub: (() => void) | null = null;
+let clubFlagsUnsub: (() => void) | null = null;
 let socialUnsubs: (() => void)[] = [];
 
 /** 디자인용 mock 초기값 제거 — Supabase가 아직 채우지 않는 스토어 비우기 */
@@ -68,6 +70,20 @@ export async function initSupabaseApp(): Promise<boolean> {
   try {
     const eloOn = await fetchEloFeaturesEnabled();
     useFeatureFlagsStore.getState().setEloFeaturesEnabledLocal(eloOn);
+  } catch {
+    /* keep default */
+  }
+
+  try {
+    const reservationOn = await fetchReservationEnabled();
+    useFeatureFlagsStore.getState().setReservationEnabledLocal(reservationOn);
+  } catch {
+    /* keep default */
+  }
+
+  try {
+    const pointsOn = await fetchPointsFeaturesEnabled();
+    useFeatureFlagsStore.getState().setPointsFeaturesEnabledLocal(pointsOn);
   } catch {
     /* keep default */
   }
@@ -145,12 +161,18 @@ export async function initSupabaseApp(): Promise<boolean> {
   if (currentUser) {
     await bindSupabaseSession(
       currentUser.id,
-      currentUser.membershipTier === 'admin' || !!currentUser.isOperator
+      currentUser.membershipTier === 'admin' || !!currentUser.isAdmin || !!currentUser.isOperator
     );
+    try {
+      await purgeStaleGuestsRemote();
+    } catch {
+      /* 034 미적용이면 무시 */
+    }
   }
 
   courtsUnsub?.();
   profilesUnsub?.();
+  clubFlagsUnsub?.();
 
   courtsUnsub = subscribeCourts((next) => {
     useCourtStore.getState().hydrateCourts(next);
@@ -173,11 +195,27 @@ export async function initSupabaseApp(): Promise<boolean> {
     }
   });
 
+  clubFlagsUnsub = subscribeClubFlags(() => {
+    void (async () => {
+      try {
+        const [reservationOn, pointsOn, eloOn] = await Promise.all([
+          fetchReservationEnabled(),
+          fetchPointsFeaturesEnabled(),
+          fetchEloFeaturesEnabled(),
+        ]);
+        const flags = useFeatureFlagsStore.getState();
+        flags.setReservationEnabledLocal(reservationOn);
+        flags.setPointsFeaturesEnabledLocal(pointsOn);
+        flags.setEloFeaturesEnabledLocal(eloOn);
+      } catch {
+        /* ignore */
+      }
+    })();
+  });
+
   getSupabase().auth.onAuthStateChange(async (event) => {
     if (event === 'SIGNED_OUT') {
-      await import('@/src/services/supabase/session').then(({ afterSupabaseAuth }) =>
-        afterSupabaseAuth(null)
-      );
+      await afterSupabaseAuth(null);
       useAuthStore.setState({
         currentUser: null,
         isAuthenticated: false,
@@ -410,8 +448,10 @@ async function hydrateUserData(userId: string, isAdmin: boolean) {
 export function teardownSupabaseSubscriptions() {
   courtsUnsub?.();
   profilesUnsub?.();
+  clubFlagsUnsub?.();
   socialUnsubs.forEach((fn) => fn());
   socialUnsubs = [];
   courtsUnsub = null;
   profilesUnsub = null;
+  clubFlagsUnsub = null;
 }

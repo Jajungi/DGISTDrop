@@ -48,7 +48,8 @@ export function TimeRangeSlider({
     [startHour, startMinute, endHour, endMinute, stepMinutes]
   );
   const segmentCount = Math.max(0, marks.length - 1);
-  const labelStep = segmentCount > 10 ? 3 : segmentCount > 6 ? 2 : 1;
+  const startLabel = marks[0];
+  const endLabel = marks[marks.length - 1];
 
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(() =>
     rangeToSelectedIndices(marks, selectedStart, selectedEnd)
@@ -198,20 +199,11 @@ export function TimeRangeSlider({
         {timeExpanded ? (
           <View style={styles.sliderBody}>
             <View style={styles.labelsRow}>
-              {marks.slice(0, -1).map((mark, index) => {
-                const showLabel = index % labelStep === 0 && index / segmentCount < 0.85;
-                return (
-                  <View key={`label-${mark}`} style={styles.labelCell}>
-                    {showLabel ? (
-                      <Text style={styles.timeLabel} numberOfLines={1}>
-                        {mark}
-                      </Text>
-                    ) : null}
-                  </View>
-                );
-              })}
+              <Text style={styles.timeLabel} numberOfLines={1}>
+                {startLabel}
+              </Text>
               <Text style={styles.timeLabelEnd} numberOfLines={1}>
-                {marks[marks.length - 1]}
+                {endLabel}
               </Text>
             </View>
 
@@ -256,8 +248,7 @@ export function TimeRangeSlider({
               <Text style={styles.rangeSummary}>{rangeSummary}</Text>
             ) : (
               <Text style={styles.rangeHint}>
-                칸을 탭해 추가·해제하거나, 누른 채 드래그해 구간을 바꿀 수 있어요. 전체를 지울 필요
-                없이 다시 선택·부분 취소가 됩니다.
+                막대를 드래그하거나 칸을 눌러 구간을 고르세요.
               </Text>
             )}
           </View>
@@ -314,26 +305,19 @@ const styles = StyleSheet.create({
   labelsRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    position: 'relative',
+    justifyContent: 'space-between',
     minHeight: 18,
     marginBottom: 2,
-  },
-  labelCell: {
-    flex: 1,
-    alignItems: 'flex-start',
   },
   timeLabelEnd: {
     ...typography.caption,
     color: colors.textMuted,
-    fontSize: 10,
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
+    fontSize: 11,
   },
   timeLabel: {
     ...typography.caption,
     color: colors.textMuted,
-    fontSize: 10,
+    fontSize: 11,
   },
   trackRow: {
     flexDirection: 'row',

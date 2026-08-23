@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore, useAppStore } from '@/src/stores/authStore';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
+import { roleBadgeLabel } from '@/src/utils/staffAccess';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { useGeoLocation } from '@/src/hooks/useGeoLocation';
 import { getWinRate } from '@/src/services/points';
@@ -45,6 +46,7 @@ export default function ProfileScreen() {
   const { isMobile, isNarrow, scale, scaledTypography, scaledSpacing } = useLayoutMode();
   const isGuest = useAuthStore((s) => s.isGuestSession);
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
+  const pointsOn = useFeatureFlagsStore((s) => s.pointsFeaturesEnabled);
   useGeoLocation();
 
   const [showCleaning, setShowCleaning] = useState(false);
@@ -277,7 +279,7 @@ export default function ProfileScreen() {
               {eloOn ? <RankBadge rank={currentUser.rank} size="lg" /> : null}
               <View style={styles.tierBadge}>
                 <Text style={styles.tierText}>
-                  {currentUser.membershipTier === 'full' ? '정회원' : currentUser.membershipTier === 'associate' ? '준회원' : '비회원'}
+                  {roleBadgeLabel(currentUser)}
                 </Text>
               </View>
             </View>
@@ -313,6 +315,7 @@ export default function ProfileScreen() {
             <Text style={[styles.statValue, isMobile && statValueMobile(scaledTypography)]}>{hasGameStats ? `${winRate}%` : '—'}</Text>
             <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>승률</Text>
           </Card>
+          {pointsOn ? (
           <Pressable
             onPress={() => setShowPointsHistory(true)}
             style={({ pressed }) => [
@@ -326,6 +329,7 @@ export default function ProfileScreen() {
             <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>포인트</Text>
             <Text style={styles.statHint}>내역 보기</Text>
           </Pressable>
+          ) : null}
           <Pressable
             onPress={() => setShowMatchHistory(true)}
             style={({ pressed }) => [
@@ -342,7 +346,7 @@ export default function ProfileScreen() {
         </View>
 
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>오늘 도착 일정</Text>
+          <Text style={styles.sectionTitle}>오늘 참석</Text>
           <ArrivalScheduleCard />
         </Card>
 
@@ -368,7 +372,9 @@ export default function ProfileScreen() {
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>🧹 봉사 · 소모품</Text>
           <Text style={styles.sectionHint}>
-            청소 +{POINT_EARN.CLEANING}P · 네트 +{POINT_EARN.NET_SETUP}P · 셔틀콕 -{POINT_SPEND.SHUTTLECOCK}P
+            {pointsOn
+              ? `청소 +${POINT_EARN.CLEANING}P · 네트 +${POINT_EARN.NET_SETUP}P · 셔틀콕 -${POINT_SPEND.SHUTTLECOCK}P`
+              : '청소·네트·셔틀콕 인증은 그대로 남고, 포인트만 숨겼어요.'}
           </Text>
           {cleaningEntries.length === 0 ? (
             <ProfileEmptyState message="아직 청소 인증 기록이 없어요" />
@@ -378,31 +384,31 @@ export default function ProfileScreen() {
               <Text style={styles.rank}>{idx + 1}</Text>
               <Text style={styles.leaderName}>{entry.userName}</Text>
               <Text style={styles.leaderArea}>{entry.area}</Text>
-              <Text style={styles.leaderPts}>+{entry.points}P</Text>
+              {pointsOn ? <Text style={styles.leaderPts}>+{entry.points}P</Text> : null}
             </View>
             ))
           )}
           <View style={styles.serviceActions}>
             <Button
-              title={`청소 인증 (+${POINT_EARN.CLEANING}P)`}
+              title={pointsOn ? `청소 인증 (+${POINT_EARN.CLEANING}P)` : '청소 인증'}
               onPress={() => setShowCleaning(true)}
               fullWidth
               variant="outline"
             />
             <Button
-              title={`네트 설치·철거 (+${POINT_EARN.NET_SETUP}P)`}
+              title={pointsOn ? `네트 설치·철거 (+${POINT_EARN.NET_SETUP}P)` : '네트 설치·철거'}
               onPress={() => setShowNetSetup(true)}
               fullWidth
               variant="outline"
             />
             <Button
-              title={`콕 운반 (동방) (+${POINT_EARN.NET_SETUP}P)`}
+              title={pointsOn ? `콕 운반 (동방) (+${POINT_EARN.NET_SETUP}P)` : '콕 운반 (동방)'}
               onPress={() => setShowCockCarry(true)}
               fullWidth
               variant="outline"
             />
             <Button
-              title={`셔틀콕 수령 (-${POINT_SPEND.SHUTTLECOCK}P)`}
+              title={pointsOn ? `셔틀콕 수령 (-${POINT_SPEND.SHUTTLECOCK}P)` : '셔틀콕 수령'}
               onPress={handleShuttlecockClaim}
               fullWidth
               variant="secondary"
@@ -429,7 +435,7 @@ export default function ProfileScreen() {
       </ScrollView>
       </PageContainer>
 
-      {showPointsHistory && (
+      {showPointsHistory && pointsOn && (
         <PointsHistorySheet
           visible={showPointsHistory}
           userId={currentUser.id}

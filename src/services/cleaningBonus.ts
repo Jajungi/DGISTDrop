@@ -1,7 +1,7 @@
 import { applyPointChange } from '@/src/services/pointLedger';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
-import { persistAppState } from '@/src/services/appState';
+import { persistAppState } from '@/src/services/persistGate';
 
 const BONUS_BY_RANK = [500, 400, 300, 200, 150];
 

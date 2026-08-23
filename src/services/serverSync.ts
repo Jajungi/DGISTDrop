@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import { collectAppStateSnapshot } from '@/src/services/appState';
 import { hydrateFromSyncPayload } from '@/src/services/hydrateApp';
+import { bindServerSyncNotifier } from '@/src/services/syncNotify';
 import { useCourtStore } from '@/src/stores/courtStore';
 import { useLobbyStore } from '@/src/stores/lobbyStore';
 
@@ -143,3 +144,5 @@ export async function initServerSync() {
 export function notifyServerSync() {
   scheduleServerPush();
 }
+
+bindServerSyncNotifier(scheduleServerPush);

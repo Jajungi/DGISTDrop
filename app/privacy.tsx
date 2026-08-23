@@ -15,7 +15,7 @@ export default function PrivacyScreen() {
           <Text style={styles.meta}>시행일: 2026-07-08 · Drop / DI GIST 배드민턴</Text>
 
           <Text style={styles.p}>
-            DGIST 배드민턴 동아리 Drop(이하 “운영진”)은 Drop 웹·앱 서비스 이용과 관련하여
+            DGIST 배드민턴 동아리 Drop(이하 “운영진”)은 Drop 앱 서비스 이용과 관련하여
             수집·이용하는 개인정보의 처리 기준을 다음과 같이 안내합니다. 본 서비스는 동아리
             내부 운영 도구이며 상업 광고·외부 판매를 목적으로 하지 않습니다.
           </Text>
@@ -44,8 +44,8 @@ export default function PrivacyScreen() {
 
           <Text style={styles.h2}>4. 제3자·처리 위탁</Text>
           <Text style={styles.p}>
-            개인정보를 판매하지 않습니다. 계정·DB는 Supabase, 웹 호스팅은 Cloudflare Pages,
-            앱 빌드는 Expo/EAS, 원격 푸시는 Firebase/Expo Push를 이용할 수 있습니다.
+            개인정보를 판매하지 않습니다. 계정·DB는 Supabase, 앱 빌드는 Expo/EAS,
+            원격 푸시는 Firebase/Expo Push를 이용할 수 있습니다.
           </Text>
 
           <Text style={styles.h2}>5. 이용자 권리</Text>

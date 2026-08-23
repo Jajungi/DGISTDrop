@@ -25,7 +25,7 @@ export function StatusHeader({
     <View style={[styles.container, isDesktop && styles.containerDesktop]}>
       <View style={styles.titleRow}>
         <View>
-          <Text style={styles.pageTitle}>코트 예약</Text>
+          <Text style={styles.pageTitle}>코트 현황</Text>
           <Text style={styles.pageSubtitle}>{GYM_LOCATION.name}</Text>
         </View>
         <View style={[styles.locationBadge, isAtGym && styles.atGym]}>

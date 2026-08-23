@@ -19,6 +19,7 @@ interface CourtGridProps {
   registerCourtRef?: (id: number, ref: View | null) => void;
   /** 3번 코트 아래 코칭 화면 링크 */
   showCoachingLink?: boolean;
+  occupancyMode?: boolean;
 }
 
 function getCourtById(courts: Court[], id: number): Court | undefined {
@@ -41,6 +42,7 @@ export function CourtGrid({
   myUserId,
   registerCourtRef,
   showCoachingLink = false,
+  occupancyMode = false,
 }: CourtGridProps) {
   const { gymLayout, needsHorizontalScroll, gridRenderWidth } = useLayoutMode();
   const {
@@ -121,6 +123,7 @@ export function CourtGrid({
                             hPad={cardHPad}
                             chromeTop={cardChromeTop}
                             compact
+                            occupancyMode={occupancyMode}
                           />
                         </View>
                       );

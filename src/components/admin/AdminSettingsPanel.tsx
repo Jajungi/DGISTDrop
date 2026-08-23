@@ -22,25 +22,51 @@ interface AdminSettingsPanelProps {
   onToast: (type: 'success' | 'info' | 'warning', message: string) => void;
 }
 
+function daysFromSessions(sessions: ActivitySession[]): number[] {
+  return [...new Set(sessions.map((s) => s.day))].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
+}
+
+function timeFromSessions(sessions: ActivitySession[]): { start: string; end: string } {
+  const first = sessions[0];
+  if (!first) return { start: '18:30', end: '21:40' };
+  return {
+    start: formatHHMM(first.startHour, first.startMinute),
+    end: formatHHMM(first.endHour, first.endMinute),
+  };
+}
+
+function buildSessions(days: number[], start: string, end: string): ActivitySession[] {
+  const parsedStart = parseHHMM(start) ?? { hour: 18, minute: 30 };
+  const parsedEnd = parseHHMM(end) ?? { hour: 21, minute: 40 };
+  const unique = days.length ? days : [1];
+  return unique.map((day) => ({
+    day,
+    startHour: parsedStart.hour,
+    startMinute: parsedStart.minute,
+    endHour: parsedEnd.hour,
+    endMinute: parsedEnd.minute,
+  }));
+}
+
 export function AdminSettingsPanel({ adminId, adminName, onToast }: AdminSettingsPanelProps) {
   const schedule = useActivityScheduleStore((s) => s.schedule);
   const setSchedule = useActivityScheduleStore((s) => s.setSchedule);
 
   const [sub, setSub] = useState<SettingsSub>('schedule');
-  const [draft, setDraft] = useState<ActivitySession[]>(() => cloneSchedule(schedule));
+  const initialTime = timeFromSessions(schedule);
+  const [selectedDays, setSelectedDays] = useState<number[]>(() => daysFromSessions(schedule));
+  const [startInput, setStartInput] = useState(initialTime.start);
+  const [endInput, setEndInput] = useState(initialTime.end);
   const [dirty, setDirty] = useState(false);
-  const [startInputs, setStartInputs] = useState(() =>
-    schedule.map((s) => formatHHMM(s.startHour, s.startMinute))
-  );
-  const [endInputs, setEndInputs] = useState(() =>
-    schedule.map((s) => formatHHMM(s.endHour, s.endMinute))
-  );
 
-  const applyDraft = (sessions: ActivitySession[]) => {
-    const next = cloneSchedule(sessions);
-    setDraft(next);
-    setStartInputs(next.map((s) => formatHHMM(s.startHour, s.startMinute)));
-    setEndInputs(next.map((s) => formatHHMM(s.endHour, s.endMinute)));
+  const toggleDay = (day: number) => {
+    setSelectedDays((prev) => {
+      if (prev.includes(day)) {
+        if (prev.length <= 1) return prev;
+        return prev.filter((d) => d !== day);
+      }
+      return [...prev, day];
+    });
     setDirty(true);
   };
 
@@ -74,123 +100,75 @@ export function AdminSettingsPanel({ adminId, adminName, onToast }: AdminSetting
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>정기 활동 시간</Text>
             <Text style={styles.hint}>
-              앱의 활동 중/외 배너·예약 가능 여부·도착 일정 범위에 반영됩니다. 요일별로 여러 구간을
-              둘 수 있어요. 단발 휴관·추가 활동일은 [달력] 탭에서 지정합니다.
+              요일을 고르고 시작·종료만 맞추면 됩니다. 휴관·추가 활동일은 [달력]에서 지정합니다.
             </Text>
 
-            {draft.map((session, index) => (
-              <View key={`${session.day}-${index}`} style={styles.sessionCard}>
-                <View style={styles.dayRow}>
-                  {DAY_OPTIONS.map((day) => {
-                    const on = session.day === day;
-                    return (
-                      <Pressable
-                        key={day}
-                        onPress={() => {
-                          const next = [...draft];
-                          next[index] = { ...session, day };
-                          applyDraft(next);
-                        }}
-                        style={[styles.dayChip, on && styles.dayChipOn]}
-                      >
-                        <Text style={[styles.dayChipText, on && styles.dayChipTextOn]}>
-                          {getActivityDayLabel(day)}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+            <Text style={styles.timeLabel}>요일</Text>
+            <View style={styles.dayRow}>
+              {DAY_OPTIONS.map((day) => {
+                const on = selectedDays.includes(day);
+                return (
+                  <Pressable
+                    key={day}
+                    onPress={() => toggleDay(day)}
+                    style={[styles.dayChip, on && styles.dayChipOn]}
+                  >
+                    <Text style={[styles.dayChipText, on && styles.dayChipTextOn]}>
+                      {getActivityDayLabel(day)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
-                <View style={styles.timeRow}>
-                  <View style={styles.timeField}>
-                    <Text style={styles.timeLabel}>시작</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={startInputs[index] ?? ''}
-                      onChangeText={(text) => {
-                        const inputs = [...startInputs];
-                        inputs[index] = text;
-                        setStartInputs(inputs);
-                        const parsed = parseHHMM(text);
-                        if (!parsed) return;
-                        const next = [...draft];
-                        next[index] = {
-                          ...session,
-                          startHour: parsed.hour,
-                          startMinute: parsed.minute,
-                        };
-                        setDraft(next);
-                        setDirty(true);
-                      }}
-                      placeholder="18:30"
-                      placeholderTextColor={colors.textMuted}
-                    />
-                  </View>
-                  <Text style={styles.timeSep}>~</Text>
-                  <View style={styles.timeField}>
-                    <Text style={styles.timeLabel}>종료</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={endInputs[index] ?? ''}
-                      onChangeText={(text) => {
-                        const inputs = [...endInputs];
-                        inputs[index] = text;
-                        setEndInputs(inputs);
-                        const parsed = parseHHMM(text);
-                        if (!parsed) return;
-                        const next = [...draft];
-                        next[index] = {
-                          ...session,
-                          endHour: parsed.hour,
-                          endMinute: parsed.minute,
-                        };
-                        setDraft(next);
-                        setDirty(true);
-                      }}
-                      placeholder="21:50"
-                      placeholderTextColor={colors.textMuted}
-                    />
-                  </View>
-                  <Button
-                    title="삭제"
-                    size="sm"
-                    variant="ghost"
-                    onPress={() => applyDraft(draft.filter((_, i) => i !== index))}
-                    disabled={draft.length <= 1}
-                  />
-                </View>
+            <View style={styles.timeRow}>
+              <View style={styles.timeField}>
+                <Text style={styles.timeLabel}>시작</Text>
+                <TextInput
+                  style={styles.input}
+                  value={startInput}
+                  onChangeText={(text) => {
+                    setStartInput(text);
+                    setDirty(true);
+                  }}
+                  placeholder="18:30"
+                  placeholderTextColor={colors.textMuted}
+                />
               </View>
-            ))}
+              <Text style={styles.timeSep}>~</Text>
+              <View style={styles.timeField}>
+                <Text style={styles.timeLabel}>종료</Text>
+                <TextInput
+                  style={styles.input}
+                  value={endInput}
+                  onChangeText={(text) => {
+                    setEndInput(text);
+                    setDirty(true);
+                  }}
+                  placeholder="21:40"
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+            </View>
 
             <View style={styles.actions}>
-              <Button
-                title="요일 추가"
-                size="sm"
-                variant="outline"
-                onPress={() =>
-                  applyDraft([
-                    ...draft,
-                    {
-                      day: 2,
-                      startHour: 18,
-                      startMinute: 30,
-                      endHour: 21,
-                      endMinute: 50,
-                    },
-                  ])
-                }
-              />
               <Button
                 title={dirty ? '저장' : '저장됨'}
                 size="sm"
                 disabled={!dirty}
                 onPress={async () => {
+                  if (!parseHHMM(startInput) || !parseHHMM(endInput)) {
+                    onToast('warning', '시간은 18:30 형식으로 입력해 주세요.');
+                    return;
+                  }
+                  const draft = buildSessions(selectedDays, startInput, endInput);
                   const r = await setSchedule(draft);
                   if (r.success) {
                     const next = cloneSchedule(useActivityScheduleStore.getState().schedule);
-                    setDraft(next);
-                    setStartInputs(next.map((s) => formatHHMM(s.startHour, s.startMinute)));
-                    setEndInputs(next.map((s) => formatHHMM(s.endHour, s.endMinute)));
+                    setSelectedDays(daysFromSessions(next));
+                    const t = timeFromSessions(next);
+                    setStartInput(t.start);
+                    setEndInput(t.end);
                     setDirty(false);
                   }
                   onToast(r.success ? 'success' : 'warning', r.message);
@@ -210,14 +188,6 @@ const styles = StyleSheet.create({
   block: { gap: spacing.sm, padding: spacing.md },
   blockTitle: { ...typography.h3, color: colors.text, fontSize: 15 },
   hint: { ...typography.small, color: colors.textMuted, lineHeight: 18 },
-  sessionCard: {
-    gap: spacing.sm,
-    padding: spacing.sm,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
   dayRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   dayChip: {
     width: 32,

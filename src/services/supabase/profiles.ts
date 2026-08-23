@@ -54,7 +54,15 @@ async function uriToBlob(uri: string): Promise<Blob> {
 export async function syncProfilePatch(
   userId: string,
   patch: Partial<
-    Pick<User, 'scheduleDate' | 'scheduledStart' | 'scheduledEnd' | 'isAtGym'>
+    Pick<
+      User,
+      | 'scheduleDate'
+      | 'scheduledStart'
+      | 'scheduledEnd'
+      | 'isAtGym'
+      | 'attendanceIntent'
+      | 'attendanceIntentDate'
+    >
   >
 ): Promise<void> {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -62,6 +70,8 @@ export async function syncProfilePatch(
   if ('scheduledStart' in patch) row.scheduled_start = patch.scheduledStart ?? null;
   if ('scheduledEnd' in patch) row.scheduled_end = patch.scheduledEnd ?? null;
   if ('isAtGym' in patch) row.is_at_gym = patch.isAtGym ?? false;
+  if ('attendanceIntent' in patch) row.attendance_intent = patch.attendanceIntent ?? null;
+  if ('attendanceIntentDate' in patch) row.attendance_intent_date = patch.attendanceIntentDate ?? null;
 
   const { error } = await getSupabase().from('profiles').update(row).eq('id', userId);
   if (error) throw error;
@@ -76,6 +86,7 @@ export async function adminUpdateProfileRemote(user: User): Promise<void> {
     lesson_requested_at: user.lessonRequestedAt ?? null,
     is_coach: user.isCoach ?? false,
     is_operator: user.isOperator ?? false,
+    is_admin: user.isAdmin ?? user.membershipTier === 'admin',
     admin_note: user.adminNote ?? null,
     club_fee_verified_at: user.clubFeeVerifiedAt ?? null,
     club_fee_verified_by: user.clubFeeVerifiedBy ?? null,

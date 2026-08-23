@@ -20,6 +20,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
+import '@/src/services/bindStoreServices';
 import { ToastContainer } from '@/src/components/ui/ToastContainer';
 import { SirenModal } from '@/src/components/ui/SirenModal';
 import {
@@ -33,7 +34,10 @@ import { initServerSync } from '@/src/services/serverSync';
 import { initSupabaseApp } from '@/src/services/supabase/init';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { useFriendArrivalWatch } from '@/src/hooks/useFriendArrivalWatch';
+import { useAttendanceFromNotification } from '@/src/hooks/useAttendanceFromNotification';
 import { PushPermissionGate } from '@/src/components/profile/PushPermissionGate';
+import { AttendanceIntentGate } from '@/src/components/profile/AttendanceIntentGate';
+import { TabTourHost } from '@/src/components/layout/TabTourHost';
 import { ensurePwaServiceWorker } from '@/src/services/pwaInstall';
 
 export { ErrorBoundary } from 'expo-router';
@@ -46,6 +50,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   useFriendArrivalWatch();
+  useAttendanceFromNotification();
 
   const [loaded, error] = useFonts({
     PlayfairDisplay_400Regular,
@@ -134,7 +139,9 @@ function RootLayoutInner() {
         </Stack>
         <ToastContainer />
         <SirenModal />
+        <TabTourHost />
         <PushPermissionGate />
+        <AttendanceIntentGate />
         <PostLoginOverlayGate />
       </SafeAreaProvider>
     </GestureHandlerRootView>

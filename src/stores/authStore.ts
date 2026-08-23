@@ -7,9 +7,8 @@ import { hashPassword, verifyPassword, seedDemoCredentials } from '@/src/service
 import { getAttendancePoints, getRankFromElo } from '@/src/services/points';
 import { POINT_EARN, POINT_SPEND } from '@/src/constants/points';
 import { applyPointChange, applyPointChangeLocalOnly } from '@/src/services/pointLedger';
-import { usePointStore } from './pointStore';
-import { useNotificationStore } from './notificationStore';
-import { persistAppState } from '@/src/services/appState';
+import { persistAppState } from '@/src/services/persistGate';
+import { runtime } from '@/src/stores/runtimeAccess';
 import { recordAdminLog, recordAdminLogAsCurrentUser, recordAdminLogAsActor } from '@/src/services/adminLog';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import {
@@ -22,6 +21,7 @@ import {
 } from '@/src/services/supabase/auth';
 import { fetchAllProfiles, uploadAvatar, removeAvatar } from '@/src/services/supabase/profiles';
 import { clearSavedLogin, loadSavedLogin, saveSavedLogin } from '@/src/services/quickLogin';
+import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 import { INFINITE_DEV_POINTS } from '@/src/utils/responsive';
 import {
   createLocalGuestUser,
@@ -30,7 +30,10 @@ import {
 } from '@/src/utils/guestAccess';
 import { validateStudentId } from '@/src/utils/studentId';
 import { saveGuestSession, clearGuestSession } from '@/src/services/guestSession';
-import { afterSupabaseAuth } from '@/src/services/supabase/session';
+import { afterSupabaseAuth } from '@/src/services/supabase/authBridge';
+import { isOwnerStudentId } from '@/src/constants/roles';
+import { isAdminUser } from '@/src/utils/staffAccess';
+import { isPointsFeaturesEnabled } from '@/src/stores/featureFlagsStore';
 
 function pickAvatarColor(index: number): string {
   return AVATAR_COLORS[index % AVATAR_COLORS.length];
@@ -102,6 +105,7 @@ interface AuthState {
   resetPeakReservationsIfNewDay: () => void;
   recordMatchStats: (winnerIds: string[], loserIds: string[]) => void;
   reverseMatchStats: (winnerIds: string[], loserIds: string[]) => void;
+  adjustCleaningContributions: (userId: string, delta: number) => void;
   attendanceRecords: AttendanceRecord[];
   checkIn: (userId: string, options?: { skipGeoFence?: boolean }) => { success: boolean; message: string };
   adminRevokeAttendance: (
@@ -149,6 +153,11 @@ interface AuthState {
   ) => { success: boolean; message: string };
   adminSetCoach: (userId: string, enabled: boolean) => { success: boolean; message: string };
   adminSetOperator: (userId: string, enabled: boolean) => { success: boolean; message: string };
+  adminSetAdminRole: (userId: string, enabled: boolean) => Promise<{ success: boolean; message: string }>;
+  setAttendanceIntent: (
+    userId: string,
+    intent: 'going' | 'not_going' | null
+  ) => { success: boolean; message: string };
   adminAdjustPoints: (
     userId: string,
     delta: number,
@@ -539,7 +548,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }));
     syncAdminProfileRemote(get().users.find((u) => u.id === userId));
 
-    useNotificationStore.getState().pushInbox({
+    runtime().pushInbox({
       type: 'system',
       title: '회원 가입 승인',
       message: '회원 가입이 승인됐어요. Drop을 이용할 수 있습니다.',
@@ -565,7 +574,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }));
     syncAdminProfileRemote(get().users.find((u) => u.id === userId));
     if (user) {
-      useNotificationStore.getState().pushInbox({
+      runtime().pushInbox({
         type: 'system',
         title: '회원 가입 거절',
         message: '회원 가입이 거절됐어요.',
@@ -683,6 +692,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set((state) => {
       const users = state.users.map((u) =>
         u.id === userId ? { ...u, rank: getRankFromElo(u.elo) } : u
+      );
+      const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
+      persistAppState();
+      return { users, currentUser };
+    }),
+
+  adjustCleaningContributions: (userId, delta) =>
+    set((state) => {
+      const users = state.users.map((u) =>
+        u.id === userId
+          ? { ...u, cleaningContributions: Math.max(0, u.cleaningContributions + delta) }
+          : u
       );
       const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
       persistAppState();
@@ -954,7 +975,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       scheduledEnd = end;
     }
 
-    const today = todayKey();
+    const today = getSeoulTodayKey();
     set((state) => {
       const users = state.users.map((u) =>
         u.id === userId
@@ -963,6 +984,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               scheduleDate: today,
               scheduledStart: start,
               scheduledEnd,
+              attendanceIntent: 'going' as const,
+              attendanceIntentDate: today,
             }
           : u
       );
@@ -976,6 +999,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             scheduleDate: today,
             scheduledStart: start,
             scheduledEnd,
+            attendanceIntent: 'going',
+            attendanceIntentDate: today,
           })
         )
         .catch((err) => console.warn('[profile] schedule sync failed', err));
@@ -1043,7 +1068,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     syncAdminProfileRemote(get().users.find((u) => u.id === userId));
     persistAppState();
 
-    useNotificationStore.getState().pushInbox({
+    runtime().pushInbox({
       type: 'system',
       title: '레슨 권한 승인',
       message: '레슨 이용 권한이 부여됐어요. 대기열에 등록할 수 있습니다.',
@@ -1077,7 +1102,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     syncAdminProfileRemote(get().users.find((u) => u.id === userId));
     persistAppState();
 
-    useNotificationStore.getState().pushInbox({
+    runtime().pushInbox({
       type: 'system',
       title: '레슨 권한 거절',
       message: '레슨 이용 권한이 거절됐어요.',
@@ -1168,24 +1193,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setLastCleaningBonusMonth: (month) => set({ lastCleaningBonusMonth: month }),
 
   adminSetMembershipTier: async (userId, tier) => {
-    const actor = get().currentUser;
     const user = get().users.find((u) => u.id === userId);
     if (!user) return { success: false, message: '회원을 찾을 수 없어요.' };
-    if (tier === 'admin' || user.membershipTier === 'admin') {
-      if (actor?.membershipTier !== 'admin') {
-        return { success: false, message: '관리자만 관리자 등급을 부여·변경할 수 있어요.' };
-      }
+    if (tier === 'admin') {
+      return get().adminSetAdminRole(userId, true);
     }
-    if (user.membershipTier === 'admin' && tier !== 'admin') {
-      const adminCount = get().users.filter((u) => u.membershipTier === 'admin').length;
-      if (adminCount <= 1) {
-        return { success: false, message: '마지막 관리자 등급은 변경할 수 없어요.' };
-      }
+    if (tier === 'guest') {
+      return { success: false, message: '게스트 등급은 여기서 지정할 수 없어요.' };
     }
 
-    const prevTier = user.membershipTier;
+    const keepAdmin = isAdminUser(user);
+    const keepOperator = !!user.isOperator || isOwnerStudentId(user.studentId);
+    const prev = {
+      membershipTier: user.membershipTier,
+      isAdmin: user.isAdmin,
+      isOperator: user.isOperator,
+    };
+
     set((state) => {
-      const users = state.users.map((u) => (u.id === userId ? { ...u, membershipTier: tier } : u));
+      const users = state.users.map((u) =>
+        u.id === userId
+          ? {
+              ...u,
+              membershipTier: tier,
+              isAdmin: keepAdmin,
+              isOperator: keepOperator,
+            }
+          : u
+      );
       const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
       return { users, currentUser };
     });
@@ -1193,9 +1228,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const sync = await syncAdminProfileRemote(get().users.find((u) => u.id === userId));
     if (!sync.ok) {
       set((state) => {
-        const users = state.users.map((u) =>
-          u.id === userId ? { ...u, membershipTier: prevTier } : u
-        );
+        const users = state.users.map((u) => (u.id === userId ? { ...u, ...prev } : u));
         const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
         return { users, currentUser };
       });
@@ -1205,18 +1238,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       };
     }
 
-    const tierLabel =
-      tier === 'admin' ? '관리자' : tier === 'full' ? '정회원' : tier === 'associate' ? '준회원' : '비회원';
+    const tierLabel = tier === 'full' ? '정회원' : '준회원';
     recordAdminLogAsCurrentUser({
       category: 'member',
       action: 'member.tier',
-      message: `${user.name} 등급 → ${tierLabel}`,
+      message: `${user.name} 회원 등급 → ${tierLabel}`,
       targetId: userId,
       targetName: user.name,
       meta: { tier },
     });
     persistAppState();
-    return { success: true, message: `${user.name}님의 등급을 ${tierLabel}(으)로 변경했어요.` };
+    return { success: true, message: `${user.name}님을 ${tierLabel}(으)로 변경했어요. 관리자·운영자 권한은 그대로입니다.` };
   },
 
   adminSetMemberStatus: (userId, status, reason) => {
@@ -1269,21 +1301,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             : '거절';
 
     if (status === 'approved') {
-      useNotificationStore.getState().pushInbox({
+      runtime().pushInbox({
         type: 'system',
         title: '회원 가입 승인',
         message: '회원 가입이 승인됐어요. Drop을 이용할 수 있습니다.',
         targetUserId: userId,
       });
     } else if (status === 'rejected') {
-      useNotificationStore.getState().pushInbox({
+      runtime().pushInbox({
         type: 'system',
         title: '회원 가입 거절',
         message: '회원 가입이 거절됐어요.',
         targetUserId: userId,
       });
     } else if (status === 'suspended') {
-      useNotificationStore.getState().pushInbox({
+      runtime().pushInbox({
         type: 'system',
         title: '계정 정지',
         message: reason?.trim()
@@ -1356,7 +1388,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
     syncAdminProfileRemote(get().users.find((u) => u.id === userId));
 
-    useNotificationStore.getState().pushInbox({
+    runtime().pushInbox({
       type: 'system',
       title: enabled ? '코치 권한 부여' : '코치 권한 회수',
       message: enabled
@@ -1381,9 +1413,112 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     };
   },
 
+  adminSetAdminRole: async (userId, enabled) => {
+    const actor = get().currentUser;
+    const user = get().users.find((u) => u.id === userId);
+    if (!user) return { success: false, message: '회원을 찾을 수 없어요.' };
+    if (!isAdminUser(actor) && !isOwnerStudentId(actor?.studentId)) {
+      return { success: false, message: '관리자만 관리자 권한을 바꿀 수 있어요.' };
+    }
+    if (isOwnerStudentId(user.studentId) && !enabled) {
+      return { success: false, message: '운영자 계정은 관리자 권한을 해제할 수 없어요.' };
+    }
+    if (!enabled) {
+      const adminCount = get().users.filter((u) => isAdminUser(u) || u.isOperator).length;
+      if (adminCount <= 1 && isAdminUser(user)) {
+        return { success: false, message: '마지막 관리자 권한은 해제할 수 없어요.' };
+      }
+    }
+
+    const prev = { isAdmin: user.isAdmin, membershipTier: user.membershipTier };
+    const nextTier = user.membershipTier === 'admin' ? 'full' : user.membershipTier;
+
+    set((state) => {
+      const users = state.users.map((u) =>
+        u.id === userId
+          ? {
+              ...u,
+              isAdmin: enabled,
+              membershipTier: nextTier,
+              isOperator: !!u.isOperator || isOwnerStudentId(u.studentId),
+            }
+          : u
+      );
+      const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
+      return { users, currentUser };
+    });
+
+    const sync = await syncAdminProfileRemote(get().users.find((u) => u.id === userId));
+    if (!sync.ok) {
+      set((state) => {
+        const users = state.users.map((u) => (u.id === userId ? { ...u, ...prev } : u));
+        const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
+        return { users, currentUser };
+      });
+      return { success: false, message: sync.message ?? '관리자 권한 저장에 실패했어요.' };
+    }
+
+    recordAdminLogAsCurrentUser({
+      category: 'member',
+      action: enabled ? 'admin.grant' : 'admin.revoke',
+      message: `${user.name} 관리자 권한 ${enabled ? '부여' : '해제'}`,
+      targetId: userId,
+      targetName: user.name,
+    });
+    persistAppState();
+    return {
+      success: true,
+      message: enabled
+        ? `${user.name}님에게 관리자 권한을 줬어요.`
+        : `${user.name}님의 관리자 권한을 해제했어요.`,
+    };
+  },
+
+  setAttendanceIntent: (userId, intent) => {
+    const today = getSeoulTodayKey();
+    set((state) => {
+      const users = state.users.map((u) =>
+        u.id === userId
+          ? {
+              ...u,
+              attendanceIntent: intent,
+              attendanceIntentDate: today,
+              ...(intent === 'not_going'
+                ? { scheduledStart: undefined, scheduledEnd: undefined, scheduleDate: today }
+                : {}),
+            }
+          : u
+      );
+      const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
+      return { users, currentUser };
+    });
+    if (isSupabaseEnabled()) {
+      import('@/src/services/supabase/profiles')
+        .then(({ syncProfilePatch }) =>
+          syncProfilePatch(userId, {
+            attendanceIntent: intent,
+            attendanceIntentDate: today,
+            ...(intent === 'not_going'
+              ? { scheduledStart: undefined, scheduledEnd: undefined, scheduleDate: today }
+              : {}),
+          })
+        )
+        .catch((err) => console.warn('[profile] attendance intent sync failed', err));
+    }
+    persistAppState();
+    return {
+      success: true,
+      message:
+        intent === 'going' ? '참석으로 표시했어요.' : intent === 'not_going' ? '불참으로 표시했어요.' : '참석 의사를 지웠어요.',
+    };
+  },
+
   adminSetOperator: (userId, enabled) => {
     const user = get().users.find((u) => u.id === userId);
     if (!user) return { success: false, message: '회원을 찾을 수 없어요.' };
+    if (isOwnerStudentId(user.studentId) && !enabled) {
+      return { success: false, message: '운영자 계정은 운영자 권한을 해제할 수 없어요.' };
+    }
     if (user.memberStatus !== 'approved') {
       return { success: false, message: '승인된 회원에게만 운영자 권한을 줄 수 있어요.' };
     }
@@ -1397,7 +1532,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
     syncAdminProfileRemote(get().users.find((u) => u.id === userId));
 
-    useNotificationStore.getState().pushInbox({
+    runtime().pushInbox({
       type: 'system',
       title: enabled ? '운영자 권한 부여' : '운영자 권한 회수',
       message: enabled
@@ -1433,7 +1568,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     applyPointChange(userId, delta, 'admin', `운영진 조정 · ${trimmed}`);
 
-    useNotificationStore.getState().pushInbox({
+    runtime().pushInbox({
       type: 'system',
       title: '포인트 조정',
       message: `운영진이 포인트를 조정했어요. (${delta >= 0 ? '+' : ''}${delta}P · ${trimmed})`,
@@ -1510,9 +1645,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { success: false, message: '회비 인증 기록이 없어요.' };
     }
 
-    const clubFeeTx = usePointStore
-      .getState()
-      .transactions.find(
+    const clubFeeTx = runtime()
+      .getPointTransactions()
+      .find(
         (t) =>
           t.userId === userId &&
           t.type === 'club_fee' &&
@@ -1520,7 +1655,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           !t.revokedAt
       );
     if (clubFeeTx) {
-      usePointStore.getState().adminRevokeTransaction(clubFeeTx.id, adminId, reason);
+      runtime().revokePointTransaction(clubFeeTx.id, adminId, reason);
     } else {
       applyPointChange(userId, -POINT_EARN.CLUB_FEE, 'admin', `회비 인증 취소 · ${reason}`);
     }
@@ -1565,23 +1700,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { success: false, message: memberCheck.reason ?? '수령할 수 없어요.' };
     }
 
-    if (user.points < POINT_SPEND.SHUTTLECOCK) {
-      return {
-        success: false,
-        message: `포인트가 부족해요. (필요: ${POINT_SPEND.SHUTTLECOCK}P)`,
-      };
+    if (isPointsFeaturesEnabled()) {
+      if (user.points < POINT_SPEND.SHUTTLECOCK) {
+        return {
+          success: false,
+          message: `포인트가 부족해요. (필요: ${POINT_SPEND.SHUTTLECOCK}P)`,
+        };
+      }
+      applyPointChange(
+        userId,
+        -POINT_SPEND.SHUTTLECOCK,
+        'shuttlecock',
+        '새 경기용 셔틀콕 수령'
+      );
     }
-
-    applyPointChange(
-      userId,
-      -POINT_SPEND.SHUTTLECOCK,
-      'shuttlecock',
-      '새 경기용 셔틀콕 수령'
-    );
     persistAppState();
     return {
       success: true,
-      message: `셔틀콕 수령 완료 (-${POINT_SPEND.SHUTTLECOCK}P)`,
+      message: isPointsFeaturesEnabled()
+        ? `셔틀콕 수령 완료 (-${POINT_SPEND.SHUTTLECOCK}P)`
+        : '셔틀콕 수령 완료',
     };
   },
 
@@ -1689,7 +1827,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const m = message.trim();
     if (!t || !m) return { success: false, message: '제목과 내용을 입력해 주세요.' };
 
-    useNotificationStore.getState().pushInbox({
+    runtime().pushInbox({
       type: 'system',
       title: t,
       message: m,

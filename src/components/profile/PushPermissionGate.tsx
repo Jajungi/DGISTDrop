@@ -7,10 +7,12 @@ import { isPushOptedOut, setPushOptedOut } from '@/src/services/pushPreference';
 import { getWebPushAvailability, registerWebPushForUser } from '@/src/services/webPush';
 import { registerPushTokenForUser } from '@/src/services/pushNotifications';
 import { getPushGuideCopy } from '@/src/utils/clientDevice';
+import { useTabTourStore } from '@/src/stores/tabTourStore';
 
 export function PushPermissionGate() {
   const userId = useAuthStore((s) => s.currentUser?.id ?? null);
   const isGuest = useAuthStore((s) => s.isGuestSession);
+  const tourOpen = useTabTourStore((s) => s.activeIndex !== null);
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -28,7 +30,7 @@ export function PushPermissionGate() {
   }, []);
 
   useEffect(() => {
-    if (!userId || isGuest) {
+    if (!userId || isGuest || tourOpen) {
       setVisible(false);
       return;
     }
@@ -41,10 +43,7 @@ export function PushPermissionGate() {
 
       if (Platform.OS === 'web') {
         const guide = getPushGuideCopy();
-        if (!guide.canRequestPermission) {
-          if (!cancelled) setVisible(true);
-          return;
-        }
+        if (!guide.canRequestPermission) return;
         if (typeof Notification !== 'undefined' && Notification.permission === 'denied') return;
       }
       setVisible(true);
@@ -53,7 +52,7 @@ export function PushPermissionGate() {
     return () => {
       cancelled = true;
     };
-  }, [userId, isGuest, trySilentRegister]);
+  }, [userId, isGuest, tourOpen, trySilentRegister]);
 
   const allow = async () => {
     if (!userId) return;
@@ -76,6 +75,8 @@ export function PushPermissionGate() {
   };
 
   const guide = getPushGuideCopy();
+
+  if (tourOpen) return null;
 
   return (
     <Modal transparent animationType="fade" visible={visible}>

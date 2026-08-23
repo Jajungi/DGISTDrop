@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { CoachAnnouncement } from '@/src/types';
 import { MOCK_COACH_ANNOUNCEMENTS } from '@/src/services/mockData';
-import { persistAppState } from '@/src/services/appState';
+import { persistAppState } from '@/src/services/persistGate';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { runWhenRemoteId } from '@/src/utils/localId';
 import { recordAdminLogAsCurrentUser } from '@/src/services/adminLog';

@@ -13,7 +13,7 @@ interface GuestProfileCardProps {
 }
 
 const GUEST_FEATURES = [
-  { ok: true, label: '코트 예약 (일반·난타)' },
+  { ok: true, label: '코트 현황 보기' },
   { ok: true, label: '모집방 참여' },
   { ok: true, label: '이용 안내 보기' },
   { ok: false, label: '포인트 · 전적 · 랭크' },
@@ -30,7 +30,7 @@ export function GuestProfileCard({ name, avatarColor, onLogout }: GuestProfileCa
           <View style={styles.badge}>
             <Text style={styles.badgeText}>게스트</Text>
           </View>
-          <Text style={styles.hint}>임시 계정 · 앱을 닫으면 세션이 사라질 수 있어요</Text>
+          <Text style={styles.hint}>당일 임시 · 서울 날짜가 바뀌면 삭제됩니다</Text>
         </View>
       </View>
 

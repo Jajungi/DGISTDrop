@@ -17,6 +17,9 @@ import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
 import type { AppNotification } from '@/src/types';
 import { colors, spacing, typography, borderRadius, shadows } from '@/src/theme';
 import { formatLessonEtaLabel } from '@/src/utils/lessonEta';
+import { todayAttendanceIntent } from '@/src/utils/attendanceIntent';
+import { isActivityDay } from '@/src/services/activityTime';
+import { isGuestUser } from '@/src/utils/guestAccess';
 import { router } from 'expo-router';
 
 const INITIAL_VISIBLE = 5;
@@ -67,6 +70,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
   const rejectLobbyJoin = useLobbyStore((s) => s.rejectJoinRequest);
   const acceptInvite = useLobbyStore((s) => s.acceptInvite);
   const currentUser = useAuthStore((s) => s.currentUser);
+  const setAttendanceIntent = useAuthStore((s) => s.setAttendanceIntent);
   const lessonQueue = useLessonStore((s) => s.lessonQueue);
   const lessonTurnOn = useNotificationPrefsStore((s) => s.lessonTurn);
   const [expanded, setExpanded] = useState(false);
@@ -120,6 +124,23 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
     return items;
   }, [courts, rooms, currentUser]);
 
+  const attendancePrompt = useMemo(() => {
+    if (!currentUser || isGuestUser(currentUser) || currentUser.memberStatus !== 'approved') {
+      return null;
+    }
+    if (!isActivityDay()) return null;
+    if (todayAttendanceIntent(currentUser)) return null;
+    return {
+      id: 'attendance-today',
+      type: 'system' as const,
+      title: '오늘 오시나요?',
+      message: '참석하면 올 사람 수에 바로 들어가요. 시간은 프로필에서 고르면 됩니다.',
+      read: false,
+      createdAt: new Date().toISOString(),
+      targetUserId: currentUser.id,
+    };
+  }, [currentUser]);
+
   const coachAlerts = useMemo(() => {
     if (!currentUser || !lessonTurnOn) return [];
     return lessonQueue
@@ -149,13 +170,31 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
       }
       return true;
     });
-    return [...liveJoin, ...coachAlerts, ...inboxDeduped].sort(
+    const rest = [...liveJoin, ...coachAlerts, ...inboxDeduped].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-  }, [liveJoin, coachAlerts, inbox, courts]);
+    return attendancePrompt ? [attendancePrompt, ...rest] : rest;
+  }, [liveJoin, coachAlerts, attendancePrompt, inbox, courts]);
 
   const visible = expanded ? all : all.slice(0, INITIAL_VISIBLE);
   const hasMore = all.length > INITIAL_VISIBLE;
+
+  const handleAttendance = (intent: 'going' | 'not_going') => {
+    if (!currentUser) return;
+    const result = setAttendanceIntent(currentUser.id, intent);
+    showToast({
+      type: result.success ? (intent === 'going' ? 'success' : 'info') : 'warning',
+      title: '',
+      message:
+        intent === 'going'
+          ? '참석으로 표시했어요. 프로필에서 오늘 시간을 고를 수 있어요.'
+          : result.message,
+    });
+    if (intent === 'going') {
+      onClose();
+      router.push('/profile');
+    }
+  };
 
   const handleAccept = (item: AppNotification) => {
     if (item.roomId && item.joinRequestId && currentUser) {
@@ -245,6 +284,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
           <Text style={styles.empty}>새 알림이 없어요</Text>
         ) : (
           visible.map((item) => {
+            const canActAttendance = item.id === 'attendance-today';
             const canActCourtJoin =
               item.type === 'join' &&
               item.title === '참가 요청' &&
@@ -277,6 +317,26 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
                     <Text style={styles.rowTime}>{formatTime(item.createdAt)}</Text>
                   </View>
                 </Pressable>
+                {canActAttendance && (
+                  <View style={styles.actions}>
+                    <Pressable
+                      onPress={() => handleAttendance('going')}
+                      style={[styles.actionBtn, styles.acceptBtn]}
+                      accessibilityRole="button"
+                      accessibilityLabel="참석"
+                    >
+                      <Text style={styles.acceptText}>참석</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => handleAttendance('not_going')}
+                      style={[styles.actionBtn, styles.rejectBtn]}
+                      accessibilityRole="button"
+                      accessibilityLabel="불참"
+                    >
+                      <Text style={styles.rejectText}>불참</Text>
+                    </Pressable>
+                  </View>
+                )}
                 {(canActCourtJoin || canActLobbyJoin) && (
                   <View style={styles.actions}>
                     <Pressable

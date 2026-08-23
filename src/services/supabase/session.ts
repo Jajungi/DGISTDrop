@@ -1,3 +1,4 @@
+import { bindAfterSupabaseAuth } from '@/src/services/supabase/authBridge';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import {
   bindSupabaseSession,
@@ -10,9 +11,11 @@ import type { User } from '@/src/types';
 export async function afterSupabaseAuth(user: User | null): Promise<void> {
   if (!isSupabaseEnabled()) return;
   if (user) {
-    await bindSupabaseSession(user.id, user.membershipTier === 'admin' || !!user.isOperator);
+    await bindSupabaseSession(user.id, user.membershipTier === 'admin' || !!user.isAdmin || !!user.isOperator);
     return;
   }
   teardownSupabaseSubscriptions();
   resetSupabaseSessionStores();
 }
+
+bindAfterSupabaseAuth(afterSupabaseAuth);

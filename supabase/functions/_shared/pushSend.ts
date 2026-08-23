@@ -3,6 +3,8 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { buildPushPayload } from 'https://esm.sh/@block65/webcrypto-web-push@1.0.2';
 
+export type PushSendResult = { sent: number; pruned: number };
+
 export function isExpoToken(token: string): boolean {
   return token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[');
 }
@@ -11,30 +13,35 @@ export function isWebSubscription(token: string): boolean {
   return token.startsWith('{') && token.includes('"endpoint"');
 }
 
-/** Expo DeviceNotRegistered 등 — 재발송해도 소용없는 토큰 */
+/** Expo — 재발송해도 소용없는 토큰 */
 function isExpoFatalError(detailsError?: string, message?: string): boolean {
   const err = (detailsError ?? '').toLowerCase();
   const msg = (message ?? '').toLowerCase();
   return (
     err === 'devicenotregistered' ||
     err === 'invalidcredentials' ||
+    err === 'mismatchsenderid' ||
     msg.includes('devicenotregistered') ||
     msg.includes('not a registered push notification recipient') ||
     msg.includes('unable to retrieve the fcm server key')
   );
 }
 
-/** Web Push 구독 만료/삭제 — 404·410 등 */
+/** Web Push 구독이 죽었을 때 (VAPID 전체 실패인 401은 지우지 않음) */
 function isWebSubscriptionGone(status: number): boolean {
-  return status === 404 || status === 410 || status === 403;
+  return status === 404 || status === 410 || status === 403 || status === 400;
 }
 
-async function deleteTokens(supabase: SupabaseClient, tokens: string[]) {
+async function deleteTokens(supabase: SupabaseClient, tokens: string[]): Promise<number> {
   const unique = [...new Set(tokens.filter(Boolean))];
-  if (!unique.length) return;
+  if (!unique.length) return 0;
   const { error } = await supabase.from('push_tokens').delete().in('token', unique);
-  if (error) console.warn('[push] token prune failed', error.message, unique.length);
-  else console.log('[push] pruned invalid tokens', unique.length);
+  if (error) {
+    console.warn('[push] token prune failed', error.message, unique.length);
+    return 0;
+  }
+  console.log('[push] pruned invalid tokens', unique.length);
+  return unique.length;
 }
 
 export async function sendExpoAndPrune(
@@ -44,9 +51,10 @@ export async function sendExpoAndPrune(
   body: string,
   kind?: string,
   expoAccessToken?: string | null
-): Promise<number> {
-  if (!tokens.length) return 0;
+): Promise<PushSendResult> {
+  if (!tokens.length) return { sent: 0, pruned: 0 };
 
+  const isAttendance = kind === 'activity' || kind === 'attendance';
   const messages = tokens.map((to) => ({
     to,
     sound: 'default',
@@ -54,6 +62,9 @@ export async function sendExpoAndPrune(
     body,
     priority: 'high',
     channelId: kind === 'coach' ? 'coach' : 'default',
+    ...(isAttendance
+      ? { categoryId: 'attendance', data: { kind: 'attendance' } }
+      : { data: { kind: kind ?? 'system' } }),
   }));
 
   const headers: Record<string, string> = {
@@ -70,7 +81,7 @@ export async function sendExpoAndPrune(
 
   if (!res.ok) {
     console.warn('[expo] push HTTP', res.status, await res.text());
-    return 0;
+    return { sent: 0, pruned: 0 };
   }
 
   const json = (await res.json()) as {
@@ -100,8 +111,8 @@ export async function sendExpoAndPrune(
     }
   }
 
-  await deleteTokens(supabase, dead);
-  return sent;
+  const pruned = await deleteTokens(supabase, dead);
+  return { sent, pruned };
 }
 
 export async function sendWebAndPrune(
@@ -109,9 +120,10 @@ export async function sendWebAndPrune(
   tokens: string[],
   title: string,
   body: string,
-  vapid: { subject: string; publicKey: string; privateKey: string }
-): Promise<number> {
-  if (!tokens.length || !vapid.publicKey || !vapid.privateKey) return 0;
+  vapid: { subject: string; publicKey: string; privateKey: string },
+  kind?: string
+): Promise<PushSendResult> {
+  if (!tokens.length || !vapid.publicKey || !vapid.privateKey) return { sent: 0, pruned: 0 };
 
   let sent = 0;
   const dead: string[] = [];
@@ -122,8 +134,12 @@ export async function sendWebAndPrune(
         endpoint: string;
         keys: { p256dh: string; auth: string };
       };
+      if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
+        dead.push(token);
+        continue;
+      }
       const payload = await buildPushPayload(
-        { data: JSON.stringify({ title, body }), options: { ttl: 3600 } },
+        { data: JSON.stringify({ title, body, kind: kind ?? 'system', data: { kind: kind ?? 'system' } }), options: { ttl: 3600 } },
         sub,
         vapid
       );
@@ -137,10 +153,11 @@ export async function sendWebAndPrune(
         console.warn('[web-push] status', res.status, await res.text());
       }
     } catch (err) {
+      dead.push(token);
       console.warn('[web-push] failed', err);
     }
   }
 
-  await deleteTokens(supabase, dead);
-  return sent;
+  const pruned = await deleteTokens(supabase, dead);
+  return { sent, pruned };
 }

@@ -25,6 +25,11 @@ export interface User {
   email: string;
   membershipTier: MembershipTier;
   memberStatus: MemberStatus;
+  /** 관리자 역할. 정회원/준회원과 별개 */
+  isAdmin?: boolean;
+  /** 오늘 참석 의사 going | not_going */
+  attendanceIntent?: 'going' | 'not_going' | null;
+  attendanceIntentDate?: string;
   rank: RankTier;
   elo: number;
   points: number;

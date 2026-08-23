@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     const expoTokens = filtered.map((t: { token: string }) => t.token).filter(isExpoToken);
     const webTokens = filtered.map((t: { token: string }) => t.token).filter(isWebSubscription);
 
-    const expoSent = await sendExpoAndPrune(
+    const expoRes = await sendExpoAndPrune(
       supabase,
       expoTokens,
       title,
@@ -131,12 +131,13 @@ Deno.serve(async (req) => {
       type,
       EXPO_ACCESS_TOKEN
     );
-    const webSent = await sendWebAndPrune(supabase, webTokens, title, message, {
+    const webRes = await sendWebAndPrune(supabase, webTokens, title, message, {
       subject: VAPID_SUBJECT,
       publicKey: VAPID_PUBLIC,
       privateKey: VAPID_PRIVATE,
-    });
-    const sent = expoSent + webSent;
+    }, type);
+    const sent = expoRes.sent + webRes.sent;
+    const pruned = expoRes.pruned + webRes.pruned;
 
     await supabase.from('push_notify_log').insert({
       type,
@@ -146,7 +147,7 @@ Deno.serve(async (req) => {
       sent_by: body.sent_by ?? null,
     });
 
-    return json({ sent, expo: expoSent, web: webSent });
+    return json({ sent, expo: expoRes.sent, web: webRes.sent, pruned });
   } catch (err) {
     return json({ error: String(err) }, 500);
   }

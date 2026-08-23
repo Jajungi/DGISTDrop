@@ -41,6 +41,9 @@ export interface CourtDetailContentProps {
   embedded?: boolean;
   /** 확대 뷰 — 버튼 외 영역 탭 시 닫기 */
   onDismiss?: () => void;
+  occupancyMode?: boolean;
+  isStaff?: boolean;
+  onSetOccupancy?: (occupied: boolean) => void;
 }
 
 const STATUS_LABEL: Record<Court['status'], string> = {
@@ -48,6 +51,13 @@ const STATUS_LABEL: Record<Court['status'], string> = {
   reserved: '예약됨',
   playing: '경기 중',
   just_finished: '반납 대기',
+};
+
+const OCCUPANCY_LABEL: Record<Court['status'], string> = {
+  empty: '비어 있음',
+  reserved: '사용 중',
+  playing: '사용 중',
+  just_finished: '사용 중',
 };
 
 export function CourtDetailContent({
@@ -72,6 +82,9 @@ export function CourtDetailContent({
   showInlineCourt = false,
   embedded = false,
   onDismiss,
+  occupancyMode = false,
+  isStaff = false,
+  onSetOccupancy,
 }: CourtDetailContentProps) {
   const [gameCount, setGameCount] = useState<number>(GAME_COUNT_OPTIONS[1]);
   const [gameMode, setGameMode] = useState<GameMode>('casual');
@@ -92,8 +105,12 @@ export function CourtDetailContent({
       : false
     : true;
 
-  const canJoin = court.status === 'playing' && court.players.length >= 2 && court.players.length < 4;
-  const waitQueue = court.waitQueue ?? [];
+  const canJoin =
+    !occupancyMode &&
+    court.status === 'playing' &&
+    court.players.length >= 2 &&
+    court.players.length < 4;
+  const waitQueue = occupancyMode ? [] : court.waitQueue ?? [];
   const canWait =
     (court.status === 'reserved' || court.status === 'playing') &&
     !isCurrentUserOnCourt &&
@@ -116,16 +133,16 @@ export function CourtDetailContent({
     .filter(Boolean)
     .join(' · ');
 
+  const statusLabel = occupancyMode ? OCCUPANCY_LABEL[court.status] : STATUS_LABEL[court.status];
   const guard = (node: React.ReactNode) =>
     onDismiss ? <TouchGuard>{node}</TouchGuard> : node;
 
   const inlineCourtNode = showInlineCourt ? (
     <View
-      style={[styles.inlineCourt, { width: inlineW, height: inlineH }]}
-      pointerEvents="none"
+      style={[styles.inlineCourt, { width: inlineW, height: inlineH, pointerEvents: 'none' }]}
     >
       <CourtIllustration court={court} width={inlineW} borderRadius={borderRadius.sm} />
-      {court.players.length > 0 && (
+      {!occupancyMode && court.players.length > 0 && (
         <CourtPlayerProfiles
           players={court.players}
           avatarSize={Math.max(10, Math.min(14, inlineW * 0.1))}
@@ -137,7 +154,15 @@ export function CourtDetailContent({
     </View>
   ) : null;
 
-  const actionsBlock = (
+  const actionsBlock = occupancyMode ? (
+    isStaff && onSetOccupancy ? (
+      <View style={[styles.actions, embedded && styles.actionsEmbedded]}>
+        {court.status === 'empty'
+          ? guard(<Button title="사용 중으로 표시" onPress={() => onSetOccupancy(true)} fullWidth size="lg" />)
+          : guard(<Button title="코트 비우기" onPress={() => onSetOccupancy(false)} fullWidth size="lg" />)}
+      </View>
+    ) : null
+  ) : (
     <View style={[styles.actions, embedded && styles.actionsEmbedded]}>
       {!canPerformActions && (
         <Text style={styles.warningText}>체육관 근처에서만 예약·이용할 수 있어요</Text>
@@ -241,7 +266,7 @@ export function CourtDetailContent({
           <Text style={styles.courtMeta}>{courtMeta}</Text>
           <View style={styles.statusRow}>
           <View style={[styles.statusDot, { backgroundColor: floorColor }]} />
-          <Text style={styles.status}>{STATUS_LABEL[court.status]}</Text>
+          <Text style={styles.status}>{statusLabel}</Text>
           {court.maxGames > 0 && court.status !== 'empty' && (
             <Text style={styles.gameMeta}>· {court.maxGames}게임</Text>
           )}
@@ -264,7 +289,7 @@ export function CourtDetailContent({
       {hideCourtPreview && (
         <View style={[styles.compactStatus, embedded && styles.compactStatusEmbedded]}>
           <View style={[styles.statusDot, { backgroundColor: floorColor }]} />
-          <Text style={styles.status}>{STATUS_LABEL[court.status]}</Text>
+          <Text style={styles.status}>{statusLabel}</Text>
           {court.maxGames > 0 && court.status !== 'empty' && (
             <Text style={styles.gameMeta}>· {court.maxGames}게임</Text>
           )}
@@ -280,7 +305,7 @@ export function CourtDetailContent({
         <View style={{ width: courtPreviewWidth, height: previewH, position: 'relative' }}>
           <CourtIllustration court={court} width={courtPreviewWidth} />
           <CourtPlayerProfiles
-            players={court.players}
+            players={occupancyMode ? [] : court.players}
             avatarSize={28}
             courtWidth={courtPreviewWidth}
             courtHeight={previewH}
@@ -291,6 +316,17 @@ export function CourtDetailContent({
 
       {court.isCoachCourt && <CoachingScreenContent embedded />}
 
+      {occupancyMode ? (
+        <View style={[styles.withInlineRow, embedded && styles.withInlineRowEmbedded]}>
+          <View style={[styles.infoBlock, styles.withInlineMain, embedded && styles.infoBlockEmbedded]}>
+            <Text style={styles.infoLine}>
+              <Text style={styles.infoBold}>{court.status === 'empty' ? '비어 있음' : '사용 중'}</Text>
+            </Text>
+          </View>
+          {inlineCourtNode}
+        </View>
+      ) : (
+        <>
       {court.status === 'empty' && court.isCoachCourt && !coachReservable && (
         <View style={[styles.withInlineRow, embedded && styles.withInlineRowEmbedded]}>
           <View style={[styles.infoBlock, styles.withInlineMain, embedded && styles.infoBlockEmbedded]}>
@@ -380,10 +416,12 @@ export function CourtDetailContent({
           {inlineCourtNode}
         </View>
       )}
+        </>
+      )}
 
       {embedded && actionsBlock}
 
-      {court.players.length > 0 && (
+      {!occupancyMode && court.players.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>참가자 {court.players.length}/4</Text>
           {court.players.map((p) => (
@@ -396,7 +434,7 @@ export function CourtDetailContent({
         </View>
       )}
 
-      {court.joinRequests.length > 0 && isHost && (
+      {!occupancyMode && court.joinRequests.length > 0 && isHost && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>합류 신청</Text>
           {court.joinRequests.map((req) => (
@@ -413,7 +451,7 @@ export function CourtDetailContent({
         </View>
       )}
 
-      {waitQueue.length > 0 && (
+      {!occupancyMode && waitQueue.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>다음 이용 대기 {waitQueue.length}명</Text>
           {waitQueue.map((w, i) => (

@@ -60,7 +60,7 @@ export default function DeleteAccountScreen() {
           </Text>
 
           <Pressable
-            onPress={() => Linking.openURL('https://dgistdrop.pages.dev/privacy')}
+            onPress={() => Linking.openURL('https://dgistdrop.com/privacy')}
             style={styles.linkWrap}
           >
             <Text style={styles.link}>개인정보처리방침 보기</Text>

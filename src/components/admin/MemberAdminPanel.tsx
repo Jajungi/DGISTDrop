@@ -24,7 +24,7 @@ import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
 import { getEffectiveSchedule } from '@/src/utils/dateFormat';
 import { isGuestStudentId } from '@/src/utils/studentId';
-import { isAdminUser } from '@/src/utils/staffAccess';
+import { clubGradeOf, hasAdminRole, isAdminUser, isOwnerUser, roleBadgeLabel } from '@/src/utils/staffAccess';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import { POINT_EARN } from '@/src/constants/points';
 import { RANK_THRESHOLDS, RANK_ORDER } from '@/src/constants';
@@ -45,7 +45,7 @@ const MEMBER_STATUS_COLOR: Record<MemberStatus, string> = {
 };
 
 const TIER_LABEL: Record<MembershipTier, string> = {
-  guest: '비회원',
+  guest: '게스트',
   associate: '준회원',
   full: '정회원',
   admin: '관리자',
@@ -73,6 +73,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
   const attendanceRecords = useAuthStore((s) => s.attendanceRecords);
   const approveMember = useAuthStore((s) => s.approveMember);
   const adminSetMembershipTier = useAuthStore((s) => s.adminSetMembershipTier);
+  const adminSetAdminRole = useAuthStore((s) => s.adminSetAdminRole);
   const adminSetMemberStatus = useAuthStore((s) => s.adminSetMemberStatus);
   const adminSetLessonStatus = useAuthStore((s) => s.adminSetLessonStatus);
   const adminSetCoach = useAuthStore((s) => s.adminSetCoach);
@@ -93,6 +94,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
   const getFriendIds = useFriendStore((s) => s.getFriendIds);
   const adminLogs = useAdminLogStore((s) => s.logs);
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
+  const pointsOn = useFeatureFlagsStore((s) => s.pointsFeaturesEnabled);
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -264,14 +266,14 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
                 <Text style={styles.profileSub}>{selected.studentId} · {selected.email}</Text>
                 <View style={styles.badgeRow}>
                   <StatusPill status={selected.memberStatus} />
-                  <TierPill tier={selected.membershipTier} />
+                  <TierPill label={roleBadgeLabel(selected)} />
                   {selected.isAtGym && <View style={styles.onlineDot}><Text style={styles.onlineText}>체육관</Text></View>}
                 </View>
               </View>
             </View>
             <View style={styles.statRow}>
               {eloOn ? <MiniStat label="Elo" value={String(selected.elo)} /> : null}
-              <MiniStat label="포인트" value={`${selected.points}P`} />
+              {pointsOn ? <MiniStat label="포인트" value={`${selected.points}P`} /> : null}
               <MiniStat label="전적" value={`${selected.wins}승 ${selected.losses}패`} />
               <MiniStat label="친구" value={`${friendCount}명`} />
             </View>
@@ -290,18 +292,18 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
 
           <Section title="역할 · 등급">
             <Text style={styles.sectionHint}>
-              회원을 누른 뒤 아래에서 등급을 고르세요. 준회원↔정회원은 운영자도 가능하고, 관리자
-              승격은 관리자만 가능합니다.
+              준회원/정회원은 회비 등급입니다. 관리자·운영자는 별도 권한이라 회원 등급을 바꿔도
+              빠지지 않습니다. 관리자를 빼려면 관리자 버튼을 다시 누르세요.
             </Text>
             <View style={styles.chipRow}>
               {(['associate', 'full'] as MembershipTier[]).map((tier) => (
                 <Chip
                   key={tier}
                   label={TIER_LABEL[tier]}
-                  active={selected.membershipTier === tier}
+                  active={clubGradeOf(selected) === tier}
                   onPress={() =>
                     confirmRoleChange(
-                      `${selected.name}님을 ${TIER_LABEL[tier]}(으)로 변경할까요?`,
+                      `${selected.name}님을 ${TIER_LABEL[tier]}(으)로 변경할까요? 관리자·운영자 권한은 유지됩니다.`,
                       () => {
                         void adminSetMembershipTier(selected.id, tier).then((r) => notify(r));
                       }
@@ -311,13 +313,15 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
               ))}
               {canManageAdminTier ? (
                 <Chip
-                  label={TIER_LABEL.admin}
-                  active={selected.membershipTier === 'admin'}
+                  label="관리자"
+                  active={hasAdminRole(selected)}
                   onPress={() =>
                     confirmRoleChange(
-                      `${selected.name}님을 관리자로 변경할까요?`,
+                      hasAdminRole(selected)
+                        ? `${selected.name}님의 관리자 권한을 해제할까요?`
+                        : `${selected.name}님에게 관리자 권한을 줄까요?`,
                       () => {
-                        void adminSetMembershipTier(selected.id, 'admin').then((r) => notify(r));
+                        void adminSetAdminRole(selected.id, !hasAdminRole(selected)).then((r) => notify(r));
                       }
                     )
                   }
@@ -426,13 +430,14 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
 
           <Section title="운영자 권한">
             <Text style={styles.sectionHint}>
-              일상 운영 권한(개발자 탭·관리자 승격 제외) · 현재:{' '}
-              {selected.isOperator ? '운영자' : '없음'}
+              최상위 권한입니다. 학번 {selected.studentId} · 현재:{' '}
+              {selected.isOperator || isOwnerUser(selected) ? '운영자' : '없음'}
+              {isOwnerUser(selected) ? ' (고정)' : ''}
             </Text>
             <View style={styles.chipRow}>
               <Chip
                 label="운영자 부여"
-                active={!!selected.isOperator}
+                active={!!selected.isOperator || isOwnerUser(selected)}
                 onPress={() =>
                   confirmRoleChange(`${selected.name}님에게 운영자 권한을 부여할까요?`, () =>
                     notify(adminSetOperator(selected.id, true))
@@ -440,26 +445,32 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
                 }
               />
               <Chip
-                label="권한 해제"
-                active={!selected.isOperator}
-                onPress={() =>
+                label={isOwnerUser(selected) ? '해제 불가' : '권한 해제'}
+                active={!selected.isOperator && !isOwnerUser(selected)}
+                onPress={() => {
+                  if (isOwnerUser(selected)) {
+                    onToast('warning', '운영자 계정은 운영자 권한을 해제할 수 없어요.');
+                    return;
+                  }
                   confirmRoleChange(`${selected.name}님의 운영자 권한을 회수할까요?`, () =>
                     notify(adminSetOperator(selected.id, false))
-                  )
-                }
+                  );
+                }}
               />
             </View>
           </Section>
 
-          <Section title="동아리비 · 포인트">
+          <Section title={pointsOn ? '동아리비 · 포인트' : '동아리비'}>
             <Text style={styles.sectionHint}>
-              회비 인증: +{POINT_EARN.CLUB_FEE}P (웰컴 리워드) · 보유 {selected.points}P
+              {pointsOn
+                ? `회비 인증: +${POINT_EARN.CLUB_FEE}P (웰컴 리워드) · 보유 ${selected.points}P`
+                : '회비 납부 여부를 기록합니다.'}
               {selected.clubFeeVerifiedAt ? ' · 회비 인증됨' : ''}
             </Text>
             <View style={styles.actionRow}>
               {!selected.clubFeeVerifiedAt && selected.memberStatus === 'approved' && (
                 <Button
-                  title={`회비 납부 인증 (+${POINT_EARN.CLUB_FEE}P)`}
+                  title={pointsOn ? `회비 납부 인증 (+${POINT_EARN.CLUB_FEE}P)` : '회비 납부 인증'}
                   size="sm"
                   onPress={() => notify(adminVerifyClubFee(selected.id, adminId))}
                 />
@@ -475,7 +486,9 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
             </View>
           </Section>
 
-          <Section title={eloOn ? '포인트 · Elo 조정' : '포인트 조정'}>
+          {pointsOn || eloOn ? (
+          <Section title={pointsOn && eloOn ? '포인트 · Elo 조정' : eloOn ? 'Elo 조정' : '포인트 조정'}>
+            {pointsOn ? (
             <View style={styles.adjustRow}>
               <TextInput
                 style={[styles.input, styles.inputSm]}
@@ -496,6 +509,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
                 notify(adminAdjustPoints(selected.id, parseInt(pointDelta, 10) || 0, pointReason))
               } />
             </View>
+            ) : null}
             {eloOn ? (
             <View style={styles.adjustRow}>
               <TextInput
@@ -519,6 +533,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
             </View>
             ) : null}
           </Section>
+          ) : null}
 
           {eloOn ? (
           <Section title="시작 랭크 배치">
@@ -605,7 +620,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
             )}
           </Section>
 
-          {memberPoints.length > 0 && (
+          {pointsOn && memberPoints.length > 0 && (
             <Section title="최근 포인트">
               {memberPoints.map((tx) => (
                 <View key={tx.id} style={styles.logRow}>
@@ -700,7 +715,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
           [
             ['name', '이름'],
             ['recent', '최근 가입'],
-            ['points', '포인트'],
+            ...(pointsOn ? ([['points', '포인트']] as [SortKey, string][]) : []),
             ...(eloOn ? ([['elo', 'Elo']] as [SortKey, string][]) : []),
           ] as [SortKey, string][]
         ).map(([key, label]) => (
@@ -715,14 +730,14 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
         <Text style={styles.empty}>조건에 맞는 회원이 없습니다</Text>
       ) : (
         filtered.map((user) => (
-          <MemberRow key={user.id} user={user} onPress={() => setSelectedId(user.id)} />
+          <MemberRow key={user.id} user={user} showPoints={pointsOn} onPress={() => setSelectedId(user.id)} />
         ))
       )}
     </View>
   );
 }
 
-function MemberRow({ user, onPress }: { user: User; onPress: () => void }) {
+function MemberRow({ user, onPress, showPoints }: { user: User; onPress: () => void; showPoints: boolean }) {
   return (
     <Pressable onPress={onPress} style={styles.memberRow}>
       <View style={styles.avatarWrap}>
@@ -737,8 +752,8 @@ function MemberRow({ user, onPress }: { user: User; onPress: () => void }) {
         <Text style={styles.memberSub}>{user.studentId}</Text>
         <View style={styles.badgeRow}>
           <StatusPill status={user.memberStatus} small />
-          <TierPill tier={user.membershipTier} small />
-          <Text style={styles.memberPts}>{user.points}P</Text>
+          <TierPill label={roleBadgeLabel(user)} small />
+          {showPoints ? <Text style={styles.memberPts}>{user.points}P</Text> : null}
         </View>
       </View>
       <Text style={styles.chevron}>›</Text>
@@ -756,11 +771,12 @@ function StatusPill({ status, small }: { status: MemberStatus; small?: boolean }
   );
 }
 
-function TierPill({ tier, small }: { tier: MembershipTier; small?: boolean }) {
-  const color = tier === 'admin' ? colors.primary : colors.textSecondary;
+function TierPill({ label, small }: { label: string; small?: boolean }) {
+  const color =
+    label === '운영자' || label === '관리자' ? colors.primary : colors.textSecondary;
   return (
     <View style={[styles.pill, { backgroundColor: colors.surfaceAlt }, small && styles.pillSm]}>
-      <Text style={[styles.pillText, { color }, small && styles.pillTextSm]}>{TIER_LABEL[tier]}</Text>
+      <Text style={[styles.pillText, { color }, small && styles.pillTextSm]}>{label}</Text>
     </View>
   );
 }

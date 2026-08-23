@@ -25,6 +25,8 @@ interface CourtCardProps {
   hPad?: number;
   /** 카드 상단 여백 (예약 태그 공간, 반응형) */
   chromeTop?: number;
+  /** 현황 모드 — 이름·예약 태그 숨기고 사용중/비움만 */
+  occupancyMode?: boolean;
 }
 
 export function CourtCard({
@@ -36,22 +38,24 @@ export function CourtCard({
   compact = true,
   hPad = 3,
   chromeTop = 14,
+  occupancyMode = false,
 }: CourtCardProps) {
   const { isDesktop } = useLayoutMode();
   const safeWidth = Number.isFinite(courtWidth) && courtWidth > 0 ? courtWidth : 96;
   const courtHeight = getCourtHeight(safeWidth);
   const slotWidth = safeWidth + hPad * 2;
   const radius = COURT_CARD_RADIUS;
-  const canJoin = court.status === 'playing' && court.players.length >= 2 && court.players.length < 4;
-  const waitCount = court.waitQueue?.length ?? 0;
-  const showProfiles = court.players.length > 0;
+  const canJoin = !occupancyMode && court.status === 'playing' && court.players.length >= 2 && court.players.length < 4;
+  const waitCount = occupancyMode ? 0 : court.waitQueue?.length ?? 0;
+  const showProfiles = !occupancyMode && court.players.length > 0;
   const avatarSize = compact
     ? Math.max(10, Math.min(16, safeWidth * 0.14))
     : Math.max(14, Math.min(22, safeWidth * 0.2));
-  const isReserved = court.status === 'reserved';
+  const isReserved = !occupancyMode && court.status === 'reserved';
   const isPlaying = court.status === 'playing';
-  const isCooling = court.status === 'just_finished';
-  const showGameMode = court.gameMode && court.status !== 'empty';
+  const isCooling = !occupancyMode && court.status === 'just_finished';
+  const showGameMode = !occupancyMode && court.gameMode && court.status !== 'empty';
+  const isOccupied = occupancyMode && court.status !== 'empty';
   const elapsed = formatElapsed(court.startedAt);
   const cleanupLeft = formatCleanupRemaining(court.finishedAt);
   const colLabel = getCourtColumnLabel(court.id);
@@ -73,6 +77,14 @@ export function CourtCard({
         pressed && styles.pressed,
       ]}
     >
+      {isOccupied && (
+        <View style={[styles.reservedTagWrap, { pointerEvents: 'none' }]}>
+          <View style={styles.occupiedTag}>
+            <Text style={styles.occupiedText}>사용 중</Text>
+          </View>
+        </View>
+      )}
+
       {isReserved && (
         <View style={[styles.reservedTagWrap, { pointerEvents: 'none' }]}>
           <View style={styles.reservedTag}>
@@ -151,7 +163,7 @@ export function CourtCard({
             </View>
           )}
 
-          {isPlaying && court.players.length > 0 && (
+          {isPlaying && !occupancyMode && court.players.length > 0 && (
             <View style={styles.liveBadge}>
               <View style={styles.liveDot} />
               <Text style={styles.liveText}>
@@ -229,6 +241,19 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 14,
     letterSpacing: 0.3,
+  },
+  occupiedTag: {
+    backgroundColor: '#5B8DEF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    transform: [{ rotate: '-4deg' }],
+  },
+  occupiedText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
+    letterSpacing: 0.2,
   },
   coolingTag: {
     backgroundColor: '#6A8A94',

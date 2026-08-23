@@ -9,6 +9,7 @@ import { formatArrivalLabel, formatScheduleRange } from '@/src/utils/friendsPres
 import { getEffectiveSchedule } from '@/src/utils/dateFormat';
 import { RANK_THRESHOLDS } from '@/src/constants';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
+import { roleBadgeLabel } from '@/src/utils/staffAccess';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 interface UserPublicProfileProps {
@@ -77,11 +78,7 @@ export function UserPublicProfile({ user }: UserPublicProfileProps) {
         <InfoRow
           label="회원 등급"
           value={
-            user.membershipTier === 'full'
-              ? '정회원'
-              : user.membershipTier === 'associate'
-                ? '준회원'
-                : '동아리원'
+            roleBadgeLabel(user)
           }
         />
       </Card>

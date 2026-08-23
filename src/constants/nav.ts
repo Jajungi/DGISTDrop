@@ -10,7 +10,7 @@ export const NAV_ITEMS: {
   label: string;
   tabLabel: string;
 }[] = [
-  { href: '/', icon: 'grid', label: '코트 예약', tabLabel: '코트' },
+  { href: '/', icon: 'grid', label: '코트 현황', tabLabel: '코트' },
   { href: '/friends', icon: 'heart', label: '친구', tabLabel: '친구' },
   { href: '/lobby', icon: 'people', label: '파트너 모집', tabLabel: '모집' },
   { href: '/profile', icon: 'person', label: 'MY 기록', tabLabel: 'MY' },

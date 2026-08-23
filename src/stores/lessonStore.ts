@@ -3,7 +3,7 @@ import type { LessonApplication, LessonQueueEntry } from '@/src/types';
 import { MOCK_LESSON_APPLICATIONS, MOCK_LESSON_QUEUE } from '@/src/services/mockData';
 import { useNotificationStore } from './notificationStore';
 import { useAuthStore } from './authStore';
-import { persistAppState } from '@/src/services/appState';
+import { persistAppState } from '@/src/services/persistGate';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { runWhenRemoteId } from '@/src/utils/localId';
 import { isLessonTurnEnabled } from '@/src/stores/notificationPrefsStore';

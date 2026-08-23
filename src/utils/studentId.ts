@@ -1,4 +1,4 @@
-/** DGIST 학번: 연도 4자리 + 숫자 5자리 (예: 202410001) */
+/** DGIST 학번: 연도 4자리 + 숫자 5자리 (예: 202600000) */
 const STUDENT_ID_PATTERN = /^(\d{4})(\d{5})$/;
 
 export type StudentIdValidation =
@@ -15,7 +15,7 @@ export function validateStudentId(raw: string): StudentIdValidation {
   }
   const match = normalized.match(STUDENT_ID_PATTERN);
   if (!match) {
-    return { ok: false, message: '학번은 연도 4자리 + 숫자 5자리 형식이에요. (예: 202410001)' };
+    return { ok: false, message: '학번은 연도 4자리 + 숫자 5자리 형식이에요. (예: 202600000)' };
   }
   const year = Number(match[1]);
   if (year < 2000 || year > 2099) {

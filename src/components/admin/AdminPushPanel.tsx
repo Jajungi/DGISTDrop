@@ -12,6 +12,7 @@ import {
   toggleActivityCancelToday,
   fetchPushNotifyLogs,
   fetchPushTokenStats,
+  prunePushTokens,
   invokeBroadcastPush,
   DEFAULT_PUSH_SETTINGS,
   type PushNotifySettings,
@@ -31,7 +32,8 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
   const [sub, setSub] = useState<PushSub>('status');
   const [settings, setSettings] = useState<PushNotifySettings>(DEFAULT_PUSH_SETTINGS);
   const [logs, setLogs] = useState<PushNotifyLog[]>([]);
-  const [tokenStats, setTokenStats] = useState({ total: 0, android: 0, web: 0 });
+  const [tokenStats, setTokenStats] = useState({ total: 0, users: 0, android: 0, web: 0 });
+  const [pruning, setPruning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [customMessage, setCustomMessage] = useState('');
@@ -108,6 +110,32 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
     } catch { onToast('warning', '저장 실패'); }
   };
 
+  const pruneDeadTokens = async () => {
+    setPruning(true);
+    try {
+      const result = await prunePushTokens();
+      await fetchAll();
+      const parts: string[] = [];
+      if (result.unapproved) parts.push(`미승인·게스트 ${result.unapproved}`);
+      if (result.old_logs) parts.push(`옛 기록 ${result.old_logs}`);
+      onToast(
+        'success',
+        result.removed === 0 && result.old_logs === 0
+          ? '지울 등록이 없어요.'
+          : `기기 ${result.removed}대 정리${parts.length ? ` (${parts.join(' · ')})` : ''}`
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '정리 실패';
+      onToast(
+        'warning',
+        msg.includes('rpc_prune_push_tokens') || msg.includes('does not exist') || msg.includes('42883')
+          ? 'Supabase에서 035_prune_push_tokens.sql 을 실행해 주세요.'
+          : msg
+      );
+    }
+    setPruning(false);
+  };
+
   const sendActivityNotify = async () => {
     const firstStart = schedule[0]
       ? `${String(schedule[0].startHour).padStart(2, '0')}:${String(schedule[0].startMinute).padStart(2, '0')}`
@@ -121,7 +149,12 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
         message,
         type: 'activity',
       });
-      onToast('success', `${result.sent}명에게 발송됨 (앱 ${result.expo ?? 0} · 웹 ${result.web ?? 0})`);
+      onToast(
+        'success',
+        `${result.sent}명에게 발송됨 (앱 ${result.expo ?? 0} · 웹 ${result.web ?? 0}${
+          result.pruned ? ` · 못 받는 기기 ${result.pruned}대 정리` : ''
+        })`
+      );
       void fetchAll();
     } catch (err) {
       const msg = err instanceof Error ? err.message : '발송 실패';
@@ -140,7 +173,10 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
         message: customMessage.trim(),
         type: 'custom',
       });
-      onToast('success', `${result.sent}명에게 발송됨`);
+      onToast(
+        'success',
+        `${result.sent}명에게 발송됨${result.pruned ? ` · 못 받는 기기 ${result.pruned}대 정리` : ''}`
+      );
       setCustomMessage('');
       void fetchAll();
     } catch (err) {
@@ -159,7 +195,9 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
         <View style={styles.statusRow}>
           <View style={[styles.dot, settings.enabled ? styles.online : styles.offline]} />
           <Text style={styles.statusText}>푸시 {settings.enabled ? 'ON' : 'OFF'}</Text>
-          <Text style={styles.statusText}>등록 {tokenStats.total}명 (앱 {tokenStats.android} · 웹 {tokenStats.web})</Text>
+          <Text style={styles.statusText}>
+            등록 {tokenStats.users}명 · 기기 {tokenStats.total} (앱 {tokenStats.android} · 웹 {tokenStats.web})
+          </Text>
         </View>
       </Card>
 
@@ -200,21 +238,32 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
             <Text style={styles.blockTitle}>알림 등록 현황</Text>
             <View style={styles.statRow}>
               <View style={styles.stat}>
+                <Text style={styles.statValue}>{tokenStats.users}</Text>
+                <Text style={styles.statLabel}>사람</Text>
+              </View>
+              <View style={styles.stat}>
                 <Text style={styles.statValue}>{tokenStats.total}</Text>
-                <Text style={styles.statLabel}>전체</Text>
+                <Text style={styles.statLabel}>기기</Text>
               </View>
               <View style={styles.stat}>
                 <Text style={styles.statValue}>{tokenStats.android}</Text>
-                <Text style={styles.statLabel}>Android 앱</Text>
+                <Text style={styles.statLabel}>앱</Text>
               </View>
               <View style={styles.stat}>
                 <Text style={styles.statValue}>{tokenStats.web}</Text>
-                <Text style={styles.statLabel}>웹(PWA)</Text>
+                <Text style={styles.statLabel}>웹</Text>
               </View>
             </View>
             <Text style={styles.hint}>
-              iOS는 앱 설치 대신 Safari에서 홈 화면에 추가한 뒤 알림을 켜야 합니다.
+              한 사람이 폰·태블릿·브라우저 여러 대에서 알림을 켜면 기기 수가 사람보다 많습니다. 그건 정상입니다. 정리는 미승인·게스트만 지우고, 만료된 기기는 다음에 알림을 보낼 때 자동으로 빠집니다.
             </Text>
+            <Button
+              title={pruning ? '정리 중…' : '못 쓰는 등록 정리'}
+              onPress={() => void pruneDeadTokens()}
+              variant="outline"
+              fullWidth
+              disabled={pruning || loading}
+            />
           </Card>
 
           <Card style={styles.block}>

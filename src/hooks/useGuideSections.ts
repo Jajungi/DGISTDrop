@@ -10,6 +10,8 @@ import { detectClientDevice, getPushGuideCopy } from '@/src/utils/clientDevice';
 export function useGuideSections() {
   const schedule = useActivityScheduleStore((s) => s.schedule);
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
+  const pointsOn = useFeatureFlagsStore((s) => s.pointsFeaturesEnabled);
+  const reservationOn = useFeatureFlagsStore((s) => s.reservationEnabled);
   return useMemo(() => {
     const label = formatActivityScheduleLabel(schedule, getActivityDayLabel);
     const sections = getGuideSections(label);
@@ -18,14 +20,25 @@ export function useGuideSections() {
     const tailored = sections.map((section) => ({
       ...section,
       items: section.items
-        .filter((item) => !item.forDevices || item.forDevices.includes(device))
+        .filter((item) => {
+          if (item.forDevices && !item.forDevices.includes(device)) return false;
+          if (item.when === 'reservation') return reservationOn;
+          if (item.when === 'occupancy') return !reservationOn;
+          if (item.when === 'points') return pointsOn;
+          if (item.when === 'elo') return eloOn;
+          return true;
+        })
         .map((item) =>
           item.title === '활동 알림 (푸시)' ? { ...item, content: pushCopy.guideBody } : item
         ),
     }));
-    if (eloOn) return tailored;
-    return tailored.filter((s) => s.id !== 'rank');
-  }, [schedule, eloOn]);
+    return tailored.filter(
+      (s) =>
+        s.items.length > 0 &&
+        (eloOn || s.id !== 'rank') &&
+        (pointsOn || s.id !== 'points')
+    );
+  }, [schedule, eloOn, pointsOn, reservationOn]);
 }
 
 export function useActivityScheduleLabel() {

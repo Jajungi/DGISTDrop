@@ -3,10 +3,10 @@ import { type PropsWithChildren } from 'react';
 import { darkPalette, lightPalette, paletteToCssVars } from '@/src/theme/palettes';
 
 /** Cloudflare Pages 기본 배포 URL — OG 이미지는 절대 경로 필요 */
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://dgistdrop.pages.dev';
+const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://dgistdrop.com';
 const OG_IMAGE = `${SITE_URL}/og-image.png`;
 const SITE_TITLE = 'Drop — DGIST 배드민턴';
-const SITE_DESC = 'DGIST 배드민턴 동아리 Drop — 코트 예약·출석·매칭·포인트';
+const SITE_DESC = 'DGIST 배드민턴 동아리 Drop — 코트 현황·출석·매칭';
 
 export default function Root({ children }: PropsWithChildren) {
   return (

@@ -2,20 +2,20 @@
 
 배포 후 바로 막히는 일은 아니지만, 나중에 정리하면 좋은 항목들을 모아 둔 문서입니다.
 
-**현재 배포 방식 (2026-08):** Play 내부 테스트 설치는 미뤄 두고, Android·iOS 모두 **브라우저 웹앱(홈 화면 추가 / 앱 설치)** 으로 쓰는 것을 기본으로 합니다. 사이트: `https://dgistdrop.pages.dev`
+**현재 배포 방식 (2026-08):** Play 내부 테스트 설치는 미뤄 두고, Android·iOS 모두 **브라우저 웹앱(홈 화면 추가 / 앱 설치)** 으로 쓰는 것을 기본으로 합니다. 사이트: `https://dgistdrop.com`
 
 ---
 
 ## 0. 웹앱 설치 (현재 권장 · Android + iOS)
 
 ### Android (Chrome)
-1. Chrome으로 `https://dgistdrop.pages.dev` 열기
+1. Chrome으로 `https://dgistdrop.com` 열기
 2. 메뉴(⋮) → **앱 설치** 또는 **홈 화면에 추가**
 3. 홈 화면 Drop 아이콘으로 실행
 4. 설정에서 알림 허용
 
 ### iPhone (Safari)
-1. Safari로 `https://dgistdrop.pages.dev` 열기
+1. Safari로 `https://dgistdrop.com` 열기
 2. 하단 **공유** → **홈 화면에 추가**
 3. 생긴 Drop 아이콘으로 실행 (탭이 아님)
 4. 설정에서 알림 허용 — Safari 탭 안에서는 푸시 불가
@@ -109,8 +109,8 @@
 
 예시:
 
-- 현재: `https://dgistdrop.pages.dev`
-- 변경 후: `https://drop.dgist.ac.kr` 또는 원하는 커스텀 도메인
+- 현재: `https://dgistdrop.com`
+- 예전: `https://dgistdrop.pages.dev` (안내·홈 화면 추가에 쓰지 않음)
 
 ### 2-1. Cloudflare Pages
 
@@ -167,7 +167,7 @@
 
 #### `app/+html.tsx`
 
-현재 이 파일은 사이트 URL 기본값으로 `https://dgistdrop.pages.dev` 를 사용함.
+현재 이 파일은 사이트 URL 기본값으로 `https://dgistdrop.com` 을 사용함.
 
 나중에 할 일:
 

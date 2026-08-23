@@ -84,14 +84,37 @@ export async function fetchPushNotifyLogs(limit = 20): Promise<PushNotifyLog[]> 
   return (data ?? []) as PushNotifyLog[];
 }
 
-export async function fetchPushTokenStats(): Promise<{ total: number; android: number; web: number }> {
-  const { data, error } = await getSupabase().from('push_tokens').select('platform');
+export async function fetchPushTokenStats(): Promise<{
+  total: number;
+  users: number;
+  android: number;
+  web: number;
+}> {
+  const { data, error } = await getSupabase().from('push_tokens').select('platform, user_id');
   if (error) throw error;
   const rows = data ?? [];
   return {
     total: rows.length,
+    users: new Set(rows.map((r) => r.user_id)).size,
     android: rows.filter((r) => r.platform === 'android').length,
     web: rows.filter((r) => r.platform === 'web').length,
+  };
+}
+
+export async function prunePushTokens(): Promise<{
+  unapproved: number;
+  duplicates: number;
+  old_logs: number;
+  removed: number;
+}> {
+  const { data, error } = await getSupabase().rpc('rpc_prune_push_tokens');
+  if (error) throw error;
+  const raw = (data ?? {}) as Record<string, unknown>;
+  return {
+    unapproved: Number(raw.unapproved) || 0,
+    duplicates: Number(raw.duplicates) || 0,
+    old_logs: Number(raw.old_logs) || 0,
+    removed: Number(raw.removed) || 0,
   };
 }
 
@@ -99,7 +122,7 @@ export async function invokeBroadcastPush(input: {
   title: string;
   message: string;
   type?: string;
-}): Promise<{ sent: number; expo?: number; web?: number }> {
+}): Promise<{ sent: number; expo?: number; web?: number; pruned?: number }> {
   const { data, error } = await getSupabase().functions.invoke('broadcast-push', {
     body: input,
   });

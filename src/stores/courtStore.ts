@@ -5,6 +5,7 @@ import { MIN_PLAYERS_FOR_GAME } from '@/src/constants';
 import { createEmptyCourts, userToCourtPlayer, userHasActiveCourt, canJoinWaitQueue } from '@/src/services/courtService';
 import { createMockCourts } from '@/src/services/mockData';
 import { getReservationCost, isPeakTime, canReserve, isCenterCourtId } from '@/src/services/points';
+import { isReservationEnabled, isPointsFeaturesEnabled } from '@/src/stores/featureFlagsStore';
 import { useAuthStore } from './authStore';
 import { useAppStore } from './authStore';
 import { useNotificationStore } from './notificationStore';
@@ -62,6 +63,7 @@ interface CourtState {
   adminClearWaitQueue: (courtId: number) => { success: boolean; message: string };
   refreshCourts: () => void;
   hydrateCourts: (courts: Court[]) => void;
+  setCourtOccupancy: (courtId: number, occupied: boolean) => { success: boolean; message: string };
 }
 
 function persistCourts(courts: Court[]) {
@@ -93,7 +95,89 @@ export const useCourtStore = create<CourtState>((set, get) => ({
     set({ courts: normalized, lastUpdated: new Date().toISOString() });
   },
 
+  setCourtOccupancy: (courtId, occupied) => {
+    const court = get().courts.find((c) => c.id === courtId);
+    if (!court) return { success: false, message: '코트를 찾을 수 없어요.' };
+    if (occupied && court.status !== 'empty') {
+      return { success: false, message: '이 코트는 이미 사용 중이에요.' };
+    }
+    if (!occupied && court.status === 'empty') {
+      return { success: false, message: '이미 비어 있어요.' };
+    }
+
+    const nextCourts = get().courts.map((c) => {
+      if (c.id !== courtId) return c;
+      if (occupied) {
+        return {
+          ...c,
+          status: 'playing' as const,
+          reservedBy: undefined,
+          reservedAt: new Date().toISOString(),
+          startedAt: new Date().toISOString(),
+          players: [],
+          joinRequests: [],
+          waitQueue: [],
+          gamesCompleted: 0,
+          maxGames: 0,
+          gameMode: undefined,
+          nantaHalf: undefined,
+        };
+      }
+      return {
+        ...c,
+        status: 'empty' as const,
+        reservedBy: undefined,
+        reservedAt: undefined,
+        startedAt: undefined,
+        finishedAt: undefined,
+        players: [],
+        joinRequests: [],
+        waitQueue: [],
+        gamesCompleted: 0,
+        maxGames: 0,
+        gameMode: undefined,
+        nantaHalf: undefined,
+      };
+    });
+    set({ courts: nextCourts, lastUpdated: new Date().toISOString() });
+
+    if (isSupabaseEnabled()) {
+      import('@/src/services/supabase/courts')
+        .then(async ({ setCourtOccupancyRemote, mapCourtRpcError, fetchCourts }) => {
+          try {
+            await setCourtOccupancyRemote(courtId, occupied);
+            const fresh = await fetchCourts();
+            if (fresh.length) get().hydrateCourts(fresh);
+          } catch (err) {
+            useNotificationStore.getState().showToast({
+              type: 'warning',
+              title: '',
+              message: mapCourtRpcError(err),
+            });
+            try {
+              const fresh = await fetchCourts();
+              if (fresh.length) get().hydrateCourts(fresh);
+            } catch {
+              /* ignore */
+            }
+          }
+        })
+        .catch(() => {});
+    } else {
+      persistCourts(nextCourts);
+    }
+
+    return {
+      success: true,
+      message: occupied ? `${court.name}을 사용 중으로 표시했어요.` : `${court.name}을 비웠어요.`,
+    };
+  },
+
   reserveCourt: (courtId, userId, gameCount, gameMode = 'casual', nantaHalf = 'near', teamPlayers) => {
+    if (!isReservationEnabled()) {
+      return { success: false, message: '지금은 현황 모드예요. 예약할 수 없어요.' };
+    }
+
     const appStore = useAppStore.getState();
     if (!appStore.checkGeoFence()) {
       return { success: false, message: '체육관 근처에서만 예약할 수 있어요.' };
@@ -143,7 +227,7 @@ export const useCourtStore = create<CourtState>((set, get) => ({
       }
     }
 
-    const cost = isGuest ? 0 : getReservationCost(user.rank, isCenterCourtId(courtId));
+    const cost = isGuest || !isPointsFeaturesEnabled() ? 0 : getReservationCost(user.rank, isCenterCourtId(courtId));
     if (!isGuest && user.points < cost) {
       return { success: false, message: `포인트가 부족해요. (필요: ${cost}P)` };
     }
@@ -178,17 +262,31 @@ export const useCourtStore = create<CourtState>((set, get) => ({
       set({ courts: nextCourts, lastUpdated: new Date().toISOString() });
       const loc = useAppStore.getState().location;
       import('@/src/services/supabase/courts')
-        .then(({ reserveCourtRemote }) =>
-          reserveCourtRemote({
-            courtId,
-            gameCount,
-            gameMode,
-            nantaHalf: gameMode === 'nanta' ? nantaHalf : undefined,
-            players,
-            lat: loc?.latitude ?? null,
-            lng: loc?.longitude ?? null,
-          })
-        )
+        .then(async ({ reserveCourtRemote, mapCourtRpcError, fetchCourts }) => {
+          try {
+            await reserveCourtRemote({
+              courtId,
+              gameCount,
+              gameMode,
+              nantaHalf: gameMode === 'nanta' ? nantaHalf : undefined,
+              players,
+              lat: loc?.latitude ?? null,
+              lng: loc?.longitude ?? null,
+            });
+          } catch (err) {
+            useNotificationStore.getState().showToast({
+              type: 'warning',
+              title: '',
+              message: mapCourtRpcError(err),
+            });
+            try {
+              const fresh = await fetchCourts();
+              if (fresh.length) get().hydrateCourts(fresh);
+            } catch {
+              /* ignore */
+            }
+          }
+        })
         .catch((err) => console.warn('[court] reserve failed', err));
     } else {
       if (cost > 0) {
@@ -464,6 +562,9 @@ export const useCourtStore = create<CourtState>((set, get) => ({
     if (court.joinRequests.some((r) => r.userId === userId)) {
       return { success: false, message: '이미 합류 신청했어요.' };
     }
+    if (userHasActiveCourt(userId, get().courts)) {
+      return { success: false, message: '이미 다른 코트를 이용 중이에요.' };
+    }
 
     const requestId = `jr-${Date.now()}`;
     const nextCourts = get().courts.map((c) =>
@@ -514,6 +615,9 @@ export const useCourtStore = create<CourtState>((set, get) => ({
 
     const user = authStore.users.find((u) => u.id === request.userId);
     if (!user) return { success: false, message: '사용자를 찾을 수 없어요.' };
+    if (userHasActiveCourt(request.userId, get().courts)) {
+      return { success: false, message: '이미 다른 코트를 이용 중인 회원이에요.' };
+    }
 
     const nextCourts = get().courts.map((c) => {
       if (c.id !== courtId) return c;

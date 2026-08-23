@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>DGIST 배드민턴 동아리 Drop — 소프트웨어 변경 이력서</title>
+  <style>
+    @page { size: A4; }
+    :root {
+      --ink: #1b1d1c;
+      --muted: #4d5652;
+      --rule: #1b1d1c;
+      --line: #c5cdc8;
+      --fill: #f3f4f2;
+      --head: #2a332f;
+      --accent: #3d4a44;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      color: var(--ink);
+      background: #fff;
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 10.4pt;
+      line-height: 1.62;
+      letter-spacing: -0.01em;
+    }
+    a { color: var(--ink); text-decoration: none; }
+
+    .cover {
+      min-height: 252mm;
+      display: flex;
+      flex-direction: column;
+      page-break-after: always;
+    }
+    .letterhead {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-bottom: 2.2px solid var(--rule);
+      padding-bottom: 8px;
+    }
+    .letterhead .org {
+      font-size: 10pt;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .letterhead .classif {
+      font-size: 8.5pt;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .cover-body { flex: 1; padding-top: 28mm; }
+    .doc-type {
+      font-size: 9pt;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+    .cover h1 {
+      font-family: "Batang", "Noto Serif KR", "Times New Roman", serif;
+      font-size: 28pt;
+      font-weight: 700;
+      line-height: 1.25;
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+    .cover .product {
+      font-size: 12.5pt;
+      color: var(--muted);
+      margin: 0 0 22mm;
+    }
+    .cover-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8mm;
+    }
+    .cover-table th, .cover-table td {
+      border: 1px solid var(--rule);
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 10pt;
+    }
+    .cover-table th {
+      width: 28%;
+      background: var(--fill);
+      font-weight: 700;
+    }
+    .cover-note {
+      margin-top: auto;
+      padding-top: 16mm;
+      border-top: 0.6px solid var(--line);
+      font-size: 8.5pt;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .doc { padding-top: 2mm; }
+    .h1 {
+      font-size: 13.5pt;
+      font-weight: 700;
+      margin: 0 0 10px;
+      padding-bottom: 5px;
+      border-bottom: 1.6px solid var(--rule);
+    }
+    .h2 {
+      font-size: 11.6pt;
+      font-weight: 700;
+      margin: 16px 0 8px;
+      padding: 0;
+    }
+    .body-text { margin: 0 0 12px; }
+    .lead-box {
+      border: 1px solid var(--line);
+      padding: 11px 12px;
+      margin: 0 0 16px;
+      background: #fafafa;
+    }
+
+    table.toc, table.chg, table.meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 8px;
+    }
+    table.toc th, table.toc td,
+    table.chg th, table.chg td,
+    table.meta-table th, table.meta-table td {
+      border: 1px solid var(--line);
+      padding: 6px 8px;
+      vertical-align: top;
+      text-align: left;
+    }
+    table.toc th, table.chg th, table.meta-table th {
+      background: var(--head);
+      color: #fff;
+      font-weight: 600;
+      font-size: 9pt;
+    }
+    table.meta-table th { width: 18%; }
+    table.meta-table.tight td { width: 32%; }
+    table.toc .toc-no { width: 16%; font-weight: 600; }
+    table.toc .toc-date { width: 26%; color: var(--muted); }
+    table.toc .toc-page { width: 12%; text-align: center; }
+    table.toc .toc-page a { text-decoration: underline; font-size: 9pt; color: var(--muted); }
+
+    .release { page-break-inside: auto; margin-bottom: 14px; }
+    .purpose {
+      border-left: 3px solid var(--accent);
+      padding: 6px 0 6px 10px;
+      margin: 8px 0 10px;
+    }
+    .purpose-label {
+      font-size: 8pt;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .purpose p { margin: 0; }
+    .col-no { width: 8%; text-align: center; font-variant-numeric: tabular-nums; }
+    .col-what { width: 92%; }
+    tbody tr:nth-child(even) { background: #f7f8f7; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <div class="letterhead">
+      <div class="org">DGIST 배드민턴 동아리 Drop</div>
+      <div class="classif">내부용　·　DROP-CHG-001</div>
+    </div>
+    <div class="cover-body">
+      <p class="doc-type">Technical Change Record</p>
+      <h1>소프트웨어 변경 이력서</h1>
+      <p class="product">Drop — 코트 현황 · 출석 · 매칭</p>
+      <table class="cover-table">
+        <tr><th>문서 번호</th><td>DROP-CHG-001</td></tr>
+        <tr><th>문서 분류</th><td>내부용 (배포 제한)</td></tr>
+        <tr><th>작성 주체</th><td>DGIST 배드민턴 동아리 Drop</td></tr>
+        <tr><th>열람 대상</th><td>동아리 운영진</td></tr>
+        <tr><th>개정일</th><td>2026-08-24</td></tr>
+        <tr><th>대상 범위</th><td>v0.1 ~ v1.2 (Git 저장소 및 미푸시 반영분 포함)</td></tr>
+        <tr><th>근거 저장소</th><td>https://github.com/Jajungi/DGISTDrop</td></tr>
+      </table>
+    </div>
+    <p class="cover-note">
+      본 문서는 운영 인수인계 및 내부 검토용이다. 대외 배포를 전제로 하지 않는다.
+      변경 항목은 구현 단위가 아니라 운영상 의미 있는 목적 단위로 기술한다.
+    </p>
+  </section>
+
+  <main class="doc">
+    <h1 class="h1">1. 개요</h1>
+    <p class="body-text">본 문서는 Drop 웹·앱의 Git 이력을 근거로 배포 단위별 변경 사항을 정리한 내부 이력서임. 동일 목적의 연속 커밋은 하나의 항목으로 통합함. 기능·정책 변경 시 본 문서를 개정함.</p>
+    <div class="lead-box">
+      본 이력서는 (1) 버전 식별자, (2) 해당 구간의 범위, (3) 개별 변경 내용을 기술한다.
+      이후 개정 시 문서 번호는 유지하고 개정일만 갱신한다.
+    </div>
+
+    <h1 class="h1">2. 목차</h1>
+    <table class="toc">
+      <thead>
+        <tr>
+          <th>절</th>
+          <th>제목</th>
+          <th>기간</th>
+          <th>위치</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="toc-no">1</td><td>개요</td><td>—</td><td></td></tr>
+        <tr><td class="toc-no">2</td><td>목차</td><td>—</td><td></td></tr>
+        <tr><td class="toc-no">3</td><td>버전별 변경 내역</td><td>v0.1–v1.2</td><td></td></tr>
+        
+      <tr>
+        <td class="toc-no">3.1</td>
+        <td>v0.1 첫 앱과 웹 배포</td>
+        <td class="toc-date">2026-07-07</td>
+        <td class="toc-page"><a href="#v0.1">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.2</td>
+        <td>v0.2 코치·푸시·스토어 준비</td>
+        <td class="toc-date">2026-07-08</td>
+        <td class="toc-page"><a href="#v0.2">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.3</td>
+        <td>v0.3 브랜드와 서버 동기화</td>
+        <td class="toc-date">2026-07-09</td>
+        <td class="toc-page"><a href="#v0.3">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.4</td>
+        <td>v0.4 보안 보강</td>
+        <td class="toc-date">2026-07-10 ~ 07-23</td>
+        <td class="toc-page"><a href="#v0.4">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.5</td>
+        <td>v0.5 운영자·코트·활동 시간</td>
+        <td class="toc-date">2026-07-30</td>
+        <td class="toc-page"><a href="#v0.5">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.6</td>
+        <td>v0.6 모집·친구·도착</td>
+        <td class="toc-date">2026-08-01</td>
+        <td class="toc-page"><a href="#v0.6">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.7</td>
+        <td>v0.7 무료 DB 유지</td>
+        <td class="toc-date">2026-08-11</td>
+        <td class="toc-page"><a href="#v0.7">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.8</td>
+        <td>v0.8 카카오 챗봇에서 앱 푸시로</td>
+        <td class="toc-date">2026-08-19 ~ 08-20</td>
+        <td class="toc-page"><a href="#v0.8">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.9</td>
+        <td>v0.9 웹앱 설치·운영 도구</td>
+        <td class="toc-date">2026-08-20</td>
+        <td class="toc-page"><a href="#v0.9">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.10</td>
+        <td>v1.0 테마·코트 빛·회전</td>
+        <td class="toc-date">2026-08-21 ~ 08-22</td>
+        <td class="toc-page"><a href="#v1.0">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.11</td>
+        <td>v1.1 도메인·가입 명단·역할 분리 (작업 반영)</td>
+        <td class="toc-date">2026-08-22 ~ 08-23</td>
+        <td class="toc-page"><a href="#v1.1">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.12</td>
+        <td>v1.2 이용 문구·이력·탭 안내</td>
+        <td class="toc-date">2026-08-24</td>
+        <td class="toc-page"><a href="#v1.2">이동</a></td>
+      </tr>
+      </tbody>
+    </table>
+
+    <h1 class="h1">3. 버전별 변경 내역</h1>
+    
+      <section class="release" id="v0.1">
+        <h2 class="h2">3.1　v0.1　첫 앱과 웹 배포</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-07-07</td><th>항목 수</th><td>5</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>동아리 코트·출석·포인트를 한 앱에서 처리하고, 브라우저로도 이용할 수 있게 함.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">Expo 앱 초기 구성 (코트 9면, 로그인, 프로필, 관리)</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">게스트(이름만) 입장</td>
+        </tr>
+        <tr>
+          <td class="col-no">3</td>
+          <td class="col-what">Cloudflare Pages 웹 배포와 가이드</td>
+        </tr>
+        <tr>
+          <td class="col-no">4</td>
+          <td class="col-what">웹 아이콘 폰트가 Cloudflare에서 빠지며 흰 화면이 되던 문제 수정</td>
+        </tr>
+        <tr>
+          <td class="col-no">5</td>
+          <td class="col-what">관리자 DB 초기화 패널과 확인 코드</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v0.2">
+        <h2 class="h2">3.2　v0.2　코치·푸시·스토어 준비</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-07-08</td><th>항목 수</th><td>4</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>레슨 운영과 원격 알림을 넣고, Android 스토어 빌드가 가능하게 함.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">코치 권한, 프로필 시트, 푸시 토큰 테이블·마이그레이션</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">Expo SDK 57 패치, EAS·FCM(google-services) 연결</td>
+        </tr>
+        <tr>
+          <td class="col-no">3</td>
+          <td class="col-what">모바일 레이아웃·탭바·시간 선택 개선</td>
+        </tr>
+        <tr>
+          <td class="col-no">4</td>
+          <td class="col-what">개인정보처리방침·스토어 문구·아키텍처 문서</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v0.3">
+        <h2 class="h2">3.3　v0.3　브랜드와 서버 동기화</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-07-09</td><th>항목 수</th><td>5</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>겉모습을 Drop 로고에 맞추고, 웹에서 누른 관리 동작이 DB에 실제로 남게 함.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">아이콘·스플래시를 Drop 로고로 교체</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">문서 톤을 공식 안내체로 정리, 저장소 이름을 DGISTDrop으로 맞춤</td>
+        </tr>
+        <tr>
+          <td class="col-no">3</td>
+          <td class="col-what">웹 계정 삭제에 숫자 확인 모달</td>
+        </tr>
+        <tr>
+          <td class="col-no">4</td>
+          <td class="col-what">관리자 취소·프로필 변경·로그인·경기 결과를 Supabase에 맞춤</td>
+        </tr>
+        <tr>
+          <td class="col-no">5</td>
+          <td class="col-what">RLS·RPC 권한 강화</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v0.4">
+        <h2 class="h2">3.4　v0.4　보안 보강</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-07-10 ~ 07-23</td><th>항목 수</th><td>2</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>로그인하지 않은 호출이 내부 함수를 건드리지 못하게 함.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">익명(anon) RPC 실행 차단, 함수 search_path 고정</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">잘못된 android.label 설정 제거</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v0.5">
+        <h2 class="h2">3.5　v0.5　운영자·코트·활동 시간</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-07-30</td><th>항목 수</th><td>6</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>일상 운영을 관리자 한 명에게만 맡기지 않고, 코트 화면과 공지를 현장에서 쓰기 쉽게 함.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">운영자(operator) 역할, 코트 배치 고정, 혼잡·ETA 안내</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">코트 확대 레이아웃 고정, 확대 중 스크롤, 나갈 때 접기</td>
+        </tr>
+        <tr>
+          <td class="col-no">3</td>
+          <td class="col-what">관리 탭 재배치, 정기 활동 시간 설정</td>
+        </tr>
+        <tr>
+          <td class="col-no">4</td>
+          <td class="col-what">웹에서 회원 등급 변경이 동작하게 수정</td>
+        </tr>
+        <tr>
+          <td class="col-no">5</td>
+          <td class="col-what">로그인 전 mock 인원이 깜빡이던 현상 제거</td>
+        </tr>
+        <tr>
+          <td class="col-no">6</td>
+          <td class="col-what">화면 공지(오버레이), 휴관, 코트 대기열</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v0.6">
+        <h2 class="h2">3.6　v0.6　모집·친구·도착</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-08-01</td><th>항목 수</th><td>1</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>파트너를 구하는 흐름과 친구 일정을 현장 시간에 맞게 맞춤.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">로비 합류 승인, 친구 파트너 추천, 도착 알림, 일정 겹침 표시</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v0.7">
+        <h2 class="h2">3.7　v0.7　무료 DB 유지</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-08-11</td><th>항목 수</th><td>1</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>한동안 접속이 없어도 Supabase 무료 프로젝트가 멈추지 않게 함.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">GitHub Actions로 Supabase keepalive ping</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v0.8">
+        <h2 class="h2">3.8　v0.8　카카오 챗봇에서 앱 푸시로</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-08-19 ~ 08-20</td><th>항목 수</th><td>4</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>카카오 채널 연동을 시도했다가, 개인 알림은 앱·웹 푸시가 더 맞다고 보고 방향을 바꿈.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">카카오 비즈니스 채널 챗봇 서버, 바로연결, 관리 패널, 단톡 안내</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">카카오 아이디 연동을 프로필에 넣었다가 컬럼·주석까지 제거</td>
+        </tr>
+        <tr>
+          <td class="col-no">3</td>
+          <td class="col-what">웹·앱 푸시와 개인 알림 종류(활동일·레슨·공지) 설정</td>
+        </tr>
+        <tr>
+          <td class="col-no">4</td>
+          <td class="col-what">계정 삭제 안내 페이지, 운영 메모</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v0.9">
+        <h2 class="h2">3.9　v0.9　웹앱 설치·운영 도구</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-08-20</td><th>항목 수</th><td>4</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>Play 스토어 전에 브라우저 홈 화면 추가로 쓰게 하고, 달력·피크·데모 모드를 정리함.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">Android/iPhone별 홈 화면 추가 안내, 웹 아이콘을 Drop 로고로</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">활동 시간 외에는 ‘갈 예정’ 인원 표시, 실패한 푸시 토큰만 정리</td>
+        </tr>
+        <tr>
+          <td class="col-no">3</td>
+          <td class="col-what">운영진 데모 모드를 헤더 토글로, 출석 우회 정리</td>
+        </tr>
+        <tr>
+          <td class="col-no">4</td>
+          <td class="col-what">설정 달력, 피크 시간, 휴관·추가 활동일 푸시 예약</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v1.0">
+        <h2 class="h2">3.10　v1.0　테마·코트 빛·회전</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-08-21 ~ 08-22</td><th>항목 수</th><td>4</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>화면을 동아리 톤에 맞추고, 휴대폰에서 시스템 회전이 막히지 않게 함.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">라이트/다크 테마, 코트 테두리만 마우스를 따라 빛남</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">로그인 기억하기. 기억 시 로컬 세션만 유지</td>
+        </tr>
+        <tr>
+          <td class="col-no">3</td>
+          <td class="col-what">웹앱이 방향을 잠그지 않고 OS 수동 회전에 맡김</td>
+        </tr>
+        <tr>
+          <td class="col-no">4</td>
+          <td class="col-what">폰 가로는 데스크톱 셸이 아니라 세로 스크롤 코트 화면</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v1.1">
+        <h2 class="h2">3.11　v1.1　도메인·가입 명단·역할 분리 (작업 반영)</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-08-22 ~ 08-23</td><th>항목 수</th><td>18</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>공식 주소로 쓰고, 가입을 동아리 명단으로 조일 준비를 하며, 관리자/운영자와 회비 등급을 헷갈리지 않게 함. 이 구간은 아직 원격 Git에 안 올라간 로컬 변경을 포함함.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">Android 릴리즈에 R8 난독화·리소스 축소. EAS versionCode 12.</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">앱 화면에서 웹앱 설치 안내 카드·문구를 제거.</td>
+        </tr>
+        <tr>
+          <td class="col-no">3</td>
+          <td class="col-what">학번+실명 명단 테이블(club_roster)과 관리자 붙여넣기. 명단으로 가입을 막는 스위치는 기본 꺼짐.</td>
+        </tr>
+        <tr>
+          <td class="col-no">4</td>
+          <td class="col-what">공식 주소를 dgistdrop.com으로 고정. 가비아 구매, Cloudflare 연결. README·개인정보·계정삭제 안내에서 pages.dev를 빼 둠.</td>
+        </tr>
+        <tr>
+          <td class="col-no">5</td>
+          <td class="col-what">profiles에 is_admin / is_operator를 두고, membership_tier는 게스트·준회원·정회원만 사용. 관리자 배지는 ‘비회원’이 아니라 ‘관리자’. 정회원/준회원 버튼은 회비 등급만 바꿈.</td>
+        </tr>
+        <tr>
+          <td class="col-no">6</td>
+          <td class="col-what">학번 202662024 운영자는 등급 변경·관리자 토글로 운영자/관리자가 해제되지 않음. DB 트리거 guard_owner_operator.</td>
+        </tr>
+        <tr>
+          <td class="col-no">7</td>
+          <td class="col-what">관리자 해제는 관리자 버튼을 다시 눌렀을 때만. 정회원 버튼은 권한 회수가 아님.</td>
+        </tr>
+        <tr>
+          <td class="col-no">8</td>
+          <td class="col-what">게스트는 서울 날짜가 바뀌면 자동 삭제. 운영자여도 게스트면 일괄 삭제 대상.</td>
+        </tr>
+        <tr>
+          <td class="col-no">9</td>
+          <td class="col-what">기본 정기 활동을 매주 월·수 18:30–21:40으로 변경. 시간 슬라이더는 21:40까지 선택 가능.</td>
+        </tr>
+        <tr>
+          <td class="col-no">10</td>
+          <td class="col-what">변경 이력 PDF(docs/CHANGELOG.pdf)와 releases.json 자동 생성 규칙.</td>
+        </tr>
+        <tr>
+          <td class="col-no">11</td>
+          <td class="col-what">코트 예약 기본값을 끔. 홈은 현황 모드(비어 있음/사용 중만, 이름 없음). 사용 여부는 운영진이 rpc로 바꿈. reservation_enabled 기본 false.</td>
+        </tr>
+        <tr>
+          <td class="col-no">12</td>
+          <td class="col-what">승인 전에도 관리자/운영자면 배지가 관리자·운영자. 게스트만 게스트로 표시. 출석 카드 스태프 판별은 isStaffUser.</td>
+        </tr>
+        <tr>
+          <td class="col-no">13</td>
+          <td class="col-what">프로필 오늘 참석: 참석/불참을 먼저 고르고, 참석이면 그 아래 시간 슬라이더. 입장 팝업(AttendanceIntentGate)과 같은 순서.</td>
+        </tr>
+        <tr>
+          <td class="col-no">14</td>
+          <td class="col-what">시간 눈금은 시작·끝 시각만 표시. 관리 화면 활동 시간은 요일 칩 + 시작/끝 한 구간.</td>
+        </tr>
+        <tr>
+          <td class="col-no">15</td>
+          <td class="col-what">포인트 기능을 끄면 상점·내역·적립·차감 UI와 pointLedger 반영을 모두 숨김.</td>
+        </tr>
+        <tr>
+          <td class="col-no">16</td>
+          <td class="col-what">README를 dgistdrop.com 회원 안내·배포 과정 중심으로 다시 씀. 시크릿·service_role은 올리지 말 것을 명시.</td>
+        </tr>
+        <tr>
+          <td class="col-no">17</td>
+          <td class="col-what">참석 여부·입장 팝업은 정기 활동일 또는 달력에 추가된 활동일에만. 그날 아니면 버튼 없이 안내 문구만.</td>
+        </tr>
+        <tr>
+          <td class="col-no">18</td>
+          <td class="col-what">예약 기능(데모)·포인트 상점(데모)·Elo 스위치를 관리 → 개발자 탭으로 옮기고 운영자만 변경 가능.</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v1.2">
+        <h2 class="h2">3.12　v1.2　이용 문구·이력·탭 안내</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-08-24</td><th>항목 수</th><td>11</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>현황 모드에 맞춰 화면 문구를 정리하고, 변경 이력을 문서형 사이트로 자세히 적으며, 첫 로그인 탭 안내와 올 사람 명단을 넣음.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">코트 상세에서 ‘이름은 표시하지 않아요. 운영진이 사용 여부를 바꿉니다.’, ‘누가 쓰는지는 표시하지 않아요’ 등 부가 설명을 삭제. 상태는 비어 있음/사용 중만. 운영진만 ‘사용 중으로 표시’·‘코트 비우기’.</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">사이드바·홈 제목을 ‘코트 예약’에서 ‘코트 현황’으로 변경. 게스트 로그인·MY 게스트 카드 문구를 현황 보기·당일 삭제(서울 날짜 변경)에 맞춤.</td>
+        </tr>
+        <tr>
+          <td class="col-no">3</td>
+          <td class="col-what">이용 안내: 기본이 현황 모드, 오늘 참석(활동일만), 올 사람 vs 지금, 회비 등급과 관리자/운영자 분리, 게스트 당일 삭제를 추가. 예약·난타/경기·합류·포인트 예약 규칙은 해당 기능이 켜져 있을 때만 표시.</td>
+        </tr>
+        <tr>
+          <td class="col-no">4</td>
+          <td class="col-what">개발 콘솔 Require cycle 경고 제거(persistGate·authBridge 등으로 스토어 순환 import 분리). 개발 모드에서 PWA 서비스 워커를 등록하지 않고 기존 등록을 해제(가짜 504 제거). pointerEvents를 style로 이동.</td>
+        </tr>
+        <tr>
+          <td class="col-no">5</td>
+          <td class="col-what">변경 이력 PDF는 변경 내용만 자세히 적고 사유 열을 빼 둠. README에 회원 표·역할·게스트 삭제·현황 기본·034 SQL·set_config 안내를 보강.</td>
+        </tr>
+        <tr>
+          <td class="col-no">6</td>
+          <td class="col-what">관리 → 알림 등록 현황: 사람 수와 기기 수를 나눠 표시. 같은 사람의 여러 기기(앱·웹·폰 여러 대)는 모두 유지. 미승인·게스트 등록과 만료된 기기(발송 실패)만 정리. 60일 넘은 발송 기록 삭제.</td>
+        </tr>
+        <tr>
+          <td class="col-no">7</td>
+          <td class="col-what">이용 안내 맨 아래에 ‘소프트웨어 변경 이력’ 작은 링크. 누르면 앱과 분리된 새 탭(/history/)에서 버전 나무·타임라인 카드로 이력을 봄.</td>
+        </tr>
+        <tr>
+          <td class="col-no">8</td>
+          <td class="col-what">학번 계정 첫 로그인(또는 아직 안 본 회원)에 탭 5개를 한 줄씩 안내. 게스트·관리 탭은 없음. 건너뛰기 가능. 이용 안내 하단에서 다시 보기. 홈 「올 사람」을 누르면 오늘 참석한 사람 명단.</td>
+        </tr>
+        <tr>
+          <td class="col-no">9</td>
+          <td class="col-what">변경 이력 사이트(/history/)를 문서형 다크 UI로 다시 짬. 버전마다 이전·변경·삭제를 나눠 적음.</td>
+        </tr>
+        <tr>
+          <td class="col-no">10</td>
+          <td class="col-what">이력 사이트 순서를 위가 v0.1, 아래가 최신으로 맞춤. 주제 그래프도 세로 시간축.</td>
+        </tr>
+        <tr>
+          <td class="col-no">11</td>
+          <td class="col-what">홈 「올 사람」 명단은 화면 아래 시트. 사람이 적으면 짧게, 많으면 그 안에서만 스크롤.</td>
+        </tr></tbody>
+        </table>
+      </section>
+  </main>
+</body>
+</html>

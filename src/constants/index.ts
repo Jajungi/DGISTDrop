@@ -12,8 +12,8 @@ export const GYM_LOCATION = {
 };
 
 export const ACTIVITY_SCHEDULE: ActivitySession[] = [
-  { day: 2, startHour: 18, startMinute: 30, endHour: 21, endMinute: 50 },
-  { day: 4, startHour: 18, startMinute: 30, endHour: 21, endMinute: 50 },
+  { day: 1, startHour: 18, startMinute: 30, endHour: 21, endMinute: 40 },
+  { day: 3, startHour: 18, startMinute: 30, endHour: 21, endMinute: 40 },
 ];
 
 export const COURT_COUNT = 9;

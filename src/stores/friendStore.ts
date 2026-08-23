@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { FriendRequest } from '@/src/types';
-import { persistAppState } from '@/src/services/appState';
+import { persistAppState } from '@/src/services/persistGate';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { runWhenRemoteId } from '@/src/utils/localId';
 import { useAuthStore } from './authStore';

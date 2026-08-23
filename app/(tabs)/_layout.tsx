@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Platform, StyleSheet } from 'react-native';
+import { View, Text, Platform, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebShell } from '@/src/components/layout/WebShell';
@@ -13,7 +13,9 @@ import { useCourtStore } from '@/src/stores/courtStore';
 import { useAdminAlertCount } from '@/src/hooks/useAdminAlerts';
 import { isStaffUser } from '@/src/utils/staffAccess';
 import { NAV_ITEMS, ADMIN_NAV_ITEM } from '@/src/constants/nav';
-import { View, Text } from 'react-native';
+import { TAB_TOUR_STEPS } from '@/src/constants/tabTour';
+import { useTabTourStore } from '@/src/stores/tabTourStore';
+import { TourAnchor } from '@/src/utils/tourAnchors';
 import { colors } from '@/src/theme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -60,6 +62,9 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const isStaff = isStaffUser(useAuthStore((s) => s.currentUser));
   const isGuest = useAuthStore((s) => s.isGuestSession);
+  const tourHref = useTabTourStore((s) =>
+    s.activeIndex === null ? null : TAB_TOUR_STEPS[s.activeIndex]?.href ?? null
+  );
   useAuthGuard();
   useActivityClock();
 
@@ -95,10 +100,22 @@ export default function TabLayout() {
             title: item.tabLabel,
             tabBarIcon: ({ focused }) => <TabIcon name={item.icon} focused={focused} size={tabIconSize} />,
             tabBarAccessibilityLabel: item.label,
+            tabBarButton: (props) => (
+              <TourAnchor href={item.href} style={{ flex: 1 }}>
+                <Pressable {...props} style={[props.style, { flex: 1 }]} />
+              </TourAnchor>
+            ),
+            tabBarItemStyle: [
+              styles.tabItem,
+              tourHref === item.href ? styles.tabItemTour : null,
+            ],
           }}
           listeners={{
-            tabPress: () => {
-              // 코트 탭 재탭 또는 다른 탭으로 이동 시 확대 해제
+            tabPress: (e) => {
+              if (useTabTourStore.getState().activeIndex !== null) {
+                e.preventDefault();
+                return;
+              }
               const { selectedCourtId, selectCourt } = useCourtStore.getState();
               if (selectedCourtId != null) selectCourt(null);
             },
@@ -148,6 +165,10 @@ const styles = StyleSheet.create({
   },
   tabItem: {
     paddingTop: 2,
+  },
+  tabItemTour: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: 10,
   },
   adminIconWrap: {
     width: 40,

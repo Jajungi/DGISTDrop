@@ -28,6 +28,9 @@ type DbProfile = {
   lesson_requested_at: string | null;
   is_coach?: boolean;
   is_operator?: boolean;
+  is_admin?: boolean;
+  attendance_intent?: 'going' | 'not_going' | null;
+  attendance_intent_date?: string | null;
   avatar_color: string;
   avatar_path: string | null;
   admin_note: string | null;
@@ -116,6 +119,9 @@ export function mapProfileRow(row: DbProfile): User {
     lessonRequestedAt: row.lesson_requested_at ?? undefined,
     isCoach: row.is_coach ?? false,
     isOperator: row.is_operator ?? false,
+    isAdmin: row.is_admin ?? row.membership_tier === 'admin',
+    attendanceIntent: row.attendance_intent ?? null,
+    attendanceIntentDate: row.attendance_intent_date ?? undefined,
     avatarColor: row.avatar_color,
     avatarUri: publicAvatarUrl(row.avatar_path),
     adminNote: row.admin_note ?? undefined,

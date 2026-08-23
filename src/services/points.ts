@@ -1,10 +1,6 @@
-import {
-  PEAK_TIME_RESERVATION_LIMIT,
-  POINT_EARN,
-  POINT_SPEND,
-  RANK_RESERVATION_DISCOUNT,
-} from '@/src/constants/points';
-import { isEloFeaturesEnabled } from '@/src/stores/featureFlagsStore';
+import { PEAK_TIME_RESERVATION_LIMIT, POINT_EARN, POINT_SPEND, RANK_RESERVATION_DISCOUNT } from '@/src/constants/points';
+import { CENTER_COURTS, RANK_ORDER, RANK_THRESHOLDS } from '@/src/constants';
+import { isEloFeaturesEnabled, isPointsFeaturesEnabled } from '@/src/stores/featureFlagsStore';
 import { usePeakHoursStore } from '@/src/stores/peakHoursStore';
 import { formatPeakHoursLabel } from '@/src/utils/peakHours';
 import type { MembershipTier, RankTier } from '@/src/types';
@@ -23,6 +19,7 @@ export function isCenterCourtId(courtId: number): boolean {
 
 /** 정회원 +150p / 준회원 +100p */
 export function getAttendancePoints(membershipTier: MembershipTier): number {
+  if (!isPointsFeaturesEnabled()) return 0;
   if (membershipTier === 'full' || membershipTier === 'admin') {
     return POINT_EARN.ATTENDANCE_FULL;
   }
@@ -31,6 +28,7 @@ export function getAttendancePoints(membershipTier: MembershipTier): number {
 
 /** Gold+ 랭크 티어 할인 적용 — 일반 20p / 중앙 30p 기준 */
 export function getReservationCost(rank: RankTier, isCenterCourt = false): number {
+  if (!isPointsFeaturesEnabled()) return 0;
   const base = isCenterCourt ? POINT_SPEND.COURT_CENTER : POINT_SPEND.COURT_GENERAL;
   if (!isEloFeaturesEnabled()) return base;
   const discount = RANK_RESERVATION_DISCOUNT[rank] ?? 0;
@@ -71,19 +69,23 @@ export function isPeakTime(now: Date = new Date()): boolean {
 
 /** 경기 승리 — 팀원당 고정 (+승리 축하) */
 export function calculateWinPoints(): number {
+  if (!isPointsFeaturesEnabled()) return 0;
   return POINT_EARN.MATCH_WIN;
 }
 
 /** 경기 패배 — 팀원당 고정 (+패배 위로, 승리보다 적게) */
 export function calculateLossPoints(): number {
+  if (!isPointsFeaturesEnabled()) return 0;
   return POINT_EARN.MATCH_LOSS;
 }
 
 export function calculateCleaningPoints(): number {
+  if (!isPointsFeaturesEnabled()) return 0;
   return POINT_EARN.CLEANING;
 }
 
 export function calculateNetSetupPoints(): number {
+  if (!isPointsFeaturesEnabled()) return 0;
   return POINT_EARN.NET_SETUP;
 }
 

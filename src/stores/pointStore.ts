@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import type { PointTransaction, PointTransactionType } from '@/src/types';
 import { MOCK_POINT_TRANSACTIONS } from '@/src/services/mockData';
-import { persistAppState } from '@/src/services/appState';
+import { persistAppState } from '@/src/services/persistGate';
 import { applyPointChange } from '@/src/services/pointLedger';
 import { recordAdminLogAsActor } from '@/src/services/adminLog';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
-import { useAuthStore } from '@/src/stores/authStore';
+import { runtime } from '@/src/stores/runtimeAccess';
 
 function isLocalPointTxId(txId: string): boolean {
   return txId.startsWith('pt-');
@@ -75,7 +75,7 @@ export const usePointStore = create<PointState>((set, get) => ({
       import('@/src/services/supabase/points')
         .then(({ revokePointTransactionRemote }) => revokePointTransactionRemote(txId, reason))
         .catch((err) => console.warn('[points] revoke failed', err));
-      useAuthStore.getState().updateUserPoints(tx.userId, -tx.amount);
+      runtime().updateUserPoints(tx.userId, -tx.amount);
     }
 
     const revokedAt = new Date().toISOString();

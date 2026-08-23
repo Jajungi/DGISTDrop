@@ -4,6 +4,7 @@ import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native
 import { usePathname } from 'expo-router';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useSiteOverlayStore } from '@/src/stores/siteOverlayStore';
+import { useTabTourStore } from '@/src/stores/tabTourStore';
 import { overlaysForSurface } from '@/src/utils/siteOps';
 import type { SiteOverlay, SiteOverlaySurface } from '@/src/types';
 import { Button } from '@/src/components/ui/Button';
@@ -144,6 +145,7 @@ export function SiteOverlayHost({ surface: forcedSurface }: SiteOverlayHostProps
 /** 로그인 성공 직후 한 번 — tabs 진입 시 호출 */
 export function PostLoginOverlayGate() {
   const [ready, setReady] = useState(false);
+  const tourOpen = useTabTourStore((s) => s.activeIndex !== null);
   useEffect(() => {
     // 로그인 직후 플래그
     try {
@@ -158,7 +160,7 @@ export function PostLoginOverlayGate() {
     }
     if (consumePostLoginFlag()) setReady(true);
   }, []);
-  if (!ready) return null;
+  if (!ready || tourOpen) return null;
   return <SiteOverlayHost surface="post_login" />;
 }
 

@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "^2.110.0",
     "expo": "~57.0.4",
     "expo-blur": "~57.0.0",
+    "expo-build-properties": "~57.0.13",
     "expo-constants": "~57.0.3",
     "expo-device": "~57.0.0",
     "expo-font": "~57.0.0",
@@ -55,7 +56,8 @@
     "build:web": "expo export -p web && node scripts/cloudflare-fixup.mjs",
     "typecheck": "tsc --noEmit",
     "setup:check": "node scripts/check-supabase-env.mjs",
-    "capture:intro": "node scripts/capture-intro-screenshots.mjs"
+    "capture:intro": "node scripts/capture-intro-screenshots.mjs",
+    "docs:changelog": "node scripts/build-changelog.mjs"
   },
   "private": true
 }

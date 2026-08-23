@@ -63,9 +63,9 @@ function clampHour(n: number) {
 }
 
 function clampMinute(n: number) {
-  const v = Math.round(Number(n)) || 0;
-  if (v === 30 || v === 0) return v;
-  return v < 15 ? 0 : v < 45 ? 30 : 0;
+  const v = Math.round(Number(n));
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(0, Math.min(59, v));
 }
 
 function toMinutes(h: number, m: number) {

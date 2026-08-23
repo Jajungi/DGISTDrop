@@ -13,10 +13,9 @@ import {
   calculateNetSetupPoints,
 } from '@/src/services/points';
 import { AUTO_RATED_MATCH_DAILY_LIMIT } from '@/src/constants/points';
-import { useAuthStore } from './authStore';
-import { usePointStore } from './pointStore';
 import { applyPointChange, applyPointChangeLocalOnly } from '@/src/services/pointLedger';
-import { persistAppState } from '@/src/services/appState';
+import { persistAppState } from '@/src/services/persistGate';
+import { runtime } from '@/src/stores/runtimeAccess';
 import { recordAdminLogAsActor } from '@/src/services/adminLog';
 import { pushLocalNotification } from '@/src/services/localNotifications';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
@@ -72,7 +71,7 @@ function syncMatchPatchRemote(matchId: string, patch: Partial<MatchResult>) {
  * (즉시 반영 경로와 관리자 승인 경로가 공유)
  */
 function applyMatchOutcome(match: MatchResult, matchId: string): Record<string, number> {
-  const authStore = useAuthStore.getState();
+  const auth = runtime();
   const winners = match.winner === 'A' ? match.teamA : match.teamB;
   const losers = match.winner === 'A' ? match.teamB : match.teamA;
   const eloChanges: Record<string, number> = {};
@@ -81,14 +80,14 @@ function applyMatchOutcome(match: MatchResult, matchId: string): Record<string, 
   const lossPts = calculateLossPoints();
 
   winners.forEach((userId) => {
-    const user = authStore.users.find((u) => u.id === userId);
+    const user = auth.getUsers().find((u) => u.id === userId);
     if (!user) return;
-    const loserElos = losers.map((id) => authStore.users.find((u) => u.id === id)?.elo ?? 1000);
+    const loserElos = losers.map((id) => auth.getUsers().find((u) => u.id === id)?.elo ?? 1000);
     const avgLoserElo = loserElos.reduce((a, b) => a + b, 0) / (loserElos.length || 1);
     const { winnerChange } = calculateEloChange(user.elo, avgLoserElo);
     if (isEloFeaturesEnabled()) {
       eloChanges[userId] = winnerChange;
-      authStore.updateUserElo(userId, winnerChange);
+      auth.updateUserElo(userId, winnerChange);
     }
     if (winPts > 0) {
       applyPointChange(userId, winPts, 'match_win', '경기 승리 (팀원 지급)', { matchId });
@@ -96,21 +95,21 @@ function applyMatchOutcome(match: MatchResult, matchId: string): Record<string, 
   });
 
   losers.forEach((userId) => {
-    const user = authStore.users.find((u) => u.id === userId);
+    const user = auth.getUsers().find((u) => u.id === userId);
     if (!user) return;
-    const winnerElos = winners.map((id) => authStore.users.find((u) => u.id === id)?.elo ?? 1000);
+    const winnerElos = winners.map((id) => auth.getUsers().find((u) => u.id === id)?.elo ?? 1000);
     const avgWinnerElo = winnerElos.reduce((a, b) => a + b, 0) / (winnerElos.length || 1);
     const { loserChange } = calculateEloChange(avgWinnerElo, user.elo);
     if (isEloFeaturesEnabled()) {
       eloChanges[userId] = loserChange;
-      authStore.updateUserElo(userId, loserChange);
+      auth.updateUserElo(userId, loserChange);
     }
     if (lossPts > 0) {
       applyPointChange(userId, lossPts, 'match_loss', '경기 참여 (위로 지급)', { matchId });
     }
   });
 
-  authStore.recordMatchStats(winners, losers);
+  auth.recordMatchStats(winners, losers);
   return eloChanges;
 }
 
@@ -185,26 +184,13 @@ function revokeServiceSubmission(
     import('@/src/services/supabase/submissions')
       .then(({ revokeCleaningRemote }) => revokeCleaningRemote(submissionId, adminId, reason))
       .catch((err) => console.warn('[cleaning] revoke failed', err));
-    useAuthStore.getState().updateUserPoints(entry.userId, -entry.points);
+    runtime().updateUserPoints(entry.userId, -entry.points);
   } else {
     applyPointChange(entry.userId, -entry.points, 'admin', `${label} 취소 · ${reason}`);
   }
 
   if (kind === 'cleaning') {
-    useAuthStore.setState((state) => ({
-      users: state.users.map((u) =>
-        u.id === entry.userId
-          ? { ...u, cleaningContributions: Math.max(0, u.cleaningContributions - 1) }
-          : u
-      ),
-      currentUser:
-        state.currentUser?.id === entry.userId
-          ? {
-              ...state.currentUser,
-              cleaningContributions: Math.max(0, state.currentUser.cleaningContributions - 1),
-            }
-          : state.currentUser,
-    }));
+    runtime().adjustCleaningContributions(entry.userId, -1);
   }
 
   const revokedAt = new Date().toISOString();
@@ -323,7 +309,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       id: 'n3',
       type: 'system',
       title: '활동 안내',
-      message: '오늘 정기 활동은 21:50까지입니다.',
+      message: '오늘 정기 활동은 21:40까지입니다.',
       read: true,
       createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
     },
@@ -457,23 +443,23 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       return { success: false, message: '철회할 확정 경기를 찾을 수 없어요.' };
     }
 
-    const authStore = useAuthStore.getState();
+    const auth = runtime();
     const winners = match.winner === 'A' ? match.teamA : match.teamB;
     const losers = match.winner === 'A' ? match.teamB : match.teamA;
     const rated = !!match.eloChanges;
 
     if (rated && match.eloChanges) {
       Object.entries(match.eloChanges).forEach(([userId, delta]) => {
-        authStore.updateUserElo(userId, -delta);
+        auth.updateUserElo(userId, -delta);
       });
-      authStore.reverseMatchStats(winners, losers);
+      auth.reverseMatchStats(winners, losers);
     }
 
-    const relatedTx = usePointStore.getState().transactions.filter(
+    const relatedTx = runtime().getPointTransactions().filter(
       (t) => t.meta?.matchId === matchId && t.amount > 0 && !t.revokedAt
     );
     relatedTx.forEach((tx) => {
-      usePointStore.getState().adminRevokeTransaction(tx.id, adminId, reason);
+      runtime().revokePointTransaction(tx.id, adminId, reason);
     });
 
     const patch = {
@@ -527,9 +513,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       return { success: false, message: '제목과 내용을 입력해 주세요.' };
     }
 
-    const recipients = useAuthStore
-      .getState()
-      .users.filter((u) => u.memberStatus === 'approved' && u.membershipTier !== 'guest');
+    const recipients = runtime()
+      .getUsers()
+      .filter((u) => u.memberStatus === 'approved' && u.membershipTier !== 'guest');
 
     recipients.forEach((u) => {
       get().pushInbox({
@@ -620,8 +606,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   },
 
   submitCleaning: (submission) => {
-    const authStore = useAuthStore.getState();
-    const user = authStore.users.find((u) => u.id === submission.userId);
+    const user = runtime().getUsers().find((u) => u.id === submission.userId);
     const points = calculateCleaningPoints();
 
     const newEntry: CleaningSubmission = {
@@ -634,18 +619,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
     if (user) {
       applyPointChangeLocalOnly(user.id, points, 'cleaning', `청소·정리 인증 · ${submission.area}`);
-      useAuthStore.setState((state) => ({
-        users: state.users.map((u) =>
-          u.id === user.id ? { ...u, cleaningContributions: u.cleaningContributions + 1 } : u
-        ),
-        currentUser:
-          state.currentUser?.id === user.id
-            ? {
-                ...state.currentUser,
-                cleaningContributions: state.currentUser.cleaningContributions + 1,
-              }
-            : state.currentUser,
-      }));
+      runtime().adjustCleaningContributions(user.id, 1);
     }
 
     set((state) => ({
@@ -656,8 +630,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   },
 
   submitNetSetup: (submission) => {
-    const authStore = useAuthStore.getState();
-    const user = authStore.users.find((u) => u.id === submission.userId);
+    const user = runtime().getUsers().find((u) => u.id === submission.userId);
     const points = calculateNetSetupPoints();
 
     const newEntry: CleaningSubmission = {
@@ -685,8 +658,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   },
 
   submitShuttlecockCarry: (submission) => {
-    const authStore = useAuthStore.getState();
-    const user = authStore.users.find((u) => u.id === submission.userId);
+    const user = runtime().getUsers().find((u) => u.id === submission.userId);
     const points = calculateNetSetupPoints();
 
     const newEntry: CleaningSubmission = {

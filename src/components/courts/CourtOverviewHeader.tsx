@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
-import type { Court } from '@/src/types';
+import type { Court, User } from '@/src/types';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { CourtStatusInfoModal } from '@/src/components/courts/CourtStatusInfoModal';
+import { GoingPeopleSheet } from '@/src/components/courts/GoingPeopleSheet';
 import { GYM_VENUE } from '@/src/constants/court';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
@@ -13,11 +14,13 @@ interface CourtOverviewHeaderProps {
   myUserId?: string;
   isAtGym: boolean;
   /**
-   * 활동 시간: 체육관 도착(isAtGym) 인원 → 라벨 "지금"
-   * 그 외: 오늘 도착 일정(갈 예정) 인원 → 라벨 "갈 예정"
+   * 올 사람 = 오늘 참석 의사
+   * 지금 = 체육관 지오펜스 도착
    */
-  attendanceCount?: number;
-  attendanceLabel?: string;
+  goingCount?: number;
+  goingPeople?: User[];
+  atGymCount?: number;
+  occupancyMode?: boolean;
   remaining?: string | null;
   isExpanded?: boolean;
 }
@@ -33,15 +36,19 @@ export function CourtOverviewHeader({
   onFilterChange,
   myUserId,
   isAtGym,
-  attendanceCount,
-  attendanceLabel = '지금',
+  goingCount,
+  goingPeople,
+  atGymCount,
+  occupancyMode = false,
   remaining,
   isExpanded = false,
 }: CourtOverviewHeaderProps) {
   const { isMobile, scaledTypography, isCompact, isLandscape } = useLayoutMode();
+  const [goingOpen, setGoingOpen] = useState(false);
   const emptyCount = courts.filter((c) => c.status === 'empty').length;
   const reservedCount = courts.filter((c) => c.status === 'reserved').length;
   const playingCount = courts.filter((c) => c.status === 'playing').length;
+  const occupiedCount = courts.filter((c) => c.status !== 'empty').length;
   const myCount = courts.filter(
     (c) => c.reservedBy === myUserId || c.players.some((p) => p.userId === myUserId)
   ).length;
@@ -100,18 +107,33 @@ export function CourtOverviewHeader({
       {!isExpanded && (
         <View style={[styles.lineRow, isMobile && styles.lineRowMobile]}>
           <View style={styles.statusRow}>
-            {attendanceCount != null && (
+            {goingCount != null && (
               <StatusItem
-                number={`${attendanceCount}명`}
-                label={attendanceLabel}
+                number={`${goingCount}명`}
+                label="올 사람"
                 isText
                 compact={isMobile}
                 emphasize
+                onPress={() => setGoingOpen(true)}
+              />
+            )}
+            {atGymCount != null && (
+              <StatusItem
+                number={`${atGymCount}명`}
+                label="지금"
+                isText
+                compact={isMobile}
               />
             )}
             <StatusItem number={emptyCount} label="가능" compact={isMobile} />
-            <StatusItem number={reservedCount} label="예약" compact={isMobile} />
-            <StatusItem number={playingCount} label="경기" compact={isMobile} />
+            {occupancyMode ? (
+              <StatusItem number={occupiedCount} label="사용" compact={isMobile} />
+            ) : (
+              <>
+                <StatusItem number={reservedCount} label="예약" compact={isMobile} />
+                <StatusItem number={playingCount} label="경기" compact={isMobile} />
+              </>
+            )}
             {remaining != null && (
               <StatusItem number={remaining} label="잔여" isText compact={isMobile} />
             )}
@@ -143,6 +165,11 @@ export function CourtOverviewHeader({
           </View>
         </View>
       )}
+      <GoingPeopleSheet
+        visible={goingOpen}
+        onClose={() => setGoingOpen(false)}
+        people={goingPeople ?? []}
+      />
     </View>
   );
 }
@@ -153,14 +180,16 @@ function StatusItem({
   isText,
   compact,
   emphasize,
+  onPress,
 }: {
   number: number | string;
   label: string;
   isText?: boolean;
   compact?: boolean;
   emphasize?: boolean;
+  onPress?: () => void;
 }) {
-  return (
+  const inner = (
     <View style={[styles.statusItem, compact && styles.statusItemCompact]}>
       <Text
         style={[
@@ -183,6 +212,17 @@ function StatusItem({
       </Text>
     </View>
   );
+  if (!onPress) return inner;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${label} ${number}. 누르면 명단`}
+      style={Platform.select({ web: { cursor: 'pointer' as const } })}
+    >
+      {inner}
+    </Pressable>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -199,6 +239,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.lg,
+  },
+  headerRowMobile: {
+    marginBottom: spacing.md,
   },
   wrapLandscape: {
     paddingBottom: 4,

@@ -1,10 +1,18 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Platform, TextInput } from 'react-native';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
 import { useAppStore } from '@/src/stores/authStore';
 import { usePeakHoursStore } from '@/src/stores/peakHoursStore';
 import { recordAdminLogAsActor } from '@/src/services/adminLog';
+import {
+  deleteClubRosterEntry,
+  fetchClubRoster,
+  fetchRosterEnforcement,
+  setRosterEnforcementRemote,
+  upsertClubRoster,
+} from '@/src/services/supabase/roster';
+import { parseRosterPaste, type ClubRosterEntry } from '@/src/utils/clubRoster';
 import { GYM_LOCATION } from '@/src/constants';
 import { formatPeakHoursLabel } from '@/src/utils/peakHours';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
@@ -23,6 +31,26 @@ export function AdminJoinInfoPanel({ adminId, onToast }: Props) {
   const savePeakHours = usePeakHoursStore((s) => s.save);
   const [editingPeak, setEditingPeak] = useState(false);
   const [draftHours, setDraftHours] = useState<number[]>(() => [...peakHours]);
+  const [rosterPaste, setRosterPaste] = useState('');
+  const [roster, setRoster] = useState<ClubRosterEntry[]>([]);
+  const [rosterEnforcement, setRosterEnforcement] = useState(false);
+  const [rosterBusy, setRosterBusy] = useState(false);
+  const [rosterError, setRosterError] = useState<string | null>(null);
+
+  const loadRoster = useCallback(async () => {
+    try {
+      const [rows, enforced] = await Promise.all([fetchClubRoster(), fetchRosterEnforcement()]);
+      setRoster(rows);
+      setRosterEnforcement(enforced);
+      setRosterError(null);
+    } catch (err) {
+      setRosterError(err instanceof Error ? err.message : '명단을 불러오지 못했어요.');
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRoster();
+  }, [loadRoster]);
 
   useEffect(() => {
     if (!editingPeak) setDraftHours([...peakHours]);
@@ -50,12 +78,77 @@ export function AdminJoinInfoPanel({ adminId, onToast }: Props) {
     if (r.success) setEditingPeak(false);
   };
 
+  const saveRosterPaste = async () => {
+    const parsed = parseRosterPaste(rosterPaste);
+    if (!parsed.entries.length) {
+      onToast('warning', parsed.errors[0] ?? '학번과 이름을 한 줄에 하나씩 넣어 주세요.');
+      return;
+    }
+    setRosterBusy(true);
+    try {
+      const r = await upsertClubRoster(parsed.entries);
+      await loadRoster();
+      setRosterPaste('');
+      const extra = parsed.errors.length ? ` (참고 ${parsed.errors.length}줄)` : '';
+      onToast(
+        'success',
+        `명단 저장: 추가 ${r.inserted} · 수정 ${r.updated}${r.skipped ? ` · 건너뜀 ${r.skipped}` : ''}${extra}`
+      );
+      recordAdminLogAsActor(adminId, {
+        category: 'system',
+        action: 'roster.upsert',
+        message: `명단 저장 추가 ${r.inserted} 수정 ${r.updated}`,
+      });
+    } catch (err) {
+      onToast('warning', err instanceof Error ? err.message : '명단 저장에 실패했어요.');
+    } finally {
+      setRosterBusy(false);
+    }
+  };
+
+  const removeRosterRow = async (studentId: string) => {
+    setRosterBusy(true);
+    try {
+      await deleteClubRosterEntry(studentId);
+      await loadRoster();
+      onToast('info', `${studentId} 명단에서 뺐어요.`);
+    } catch (err) {
+      onToast('warning', err instanceof Error ? err.message : '삭제에 실패했어요.');
+    } finally {
+      setRosterBusy(false);
+    }
+  };
+
+  const toggleRosterEnforcement = async () => {
+    setRosterBusy(true);
+    try {
+      const next = !rosterEnforcement;
+      await setRosterEnforcementRemote(next);
+      setRosterEnforcement(next);
+      onToast(
+        next ? 'warning' : 'info',
+        next
+          ? '명단 제한이 켜졌어요. 학번·실명이 맞으면 즉시 승인, 아니면 대기입니다.'
+          : '명단 제한이 꺼졌어요. 가입은 즉시 승인 스위치만 따릅니다.'
+      );
+      recordAdminLogAsActor(adminId, {
+        category: 'system',
+        action: next ? 'roster.enforce.on' : 'roster.enforce.off',
+        message: `명단 제한 ${next ? 'ON' : 'OFF'}`,
+      });
+    } catch (err) {
+      onToast('warning', err instanceof Error ? err.message : '설정 저장에 실패했어요.');
+    } finally {
+      setRosterBusy(false);
+    }
+  };
+
   return (
     <View style={styles.wrap}>
       <Card style={styles.block}>
         <Text style={styles.blockTitle}>가입 즉시 승인</Text>
         <Text style={styles.hint}>
-          켜면 새 회원이 승인 알림 없이 바로 이용할 수 있어요. 끄면 가입 후 운영진 승인이 필요합니다.
+          명단 제한이 꺼져 있을 때만 적용됩니다. 켜면 새 회원이 바로 이용하고, 끄면 승인 대기입니다.
         </Text>
         <Pressable
           onPress={async () => {
@@ -80,6 +173,59 @@ export function AdminJoinInfoPanel({ adminId, onToast }: Props) {
             <View style={[styles.switchKnob, openRegistration && styles.switchKnobOn]} />
           </View>
         </Pressable>
+      </Card>
+
+      <Card style={styles.block}>
+        <Text style={styles.blockTitle}>동아리 명단 (학번 + 실명)</Text>
+        <Text style={styles.hint}>
+          한 줄에 학번과 이름 (예: 202410001 홍길동). 지금은 저장만 되고, 아래 제한이 꺼져 있으면
+          가입은 지금과 같습니다.
+        </Text>
+        {rosterError ? <Text style={styles.warn}>{rosterError}</Text> : null}
+        <TextInput
+          style={styles.paste}
+          value={rosterPaste}
+          onChangeText={setRosterPaste}
+          placeholder={'202410001 홍길동\n202410002 김철수'}
+          placeholderTextColor={colors.textMuted}
+          multiline
+          textAlignVertical="top"
+        />
+        <Button
+          title={rosterBusy ? '저장 중...' : '명단 저장'}
+          size="sm"
+          onPress={() => void saveRosterPaste()}
+          disabled={rosterBusy}
+        />
+        <Pressable
+          onPress={() => void toggleRosterEnforcement()}
+          style={styles.switchRow}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: rosterEnforcement }}
+          disabled={rosterBusy}
+        >
+          <Text style={styles.switchLabel}>
+            {rosterEnforcement ? '명단 제한 켜짐 · 없으면 대기' : '명단 제한 꺼짐 · 가입 막지 않음'}
+          </Text>
+          <View style={[styles.switchTrack, rosterEnforcement && styles.switchTrackOn]}>
+            <View style={[styles.switchKnob, rosterEnforcement && styles.switchKnobOn]} />
+          </View>
+        </Pressable>
+        <Text style={styles.hint}>저장된 명단 {roster.length}명</Text>
+        {roster.map((row) => (
+          <View key={row.studentId} style={styles.rosterRow}>
+            <Text style={styles.rosterText}>
+              {row.studentId} · {row.name}
+            </Text>
+            <Button
+              title="삭제"
+              size="sm"
+              variant="ghost"
+              onPress={() => void removeRosterRow(row.studentId)}
+              disabled={rosterBusy}
+            />
+          </View>
+        ))}
       </Card>
 
       <Card style={styles.block}>
@@ -181,4 +327,22 @@ const styles = StyleSheet.create({
   hourChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   hourChipText: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
   hourChipTextOn: { color: colors.textLight },
+  warn: { ...typography.small, color: colors.warning, lineHeight: 18 },
+  paste: {
+    minHeight: 96,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.sm,
+    padding: spacing.sm,
+    ...typography.body,
+    color: colors.text,
+    backgroundColor: colors.surfaceAlt,
+  },
+  rosterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  rosterText: { ...typography.caption, color: colors.text, flex: 1, fontWeight: '600' },
 });

@@ -1,206 +1,122 @@
-# Drop · DGIST 배드민턴 동아리 통합 플랫폼
+# Drop
 
-> 코트 예약부터 매칭, 출석, 포인트, 레슨까지 — 배드민턴 동아리 운영을 한 곳에서.
+DGIST 배드민턴 동아리 **Drop**의 현장 운영 사이트입니다.
 
-**Drop**은 DGIST 배드민턴 동아리를 위한 모바일·웹 통합 서비스입니다.
-활동 시간에 S1 체육관에서 벌어지는 모든 활동(코트 배정, 팀 매칭, 출석, 봉사, 레슨)을
-실시간으로 관리하고, 회원들의 기록과 랭킹을 자동으로 쌓아갑니다.
+**사이트:** [https://dgistdrop.com](https://dgistdrop.com)  
+개인정보처리방침: [https://dgistdrop.com/privacy](https://dgistdrop.com/privacy)  
+변경 이력(앱과 분리된 페이지): [https://dgistdrop.com/history/](https://dgistdrop.com/history/)
 
-React Native(Expo)로 만들어 **웹 브라우저·안드로이드·iOS에서 동일하게** 동작하며,
-백엔드는 Supabase(Postgres · Auth · Realtime · Storage)를 사용합니다.
-
-**어떻게 동작하는가 (설명용 HTML)** → [docs/how-drop-works.html](docs/how-drop-works.html)  
-부팅·인증·코트 RPC·포인트 원장·레슨 대기열·푸시·스키마를 반응형 한 페이지로 풀어 둔 문서입니다. (앱 라우트와 무관 · GitHub에서 파일 열어 확인)
+브라우저에서 바로 씁니다. 폰에서는 홈 화면에 추가하면 앱처럼 열립니다. Android·iOS 네이티브 앱은 같은 코드(Expo)로 빌드할 수 있으나, 지금은 웹이 기본입니다.
 
 ---
 
-## 이 서비스가 해결하는 문제
+## 회원용 안내
 
-기존에는 코트 배정을 말로 정하고, 출석·회비·청소 당번을 수기로 관리했습니다.
-Drop은 이 과정을 디지털화해서:
+정기 활동은 **매주 월·수 18:30–21:40**입니다. 운영진이 요일·시간을 바꿀 수 있고, 달력에 활동일을 더 넣을 수 있습니다. 현장은 **S1 체육관**입니다.
 
-- **누가 어느 코트에서 무슨 경기를 하는지** 한눈에 보이게 하고
-- **먼저 온 사람이 공정하게 코트를 예약**하도록 포인트/피크타임 규칙을 적용하고
-- **출석·청소·네트 설치 같은 기여를 포인트로 보상**하며
-- **레슨 대기 순서를 자동으로 관리**해 혼선을 없앱니다.
+| 하고 싶은 일 | 어디서 · 어떻게 |
+|---|---|
+| 오늘 올지 | 활동일에만 묻습니다. 알림의 참석·불참, MY 기록의 **오늘 참석**, 또는 앱을 열었을 때 팝업 |
+| 몇 시에 올지 | 참석을 고른 뒤에만 시간. **친구 탭**에 보입니다. 홈의 **올 사람**은 참석 인원만 셉니다 |
+| 코트 사용 여부 | 홈. 기본은 **현황**(비어 있음 / 사용 중). 누가 쓰는지는 안 나옵니다. 운영진이 바꿉니다 |
+| 지금 체육관에 있는 사람 | 홈의 **지금**. 헤더 **출석**으로 위치(지오펜스, 약 500m) 인증한 인원 |
+| 친구 도착 시간 | 친구 탭 |
+| 팀 모집 | 파트너 모집 탭 |
+| 이용 규칙 | 이용 안내 탭. 예약·포인트·Elo 안내는 그 기능이 켜져 있을 때만 나옵니다 |
 
----
+**회비 등급과 운영 권한은 별개입니다.**
 
-## 핵심 개념
+- 회비: 게스트 / 준회원 / 정회원
+- 운영 권한: 관리자 / 운영자 (정회원으로 바꿔도 권한이 빠지지 않음)
+- 화면 배지: 운영자 > 관리자 > 회비 등급
 
-### 활동 시간 (Activity Window)
+게스트는 이름만으로 당일 입장합니다. 코트 현황·모집 참여·이용 안내는 볼 수 있습니다. 친구·모집방 생성·포인트·랭크는 없습니다. **서울 날짜가 바뀌면 계정이 삭제**됩니다.
 
-동아리 정규 활동은 **화·목 18:30–21:50**입니다.
-이 시간에만 예약·매칭 기능이 활성화되고, 그 외 시간에는 이용 안내 화면이 표시됩니다.
-
-### 위치 기반 인증 (Geofence)
-
-코트 예약·출석·봉사 인증 등 현장 활동은 **S1 체육관 반경 500m 이내**에서만 가능합니다.
-멀리서 코트를 미리 잡아두는 것을 방지합니다.
-
-### 포인트 경제
-
-코트 이용은 포인트를 소모하고, 동아리 기여는 포인트를 적립합니다.
-이를 통해 "기여한 사람이 더 편하게 코트를 쓰는" 선순환을 만듭니다.
-
-| 적립 | 포인트 |
-|------|--------|
-| 동아리비 납부 | +500 |
-| 출석 (정회원) | +150 |
-| 출석 (준회원) | +100 |
-| 청소·정리 | +100 |
-| 네트 설치·철거 / 셔틀콕 운반 | +100 |
-| 경기 승리 (팀원당) | +50 |
-| 경기 참여·패배 (팀원당) | +20 |
-
-| 사용 | 포인트 |
-|------|--------|
-| 일반 코트 예약 | −20 |
-| 센터 코트 예약 | −30 |
-| 셔틀콕 수령 | −20 |
-
-- **랭크 할인**: Gold +10% · Platinum +17% · Diamond +24% · Master +30% 예약 할인
-- **피크타임 제한**: 19·20시에는 1인 최대 2회 예약
+예약 기능(이름·게임 수로 코트 잡기)과 포인트 상점은 기본 꺼져 있습니다. 운영자가 관리 → 개발자에서 켤 수 있습니다.
 
 ---
 
-## 주요 화면
+## 이 저장소가 다루는 것
 
-### 🏸 코트 예약 (`/`)
+카톡·엑셀로 하던 코트 현황, 누가 오는지, 출석, 레슨 대기, 공지를 한곳으로 모읍니다.
 
-- **3×3 = 9개 코트**를 무대·입구 방향까지 반영한 실제 체육관 배치로 표시
-- 각 코트의 실시간 상태(빈 코트 / 예약됨 / 경기 중 / 정리 중)와 진행 게임 수 표시
-- 코트를 탭하면 **인라인으로 확대**되어 참가자·경기 유형·예약 버튼이 나타남
-- **경기 유형** 선택: 난타 / 경기
-  - 난타는 반코트만 사용 → 사용하지 않는 반쪽을 어둡게 시각화 (친선, Elo 미반영)
-- 필터: 전체 / 예약 가능 / 내 코트
-- 합류 신청, 경기 시작·완료, 코트 반납, 점수 기록까지 지원
-- **경기 점수를 입력하면 Elo·포인트가 즉시 반영**되고, 입력하지 않으면 친선경기로 남습니다
-  (하루 경기가 너무 많으면 관리자 승인 후 반영)
+**지금까지 한 일**
 
-### 👥 친구 (`/friends`)
+1. Expo로 웹·앱 한 코드베이스를 만들고 Cloudflare Pages에 올렸습니다.
+2. 백엔드를 Supabase(Postgres · Auth · Realtime)로 옮겨, 코트·프로필이 기기에 바로 맞게 했습니다.
+3. 가입은 학번+이름입니다. 동아리 명단과 맞추는 제한은 둘 수 있습니다(기본 꺼짐).
+4. 주소는 `dgistdrop.com`입니다. 예전 `*.pages.dev`는 쓰지 마세요.
+5. 코트는 **현황 모드가 기본**입니다. 예약은 운영자가 개발자 탭에서 켭니다.
+6. 포인트·Elo는 켜고 끌 수 있습니다. 끄면 관련 화면·차감이 숨겨집니다.
+7. 참석/불참은 정기 활동일(또는 달력 추가일)에만 묻습니다.
+8. 학번 202662024 운영자는 등급 변경으로 운영자가 해제되지 않습니다.
 
-- 즐겨찾기한 친구 목록 — **체육관에 온 친구가 위로** 정렬
-- 친구의 도착 예정 시각을 크게 표시
-- 일정 타임라인으로 오늘 누가 언제 오는지 확인
-- 친구가 아니어도 **오늘 출석한 동아리원**을 아래에 표시
-- 친구 신청 / 수락 / 삭제
-
-### 🤝 파트너 모집 (`/lobby`)
-
-- 팀 모집방 생성·참여 (비밀번호 방 지원)
-- 랭크 조건 필터
-- 모인 팀을 그대로 코트에 예약
-
-### 📊 MY 기록 (`/profile`)
-
-- 프로필(아바타·랭크·등급), Elo·승률·총 게임 수
-- 출석 체크인 카드
-- 경기 전적 목록, Elo 추이 차트
-- 시간대별 체육관 혼잡도 차트
-- 청소·네트·셔틀콕 운반 봉사 인증
-- 포인트 적립/사용 내역
-
-### 📖 이용 안내 (`/guide`)
-
-- 코트 규격(6.1×13.4m), 네트·라인 설명
-- 배드민턴 규칙 FAQ, 인터랙티브 코트(단식/복식/서브 범위)
-- 포인트 정책, 매너, 회칙, 레슨 안내
-
-### 🛠 관리자 패널 (`/admin`)
-
-- 회원 가입 승인 / 등급·상태 관리
-- 경기 결과 확정, 포인트 조정
-- 레슨 대기열 관리, 알림 패널
-- 개발자 모드(위치 우회·무한 포인트 등 테스트용)
+변경 항목은 [docs/CHANGELOG.pdf](docs/CHANGELOG.pdf)에 있습니다. 기능·정책을 바꾸면 `docs/changelog/releases.json`을 고치고 `npm run docs:changelog`로 PDF를 다시 만듭니다.
 
 ---
 
-## 회원 등급
+## 기술
 
-| 등급 | 설명 |
-|------|------|
-| **게스트** | 이름만 입력한 임시 계정. 코트 예약·모집방 참여·이용 안내 열람만 가능 (포인트·친구·랭크·기록 제한) |
-| **준회원** | 가입 승인된 일반 회원 |
-| **정회원** | 회비 납부 등을 마친 정식 회원 (출석 포인트 우대) |
-| **관리자** | 운영진 — 승인·정산·경기 확정 권한 |
+| 영역 | 내용 |
+|---|---|
+| 클라이언트 | Expo SDK 57 · Expo Router · React Native · TypeScript · Zustand |
+| 백엔드 | Supabase (Postgres, Auth, Realtime, Storage, Edge Functions) |
+| 웹 배포 | Cloudflare Pages · 도메인 `dgistdrop.com` |
+| 앱 빌드 | EAS (`kr.ac.dgist.badmin`) — 현재는 웹을 기본으로 사용 |
 
-가입은 SQL `013` 적용 시 **학번 신규는 준회원으로 자동 승인**됩니다.  
-관리자 승격·정지·레슨 입금 확인 등은 운영진 권한으로 처리합니다.
+코트·프로필·클럽 설정은 Supabase Realtime으로 반영됩니다.
 
----
-
-## 레슨 시스템
-
-코치 레슨은 대기열로 순서를 관리합니다.
-
-```
-신청(입금 전) → 관리자 입금 확인·승인 → 대기열 등록
-→ 내 차례(next) → 코치 코트 예약 → 레슨 중(active) → 완료
-→ 다음 사람에게 사이렌 알림
-```
-
-- 코치 코트(3번)는 **레슨 승인 + 본인 차례**인 회원만 예약 가능
-- 다음 차례가 되면 전체 화면 사이렌 알림 + 진동
+동작 설명 HTML: [docs/how-drop-works.html](docs/how-drop-works.html)
 
 ---
 
-## 기술 스택
+## 배포
 
-| 영역 | 기술 |
-|------|------|
-| 프레임워크 | Expo SDK 57 · Expo Router · React Native 0.86 |
-| 언어 | TypeScript |
-| 상태 관리 | Zustand |
-| 백엔드 | Supabase (Postgres · Auth · Realtime · Storage) |
-| 애니메이션 | React Native Reanimated |
-| 디바이스 | expo-location(지오펜스) · expo-haptics · expo-notifications |
-| 배포 | Cloudflare Pages (웹) · EAS Build (앱) |
-
-실시간 동기화(Supabase Realtime)로 코트·프로필·소셜·알림·포인트가 모든 접속자에게 즉시 반영됩니다.
+1. Cloudflare Pages가 `main` 푸시를 받아 웹을 빌드합니다.
+2. Pages 프로젝트 환경 변수에 `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_SITE_URL=https://dgistdrop.com` 을 넣습니다. **anon 키만** 넣습니다.
+3. 새 DB 패치가 있으면 Supabase SQL Editor에서 번호 순으로 실행합니다. **라이브에 넣을 것:** `supabase/033_club_roster.sql` → `supabase/034_roles_occupancy_attendance.sql` → `supabase/035_prune_push_tokens.sql`. 035는 관리 화면의 못 쓰는 푸시 기기 정리에 필요합니다. 이미 035를 넣었다면 파일을 다시 실행해 함수만 갱신합니다.
+4. 프로필을 SQL로 직접 고칠 때 `guard_profile_columns`에 막히면, 같은 세션에서 먼저 `select set_config('app.allow_sensitive_profile_write', 'on', true);` 를 실행합니다. 이 `on`은 그 문장에만 해당합니다.
+5. 자세한 배포: [docs/DEPLOY_CLOUDFLARE.md](docs/DEPLOY_CLOUDFLARE.md) · SQL 목록: [docs/SUPABASE_MIGRATION.md](docs/SUPABASE_MIGRATION.md)
 
 ---
 
-## 개발자용 문서
+## 올리지 말 것 (비밀)
 
-| 문서 | 내용 |
-|------|------|
-| [docs/how-drop-works.html](docs/how-drop-works.html) | **동작 방식 설명(반응형 HTML)** — 부팅·RPC·스키마·배포 |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 사이트·백엔드 상호작용 · Mermaid 플로우 |
-| [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) | 전체 기능 명세·구현 상태 |
-| [docs/PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md) | 개인정보처리방침 (웹 `/privacy`) |
-| [docs/STORE_LISTING.md](docs/STORE_LISTING.md) | Play 스토어 설명·권한 문구 |
-| [docs/SUPABASE_MIGRATION.md](docs/SUPABASE_MIGRATION.md) | Supabase SQL·설정 체크리스트 |
-| [docs/DEPLOY_CLOUDFLARE.md](docs/DEPLOY_CLOUDFLARE.md) | Cloudflare Pages 배포 |
-| [docs/PUSH_AND_PLAY_STORE.md](docs/PUSH_AND_PLAY_STORE.md) | 푸시·EAS·Play |
-| [docs/SETUP_NOW.md](docs/SETUP_NOW.md) | 현재 운영 체크리스트 |
+GitHub에는 다음을 넣지 않습니다.
 
-### 로컬 실행
+- `.env`, `.env*.local`
+- Supabase **service_role** 키
+- Firebase Admin / FCM **서비스 계정 JSON** (`*firebase-adminsdk*.json`)
+- Google Play / EAS 제출용 서비스 계정 키
+- 비밀번호, 개인 명단 원본 스프레드시트
+
+`google-services.json`은 앱 클라이언트용 설정입니다. Admin SDK가 아닙니다. 그래도 새 비밀이 보이면 커밋하지 마세요.
+
+로컬 실행:
 
 ```bash
 npm install
-npm run web      # 웹
-npm run android  # Android
-npm run ios      # iOS (macOS)
+npm run web
 ```
 
-로컬 실행에 필요한 환경 변수 (`.env`):
+브라우저: [http://localhost:8081](http://localhost:8081)
+
+`.env` 예시 (값은 각자 콘솔에서 복사, 저장소에 커밋하지 않음):
 
 ```
 EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+EXPO_PUBLIC_SITE_URL=https://dgistdrop.com
 ```
 
-### 프로젝트 구조
+---
 
-```
-app/            # 화면 (Expo Router) — (tabs), login
-src/
-  components/   # UI 컴포넌트
-  stores/       # Zustand 상태 (court, auth, lobby, lesson, friend, point ...)
-  services/     # 비즈니스 로직 + Supabase 연동 (services/supabase)
-  constants/    # 포인트 정책·코트 배치·가이드 콘텐츠
-  utils/        # 반응형·게스트 접근 등
-  theme/        # 디자인 토큰
-supabase/       # SQL 마이그레이션
-```
+## 개발 문서
+
+| 문서 | 내용 |
+|---|---|
+| [docs/CHANGELOG.pdf](docs/CHANGELOG.pdf) | 버전별 무엇을 바꿨는지 |
+| [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) | 기능 명세 |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 사이트·백엔드 흐름 |
+| [docs/PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md) | 개인정보처리방침 |
+| [docs/OPS_FOLLOWUPS.md](docs/OPS_FOLLOWUPS.md) | 운영 후속 |

@@ -30,7 +30,6 @@ import { supabaseRestoreSession } from '@/src/services/supabase/auth';
 import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/theme';
 import { SiteOverlayHost } from '@/src/components/site/SiteOverlayHost';
 import { markPostLoginOverlay } from '@/src/components/site/SiteOverlayHost';
-import { PwaInstallCard } from '@/src/components/layout/PwaInstallCard';
 
 type Mode = 'login' | 'register' | 'guest';
 
@@ -227,12 +226,6 @@ export default function LoginScreen() {
             </Text>
           </View>
 
-          <PwaInstallCard
-            placement="login"
-            compact
-            onToast={(type, message) => showToast({ type, title: '', message })}
-          />
-
           <View style={styles.tabs}>
             <Pressable
               onPress={() => setMode('login')}
@@ -274,7 +267,7 @@ export default function LoginScreen() {
               </Text>
               {promptAccount.kind === 'guest' ? (
                 <Text style={styles.savedWarning}>
-                  게스트 계정은 주기적으로 삭제될 수 있어요.
+                  게스트는 당일 임시입니다. 서울 날짜가 바뀌면 삭제됩니다.
                 </Text>
               ) : null}
               <View style={styles.savedActions}>
@@ -300,10 +293,10 @@ export default function LoginScreen() {
             {mode === 'guest' ? (
               <>
                 <Text style={styles.guestIntro}>
-                  이름만 입력해 임시로 입장해요. 코트 예약·모집방 참여·이용 안내는 볼 수 있지만, 포인트·친구·랭크·기록은 사용할 수 없어요.
+                  이름만 입력해 임시로 입장해요. 코트 현황·모집방 참여·이용 안내는 볼 수 있지만, 포인트·친구·랭크·기록은 사용할 수 없어요.
                 </Text>
                 <Text style={styles.guestWarning}>
-                  게스트 계정은 운영 과정에서 주기적으로 삭제될 수 있어요. 계속 쓰려면 회원가입을 권장해요.
+                  게스트는 당일 임시입니다. 서울 날짜가 바뀌면 자동으로 삭제됩니다. 계속 쓰려면 회원가입을 하세요.
                 </Text>
                 <Text style={styles.label}>이름</Text>
                 <TextInput
@@ -339,7 +332,7 @@ export default function LoginScreen() {
               style={styles.input}
               value={studentId}
               onChangeText={setStudentId}
-              placeholder="예: 202410001"
+              placeholder="예: 202600000"
               keyboardType="number-pad"
               maxLength={9}
               autoCapitalize="none"
