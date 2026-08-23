@@ -120,24 +120,29 @@ export default function TabLayout() {
         animation: Platform.OS === 'ios' ? 'shift' : 'fade',
       }}
     >
-      {TAB_SCREENS.map(({ name, item }) => (
+      {TAB_SCREENS.map(({ name, item }) => {
+        const hidden = isGuest && name === 'friends';
+        return (
         <Tabs.Screen
           key={name}
           name={name}
           options={{
-            href: isGuest && name === 'friends' ? null : undefined,
             title: item.tabLabel,
             tabBarIcon: ({ focused }) => <TabIcon name={item.icon} focused={focused} size={tabIconSize} />,
             tabBarAccessibilityLabel: item.label,
-            tabBarButton: (props) => (
-              <TourAnchor href={item.href} style={{ flex: 1 }}>
-                <SpaTabButton {...props} />
-              </TourAnchor>
-            ),
             tabBarItemStyle: [
               styles.tabItem,
               tourHref === item.href ? styles.tabItemTour : null,
             ],
+            ...(hidden
+              ? { href: null }
+              : {
+                  tabBarButton: (props) => (
+                    <TourAnchor href={item.href} style={{ flex: 1 }}>
+                      <SpaTabButton {...props} />
+                    </TourAnchor>
+                  ),
+                }),
           }}
           listeners={{
             tabPress: (e) => {
@@ -150,19 +155,23 @@ export default function TabLayout() {
             },
           }}
         />
-      ))}
+        );
+      })}
       <Tabs.Screen
         name="admin"
         options={{
-          href: isStaff ? undefined : null,
           title: ADMIN_NAV_ITEM.tabLabel,
           tabBarIcon: ({ focused }) => <AdminTabIcon focused={focused} size={tabIconSize} />,
           tabBarAccessibilityLabel: ADMIN_NAV_ITEM.label,
-          tabBarButton: (props) => (
-            <TourAnchor href={ADMIN_NAV_ITEM.href} style={{ flex: 1 }}>
-              <SpaTabButton {...props} />
-            </TourAnchor>
-          ),
+          ...(isStaff
+            ? {
+                tabBarButton: (props) => (
+                  <TourAnchor href={ADMIN_NAV_ITEM.href} style={{ flex: 1 }}>
+                    <SpaTabButton {...props} />
+                  </TourAnchor>
+                ),
+              }
+            : { href: null }),
         }}
       />
     </Tabs>
