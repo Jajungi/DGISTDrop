@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import type { PointTransaction } from '@/src/types';
 import { usePointStore } from '@/src/stores/pointStore';
-import { colors, spacing, typography, borderRadius, glass } from '@/src/theme';
+import { colors, spacing, typography, borderRadius, glass, withAlpha } from '@/src/theme';
 
 type FilterTab = 'all' | 'earned' | 'spent';
 
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconEarned: { backgroundColor: colors.accentLight },
-  iconSpent: { backgroundColor: '#FFF0F1' },
+  iconSpent: { backgroundColor: withAlpha(colors.error, 0.14) },
   iconText: { fontSize: 16 },
   rowBody: { flex: 1, gap: 2 },
   rowTitle: { ...typography.body, color: colors.text, fontSize: 14 },

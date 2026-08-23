@@ -3,16 +3,16 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { Button } from '@/src/components/ui/Button';
-import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/theme';
 import type { LessonAccessStatus } from '@/src/types';
 
 const STATUS_LABEL: Record<
   Exclude<LessonAccessStatus, 'none'>,
   { text: string; color: string; bg: string }
 > = {
-  pending: { text: '승인 대기', color: colors.warning, bg: '#FFF8ED' },
+  pending: { text: '승인 대기', color: colors.warning, bg: withAlpha(colors.warning, 0.16) },
   approved: { text: '승인됨', color: colors.success, bg: colors.primaryLight },
-  rejected: { text: '거절됨', color: colors.error, bg: '#FFF0F0' },
+  rejected: { text: '거절됨', color: colors.error, bg: withAlpha(colors.error, 0.14) },
 };
 
 /** 프로필용 — 레슨 권한 신청만 */

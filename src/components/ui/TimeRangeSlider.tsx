@@ -324,26 +324,25 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: borderRadius.sm,
     overflow: 'hidden',
+    gap: 2,
+    backgroundColor: colors.slotDivider,
   },
   segment: {
     flex: 1,
-    borderRightWidth: 1,
-    borderRightColor: 'rgba(255,255,255,0.5)',
   },
   segmentFirst: {
     borderTopLeftRadius: borderRadius.sm,
     borderBottomLeftRadius: borderRadius.sm,
   },
   segmentLast: {
-    borderRightWidth: 0,
     borderTopRightRadius: borderRadius.sm,
     borderBottomRightRadius: borderRadius.sm,
   },
   segmentSelected: {
-    backgroundColor: '#C4B5FD',
+    backgroundColor: colors.slotSelected,
   },
   segmentIdle: {
-    backgroundColor: '#E8EAEF',
+    backgroundColor: colors.slotIdle,
   },
   legendRow: {
     flexDirection: 'row',

@@ -1371,7 +1371,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     padding: spacing.sm,
     borderRadius: borderRadius.sm,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: colors.nestedSurface,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     gap: 2,
   },
   waitQueueTitle: {

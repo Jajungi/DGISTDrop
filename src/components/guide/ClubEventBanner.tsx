@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { clubEventKindLabel, getActiveClubEvents } from '@/src/utils/siteOps';
-import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/theme';
 
 /** 오늘 휴관·추가 활동일·배너 공지 안내 */
 export function ClubEventBanner() {
@@ -71,12 +71,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   closure: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
+    backgroundColor: withAlpha(colors.error, 0.14),
+    borderColor: withAlpha(colors.error, 0.35),
   },
   extra: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#BFDBFE',
+    backgroundColor: withAlpha(colors.primary, 0.16),
+    borderColor: withAlpha(colors.primary, 0.35),
   },
   special: {
     backgroundColor: colors.primaryLight,

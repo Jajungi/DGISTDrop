@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Platform, Animated, Easing, AppState } from 'react-native';
 import type { Court, User } from '@/src/types';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { CourtStatusInfoModal } from '@/src/components/courts/CourtStatusInfoModal';
 import { GoingPeopleSheet } from '@/src/components/courts/GoingPeopleSheet';
 import { GYM_VENUE } from '@/src/constants/court';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { isBetweenNotifyAndActivityStart } from '@/src/services/activityTime';
+import { DEFAULT_PUSH_SETTINGS, fetchPushNotifySettings } from '@/src/services/supabase/pushSettings';
 
 interface CourtOverviewHeaderProps {
   courts: Court[];
@@ -30,6 +32,32 @@ function formatDate() {
   return `${now.getMonth() + 1}월 ${now.getDate()}일`;
 }
 
+const GOING_HINT = '눌러서 누가 오는지 확인해보세요!';
+
+function useGoingListHintWindow() {
+  const [notifyTime, setNotifyTime] = useState(DEFAULT_PUSH_SETTINGS.notify_time);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPushNotifySettings().then((s) => {
+      if (!cancelled) setNotifyTime(s.notify_time || DEFAULT_PUSH_SETTINGS.notify_time);
+    });
+    const tick = () => setNow(new Date());
+    const id = setInterval(tick, 20_000);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') tick();
+    });
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      sub.remove();
+    };
+  }, []);
+
+  return isBetweenNotifyAndActivityStart(notifyTime, now);
+}
+
 export function CourtOverviewHeader({
   courts,
   filter,
@@ -45,6 +73,8 @@ export function CourtOverviewHeader({
 }: CourtOverviewHeaderProps) {
   const { isMobile, scaledTypography, isCompact, isLandscape } = useLayoutMode();
   const [goingOpen, setGoingOpen] = useState(false);
+  const hintWindow = useGoingListHintWindow();
+  const showGoingHint = hintWindow && !goingOpen;
   const emptyCount = courts.filter((c) => c.status === 'empty').length;
   const reservedCount = courts.filter((c) => c.status === 'reserved').length;
   const playingCount = courts.filter((c) => c.status === 'playing').length;
@@ -108,14 +138,20 @@ export function CourtOverviewHeader({
         <View style={[styles.lineRow, isMobile && styles.lineRowMobile]}>
           <View style={styles.statusRow}>
             {goingCount != null && (
-              <StatusItem
-                number={`${goingCount}명`}
-                label="올 사람"
-                isText
-                compact={isMobile}
-                emphasize
-                onPress={() => setGoingOpen(true)}
-              />
+              <View style={styles.goingCluster}>
+                <StatusItem
+                  number={`${goingCount}명`}
+                  label="올 사람"
+                  isText
+                  compact={isMobile}
+                  emphasize
+                  flush
+                  onPress={() => setGoingOpen(true)}
+                />
+                {showGoingHint ? (
+                  <GoingListHint compact={isMobile} onPress={() => setGoingOpen(true)} />
+                ) : null}
+              </View>
             )}
             {atGymCount != null && (
               <StatusItem
@@ -174,12 +210,53 @@ export function CourtOverviewHeader({
   );
 }
 
+function GoingListHint({ compact, onPress }: { compact?: boolean; onPress: () => void }) {
+  const opacity = useRef(new Animated.Value(0.28)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 0.72,
+          duration: 2200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.22,
+          duration: 2200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={GOING_HINT}
+      style={Platform.select({ web: { cursor: 'pointer' as const } })}
+    >
+      <Animated.Text
+        style={[styles.goingHint, compact && styles.goingHintCompact, { opacity }]}
+      >
+        {GOING_HINT}
+      </Animated.Text>
+    </Pressable>
+  );
+}
+
 function StatusItem({
   number,
   label,
   isText,
   compact,
   emphasize,
+  flush,
   onPress,
 }: {
   number: number | string;
@@ -187,10 +264,11 @@ function StatusItem({
   isText?: boolean;
   compact?: boolean;
   emphasize?: boolean;
+  flush?: boolean;
   onPress?: () => void;
 }) {
   const inner = (
-    <View style={[styles.statusItem, compact && styles.statusItemCompact]}>
+    <View style={[styles.statusItem, compact && styles.statusItemCompact, flush && styles.statusItemFlush]}>
       <Text
         style={[
           styles.statusNumber,
@@ -206,6 +284,7 @@ function StatusItem({
           styles.statusType,
           compact && styles.statusTypeCompact,
           emphasize && styles.statusTypeEmph,
+          flush && styles.statusTypeFlush,
         ]}
       >
         {label}
@@ -307,6 +386,31 @@ const styles = StyleSheet.create({
   statusItemCompact: {
     marginRight: spacing.sm,
   },
+  statusItemFlush: {
+    marginRight: 0,
+  },
+  goingCluster: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginRight: spacing.md,
+    maxWidth: '100%',
+  },
+  goingHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontSize: 11,
+    lineHeight: 15,
+    maxWidth: 168,
+    paddingBottom: 1,
+  },
+  goingHintCompact: {
+    fontSize: 10,
+    lineHeight: 14,
+    maxWidth: 132,
+    paddingRight: 0,
+  },
   statusNumber: {
     ...typography.score,
     color: colors.text,
@@ -336,6 +440,9 @@ const styles = StyleSheet.create({
   statusTypeEmph: {
     color: colors.primary,
     fontWeight: '600',
+  },
+  statusTypeFlush: {
+    paddingRight: 0,
   },
   viewActions: {
     flexDirection: 'row',

@@ -1,6 +1,7 @@
 import { getActivitySchedule } from '@/src/stores/activityScheduleStore';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { isClubEventActiveOn, todayLocalISODate } from '@/src/utils/siteOps';
+import { parseHHMM } from '@/src/utils/activitySchedule';
 import type { ActivitySession } from '@/src/types';
 
 function schedule(): ActivitySession[] {
@@ -141,4 +142,33 @@ export function formatCountdownToNext(next: Date, now: Date = new Date()): strin
 export function getActivityDayLabel(day: number): string {
   const labels = ['일', '월', '화', '수', '목', '금', '토'];
   return labels[day] ?? '';
+}
+
+/** 오늘 활동 시작 시각. 활동일 아니면 null. */
+export function getTodayActivityStart(now: Date = new Date()): Date | null {
+  if (!isActivityDay(now)) return null;
+  const dateISO = todayLocalISODate(now);
+  const times = defaultSessionTimes();
+  const day = now.getDay();
+  const session = hasExtraActivityOn(dateISO)
+    ? { startHour: times.startHour, startMinute: times.startMinute }
+    : schedule().find((s) => s.day === day);
+  if (!session) return null;
+  const start = new Date(now);
+  start.setHours(session.startHour, session.startMinute, 0, 0);
+  return start;
+}
+
+/**
+ * 활동일에 활동 푸시 시각(설정 notify_time)부터 활동 시작 시각까지.
+ */
+export function isBetweenNotifyAndActivityStart(notifyTime: string, now: Date = new Date()): boolean {
+  const start = getTodayActivityStart(now);
+  const parsed = parseHHMM(notifyTime);
+  if (!start || !parsed) return false;
+  const n = now.getHours() * 60 + now.getMinutes();
+  const from = parsed.hour * 60 + parsed.minute;
+  const to = start.getHours() * 60 + start.getMinutes();
+  if (from > to) return false;
+  return n >= from && n <= to;
 }

@@ -22,7 +22,7 @@ import {
   DEFAULT_PUSH_SETTINGS,
   fetchPushNotifySettings,
 } from '@/src/services/supabase/pushSettings';
-import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/theme';
 import type { ClubEvent, ClubEventKind } from '@/src/types';
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -586,8 +586,8 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 1 },
   legendActivity: { backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primary },
-  legendClosure: { backgroundColor: '#FECACA' },
-  legendExtra: { backgroundColor: '#BFDBFE' },
+  legendClosure: { backgroundColor: withAlpha(colors.error, 0.45) },
+  legendExtra: { backgroundColor: withAlpha(colors.primary, 0.45) },
   legendText: { ...typography.small, color: colors.textMuted, fontSize: 11 },
   grid: {
     borderWidth: 1,
@@ -632,22 +632,22 @@ const styles = StyleSheet.create({
     ...Platform.select({ web: { cursor: 'pointer' as const } }),
   },
   cellPast: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: withAlpha(colors.text, 0.08),
   },
   cellFocusMonth: {
     backgroundColor: colors.surface,
   },
   cellOtherMonth: {
-    backgroundColor: '#F7F8FA',
+    backgroundColor: colors.background,
   },
   cellActivity: {
     backgroundColor: colors.primaryLight,
   },
   cellClosure: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: withAlpha(colors.error, 0.16),
   },
   cellExtra: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: withAlpha(colors.primary, 0.18),
   },
   cellToday: {
     borderWidth: 2,
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.textLight,
   },
   switchKnobOn: { alignSelf: 'flex-end' },
   timeField: { gap: 4 },

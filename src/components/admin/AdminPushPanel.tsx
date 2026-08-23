@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, Platform } from 'react-native';
 import { Card } from '@/src/components/ui/Card';
 import { Button } from '@/src/components/ui/Button';
-import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/theme';
 import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { formatActivityScheduleLabel } from '@/src/utils/activitySchedule';
 import { getActivityDayLabel } from '@/src/services/activityTime';
@@ -454,13 +454,17 @@ const styles = StyleSheet.create({
   },
   statValue: { ...typography.h3, color: colors.primary },
   statLabel: { ...typography.small, color: colors.textMuted, marginTop: 2 },
-  cancelBanner: { backgroundColor: '#FFF3CD', borderWidth: 1, borderColor: '#FFC107' },
-  cancelText: { ...typography.bodyBold, color: '#856404' },
+  cancelBanner: {
+    backgroundColor: withAlpha(colors.warning, 0.16),
+    borderWidth: 1,
+    borderColor: withAlpha(colors.warning, 0.4),
+  },
+  cancelText: { ...typography.bodyBold, color: colors.warning },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm },
   toggleLabel: { ...typography.body, color: colors.text },
   toggle: { width: 48, height: 28, borderRadius: 14, backgroundColor: colors.border, padding: 3, justifyContent: 'center' },
   toggleOn: { backgroundColor: colors.primary },
-  toggleKnob: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.surface },
+  toggleKnob: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.textLight },
   toggleKnobOn: { alignSelf: 'flex-end' },
   inputRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, marginTop: spacing.xs },
   inputLabel: { ...typography.body, color: colors.textSecondary, flex: 1 },

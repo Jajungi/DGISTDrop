@@ -234,6 +234,11 @@
       min-width: 1.6em;
       flex-shrink: 0;
     }
+    .flow {
+      margin: 0 0 10px;
+      color: var(--ink);
+      line-height: 1.55;
+    }
     .kv {
       margin: 0 0 10px;
       display: grid;
@@ -325,7 +330,7 @@
 
     document.getElementById('lede').textContent =
       DATA.intro +
-      ' 각 항목은 이전 상태, 변경 내용, 삭제 항목을 구분하여 기재함. 삭제가 없으면 삭제 줄은 생략함.';
+      ' 각 항목은 이전 상태를 이어서 변경을 적고, 삭제가 있으면 따로 표시함.';
     document.getElementById('meta').innerHTML =
       `<span>${esc(DATA.org)}</span><span>${esc(DATA.docNo)}</span><span>updated ${esc(DATA.updated)}</span><span>v${esc(releases[0]?.id)} → v${esc(releases[releases.length - 1]?.id)}</span>`;
 
@@ -370,13 +375,20 @@
       if (!text) return '';
       return `<div class="kv ${cls}"><span class="k">${label}</span><span class="v">${esc(text)}</span></div>`;
     }
+    function flow(c) {
+      const was = String(c.was || '').trim().replace(/[.。]+$/, '');
+      const now = String(c.now || '').trim();
+      if (was && now) return `<p class="flow">${esc(was)}해서 ${esc(now)}</p>`;
+      if (was || now) return `<p class="flow">${esc(was || now)}</p>`;
+      return '';
+    }
 
     document.getElementById('releases').innerHTML = releases.map((r) => {
       const items = (r.changes || []).map((c, i) => {
-        const hasParts = c.was || c.now || c.gone;
         return `<article class="item">
           <h3><span class="n">${String(i + 1).padStart(2, '0')}</span>${esc(c.what)}</h3>
-          ${hasParts ? kv('', '이전', c.was) + kv('now', '변경', c.now) + kv('gone', '삭제', c.gone) : ''}
+          ${flow(c)}
+          ${kv('gone', '삭제', c.gone)}
         </article>`;
       }).join('');
       const lead = r.story

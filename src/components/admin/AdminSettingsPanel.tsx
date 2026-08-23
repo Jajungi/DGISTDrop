@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     color: colors.text,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceAlt,
     fontFamily: 'DMSans_500Medium',
     fontSize: 14,
   },

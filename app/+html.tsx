@@ -169,4 +169,23 @@ html[data-app-orient="landscape-left"] [data-expo-router-root] > div {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--drop-borderStrong, #C5CDD6); border-radius: 3px; }
+
+/* 웹 기본 흰 입력·자동완성 배경이 다크 모드에서 번쩍이지 않게 */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]),
+textarea,
+select {
+  background-color: var(--drop-surface, #FFFFFF);
+  color: var(--drop-text, #2A3D45);
+  caret-color: var(--drop-text, #2A3D45);
+}
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--drop-text, #2A3D45);
+  caret-color: var(--drop-text, #2A3D45);
+  box-shadow: 0 0 0 1000px var(--drop-surface, #FFFFFF) inset;
+  transition: background-color 99999s ease-out;
+}
 `;

@@ -22,6 +22,10 @@ export type ThemePalette = {
   borderSubtle: string;
   borderStrong: string;
   divider: string;
+  slotIdle: string;
+  slotSelected: string;
+  slotDivider: string;
+  nestedSurface: string;
   success: string;
   warning: string;
   error: string;
@@ -83,6 +87,10 @@ export const lightPalette: ThemePalette = {
   borderSubtle: '#EEF2F0',
   borderStrong: '#D4DCD9',
   divider: '#E9EBF0',
+  slotIdle: '#E8EAEF',
+  slotSelected: '#C4B5FD',
+  slotDivider: '#A8B0BA',
+  nestedSurface: '#F7F8FA',
   success: '#3A9E7A',
   warning: '#E8A04A',
   error: '#E05A68',
@@ -143,8 +151,12 @@ export const darkPalette: ThemePalette = {
   textOnNeon: '#0F1112',
   border: '#373D3F',
   borderSubtle: '#2A2F31',
-  borderStrong: '#373D3F',
+  borderStrong: '#4A5254',
   divider: '#373D3F',
+  slotIdle: '#2C3336',
+  slotSelected: '#4E635A',
+  slotDivider: '#8A938F',
+  nestedSurface: '#2C3336',
   success: '#6A8F78',
   warning: '#C4A06A',
   error: '#C47A7A',

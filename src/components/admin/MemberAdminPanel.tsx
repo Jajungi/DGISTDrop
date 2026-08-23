@@ -25,7 +25,7 @@ import { Card } from '@/src/components/ui/Card';
 import { getEffectiveSchedule } from '@/src/utils/dateFormat';
 import { isGuestStudentId } from '@/src/utils/studentId';
 import { clubGradeOf, hasAdminRole, isAdminUser, isOwnerUser, roleBadgeLabel } from '@/src/utils/staffAccess';
-import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/theme';
 import { POINT_EARN } from '@/src/constants/points';
 import { RANK_THRESHOLDS, RANK_ORDER } from '@/src/constants';
 import type { MembershipTier, MemberStatus, RankTier, User } from '@/src/types';
@@ -900,12 +900,12 @@ const styles = StyleSheet.create({
   miniStatValue: { ...typography.bodyBold, color: colors.text, fontSize: 14 },
   miniStatLabel: { ...typography.small, color: colors.textMuted, fontSize: 10 },
   warnBox: {
-    backgroundColor: '#F3E8FF',
+    backgroundColor: withAlpha('#A78BFA', 0.16),
     borderRadius: borderRadius.sm,
     padding: spacing.sm,
     gap: 2,
   },
-  warnTitle: { ...typography.small, color: '#9333EA', fontWeight: '700' },
+  warnTitle: { ...typography.small, color: colors.accent, fontWeight: '700' },
   warnText: { ...typography.caption, color: colors.text },
   warnMeta: { ...typography.small, color: colors.textMuted, fontSize: 10 },
   section: { gap: spacing.sm },
@@ -946,6 +946,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     ...typography.body,
     color: colors.text,
+    backgroundColor: colors.surfaceAlt,
     marginBottom: spacing.xs,
   },
   inputSm: { width: 72 },

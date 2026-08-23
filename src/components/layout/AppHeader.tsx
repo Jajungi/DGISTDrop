@@ -319,8 +319,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
     ...Platform.select({
-      web: { outlineStyle: 'none' } as object,
-      default: {},
+      web: { outlineStyle: 'none', backgroundColor: 'transparent' } as object,
+      default: { backgroundColor: 'transparent' },
     }),
   },
   searchInputMobile: {

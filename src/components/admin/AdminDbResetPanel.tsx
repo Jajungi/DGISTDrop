@@ -311,7 +311,7 @@ export function AdminDbResetPanel({ adminId }: AdminDbResetPanelProps) {
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.md },
-  warningCard: { gap: spacing.xs, borderColor: withAlpha(colors.error, 0.25), backgroundColor: '#FFF5F5' },
+  warningCard: { gap: spacing.xs, borderColor: withAlpha(colors.error, 0.25), backgroundColor: withAlpha(colors.error, 0.12) },
   warningHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   warningTitle: { ...typography.bodyBold, color: colors.error },
   warningText: { ...typography.caption, color: colors.textSecondary, lineHeight: 20 },
