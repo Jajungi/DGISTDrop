@@ -1,6 +1,12 @@
 import { Platform } from 'react-native';
 import { getSupabase, isSupabaseEnabled } from '@/src/lib/supabase';
-import { detectClientDevice, isStandalonePwa } from '@/src/utils/clientDevice';
+import {
+  currentWebPushPlatform,
+  detectClientDevice,
+  isStandalonePwa,
+  webPushClassFromPlatform,
+} from '@/src/utils/clientDevice';
+import { classifyPushToken } from '@/src/services/supabase/pushSettings';
 
 const VAPID_PUBLIC_KEY = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY ?? '';
 
@@ -59,6 +65,7 @@ export async function registerWebPushForUser(userId: string): Promise<boolean> {
 
     const token = JSON.stringify(subscription.toJSON());
     registeredUserId = userId;
+    const platform = currentWebPushPlatform();
 
     const { error } = await getSupabase()
       .from('push_tokens')
@@ -66,12 +73,28 @@ export async function registerWebPushForUser(userId: string): Promise<boolean> {
         {
           user_id: userId,
           token,
-          platform: 'web',
+          platform,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'token' }
       );
     if (error) throw error;
+
+    const { data: mine } = await getSupabase()
+      .from('push_tokens')
+      .select('token, platform')
+      .eq('user_id', userId);
+    const stale = (mine ?? [])
+      .filter(
+        (row) =>
+          row.token !== token &&
+          classifyPushToken(row.token, row.platform) === 'web' &&
+          webPushClassFromPlatform(row.platform) === webPushClassFromPlatform(platform)
+      )
+      .map((row) => row.token);
+    if (stale.length) {
+      await getSupabase().from('push_tokens').delete().in('token', stale);
+    }
     return true;
   } catch (err) {
     console.warn('[webPush] 등록 실패', err);

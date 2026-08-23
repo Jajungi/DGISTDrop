@@ -5,6 +5,7 @@ import { useFriendStore, type FriendState } from '@/src/stores/friendStore';
 import { ACTIVITY_SCHEDULE } from '@/src/constants';
 import { getActivitySchedule } from '@/src/stores/activityScheduleStore';
 import { buildFriendGroups, sortByScheduledArrival } from '@/src/utils/friendsPresence';
+import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 
 const EMPTY_FRIEND_IDS: string[] = [];
 const EMPTY_REQUESTS: FriendRequest[] = [];
@@ -54,7 +55,7 @@ export function useFriendsPresence() {
     return filterOutgoing(friendRequests, currentUserId);
   }, [friendRequests, currentUserId]);
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useMemo(() => getSeoulTodayKey(), []);
   const session = getTodaySession();
   const activityStart = `${pad(session.startHour)}:${pad(session.startMinute)}`;
   const activityEnd = `${pad(session.endHour)}:${pad(session.endMinute)}`;

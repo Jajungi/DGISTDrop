@@ -34,7 +34,7 @@ import { AdminPushPanel } from '@/src/components/admin/AdminPushPanel';
 import { AdminFieldOpsPanel } from '@/src/components/admin/AdminFieldOpsPanel';
 import { GAME_MODE_CONFIG } from '@/src/constants/court';
 import { isAdminUser, isOperatorUser, roleBadgeLabel } from '@/src/utils/staffAccess';
-import { getEffectiveSchedule, getTodayKey, formatTodayLabel } from '@/src/utils/dateFormat';
+import { getEffectiveSchedule, getSeoulTodayKey, formatTodayLabel } from '@/src/utils/dateFormat';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import type { AdminLogCategory, User, Court, MatchResult } from '@/src/types';
 import type { AdminAlertSection } from '@/src/hooks/useAdminAlerts';
@@ -125,7 +125,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
     setLiveSub(section === 'lessons' ? 'lessons' : 'matches');
   };
 
-  const today = getTodayKey();
+  const today = getSeoulTodayKey();
   const pendingMembers = users.filter((u) => u.memberStatus === 'pending');
   const suspendedMembers = users.filter((u) => u.memberStatus === 'suspended');
   const unconfirmedMatches = pendingMatches.filter((m) => m.status === 'pending');

@@ -25,7 +25,7 @@ export function formatTodayLabel(date = new Date()): string {
   return `${y}년 ${m}월 ${d}일 (${day})`;
 }
 
-export function isScheduleForToday(scheduleDate?: string, today = getTodayKey()): boolean {
+export function isScheduleForToday(scheduleDate?: string, today = getSeoulTodayKey()): boolean {
   if (!scheduleDate) return true;
   return scheduleDate === today;
 }

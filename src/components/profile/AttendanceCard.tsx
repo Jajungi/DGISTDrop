@@ -7,12 +7,8 @@ import { useGeoLocation } from '@/src/hooks/useGeoLocation';
 import { Button } from '@/src/components/ui/Button';
 import { getDistanceToGym } from '@/src/services/geoFence';
 import { GYM_LOCATION } from '@/src/constants';
-import { isStaffUser } from '@/src/utils/staffAccess';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
-
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
+import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 
 export function AttendanceCard() {
   useGeoLocation();
@@ -27,18 +23,16 @@ export function AttendanceCard() {
 
   if (!currentUser) return null;
 
-  const today = todayKey();
+  const today = getSeoulTodayKey();
   const todayRecord = attendanceRecords.find(
     (r) => r.userId === currentUser.id && r.date === today
   );
 
-  const isAdmin = isStaffUser(currentUser);
   const distance = location ? getDistanceToGym(location) : null;
   const canCheckIn = checkGeoFence();
 
   const statusText = (() => {
-    if (demoMode) return '데모 모드 · 위치 제한 없이 출석할 수 있어요.';
-    if (isAdmin) return '운영진 · 위치 제한 없이 출석할 수 있어요.';
+    if (demoMode) return '데모 모드 · 위치 제한 없이 출석할 수 있어요. 끄면 다시 체육관 근처에서만 됩니다.';
     if (locationError) return locationError;
     if (distance === null) return '위치를 확인하는 중이에요…';
     if (canCheckIn) return `S1 체육관 반경 안이에요 (약 ${distance}m). 출석할 수 있어요.`;

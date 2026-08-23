@@ -42,6 +42,7 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
     android: 0,
     removable: 0,
     extraWeb: 0,
+    extraWebStrict: 0,
     heavy: [],
   });
   const [pruning, setPruning] = useState(false);
@@ -121,10 +122,10 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
     } catch { onToast('warning', '저장 실패'); }
   };
 
-  const pruneDeadTokens = async () => {
+  const pruneDeadTokens = async (mode: 'normal' | 'strict' = 'normal') => {
     setPruning(true);
     try {
-      const result = await prunePushTokens();
+      const result = await prunePushTokens(mode);
       await fetchAll();
       const parts: string[] = [];
       if (result.unapproved) parts.push(`미승인·게스트 ${result.unapproved}`);
@@ -277,6 +278,10 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
                 <Text style={styles.statValue}>{tokenStats.extraWeb}</Text>
                 <Text style={styles.statLabel}>여분 웹</Text>
               </View>
+              <View style={styles.stat}>
+                <Text style={styles.statValue}>{tokenStats.extraWebStrict}</Text>
+                <Text style={styles.statLabel}>사람당 1개면</Text>
+              </View>
               {tokenStats.other > 0 ? (
                 <View style={styles.stat}>
                   <Text style={styles.statValue}>{tokenStats.other}</Text>
@@ -295,11 +300,18 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
               </View>
             ) : null}
             <Text style={styles.hint}>
-              앱은 스토어/APK, 웹은 브라우저·홈화면 웹앱입니다. 한 사람이 폰·노트북에서 알림을 켜면 웹 구독이 여러 개일 수 있습니다. 정리는 미승인·게스트, 형식 오류, 같은 사람의 웹 구독 중 최근 3개를 넘는 것만 지웁니다. 더 이상 안 받는 구독은 알림을 보낼 때 빠집니다.
+              사람 = 알림을 켠 회원 수. 기기 = DB에 남은 구독 수. 여분 웹 = 같은 환경(PC/안드/아이폰)에서 둘 이상인 분. 사람당 1개면 = 웹을 최근 하나만 남길 때 지워지는 수입니다. 더 줄이려면 「웹은 사람당 하나만」을 누르거나, 활동 알림을 한 번 보내 죽은 구독을 빠지게 하세요.
             </Text>
             <Button
               title={pruning ? '정리 중…' : '못 쓰는 등록 정리'}
-              onPress={() => void pruneDeadTokens()}
+              onPress={() => void pruneDeadTokens('normal')}
+              variant="outline"
+              fullWidth
+              disabled={pruning || loading}
+            />
+            <Button
+              title={pruning ? '정리 중…' : '웹은 사람당 하나만'}
+              onPress={() => void pruneDeadTokens('strict')}
               variant="outline"
               fullWidth
               disabled={pruning || loading}

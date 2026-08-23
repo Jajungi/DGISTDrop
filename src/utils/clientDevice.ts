@@ -10,6 +10,22 @@ export function isStandalonePwa(): boolean {
   );
 }
 
+export type WebPushClass = 'desktop' | 'android' | 'ios';
+
+export function currentWebPushPlatform(): `web-${WebPushClass}` {
+  const device = detectClientDevice();
+  if (device === 'android') return 'web-android';
+  if (device === 'ios') return 'web-ios';
+  return 'web-desktop';
+}
+
+/** 같은 사람·같은 환경(PC/안드/아이폰) 웹 구독은 하나만 남긴다. 예전 platform=web 은 PC로 본다. */
+export function webPushClassFromPlatform(platform?: string | null): WebPushClass {
+  if (platform === 'web-android') return 'android';
+  if (platform === 'web-ios') return 'ios';
+  return 'desktop';
+}
+
 export function detectClientDevice(): ClientDevice {
   if (Platform.OS !== 'web') return 'native';
   if (typeof navigator === 'undefined') return 'desktop';

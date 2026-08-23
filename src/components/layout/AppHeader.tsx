@@ -17,20 +17,18 @@ import { HamburgerIcon } from './HamburgerIcon';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { colors, spacing, typography, shadows } from '@/src/theme';
-
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
+import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 
 export function AppHeader() {
   const { isDesktop, isMobile, scale, isCompact, scaledTypography } = useLayoutMode();
   const currentUser = useAuthStore((s) => s.currentUser);
   const attendanceRecords = useAuthStore((s) => s.attendanceRecords);
   const checkIn = useAuthStore((s) => s.checkIn);
-  const isAtGym = useAppStore((s) => s.isAtGym);
   const demoMode = useAppStore((s) => s.demoMode);
   const setDemoMode = useAppStore((s) => s.setDemoMode);
   const checkGeoFence = useAppStore((s) => s.checkGeoFence);
+  useAppStore((s) => s.location);
+  const canCheckIn = checkGeoFence();
   const showToast = useNotificationStore((s) => s.showToast);
   const inbox = useNotificationStore((s) => s.inbox);
   const lessonQueue = useLessonStore((s) => s.lessonQueue);
@@ -68,7 +66,7 @@ export function AppHeader() {
     router.push('/friends');
   };
   const todayRecord = attendanceRecords.find(
-    (r) => r.userId === currentUser?.id && r.date === todayKey()
+    (r) => r.userId === currentUser?.id && r.date === getSeoulTodayKey()
   );
 
   const unreadCount = useMemo(() => {
@@ -172,20 +170,20 @@ export function AppHeader() {
         <Pressable
           style={[styles.actionBtn, isMobile && styles.actionBtnMobile, todayRecord && styles.actionBtnDone]}
           onPress={handleCheckIn}
-          disabled={!!todayRecord || !isAtGym}
+          disabled={!!todayRecord || !canCheckIn}
           accessibilityLabel="출석"
         >
           <Ionicons
             name={todayRecord ? 'checkmark-circle' : 'location-outline'}
             size={isMobile ? 20 : 18}
-            color={todayRecord ? colors.success : isAtGym ? colors.primary : colors.textMuted}
+            color={todayRecord ? colors.success : canCheckIn ? colors.primary : colors.textMuted}
           />
           {!isMobile && (
             <Text
               style={[
                 styles.actionLabel,
                 todayRecord && styles.actionLabelDone,
-                !isAtGym && !todayRecord && styles.actionLabelMuted,
+                !canCheckIn && !todayRecord && styles.actionLabelMuted,
               ]}
             >
               {todayRecord ? '출석완료' : '출석'}

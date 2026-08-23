@@ -54,7 +54,7 @@ async function syncAdminProfileRemote(user: User | undefined): Promise<{ ok: boo
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return getSeoulTodayKey();
 }
 
 interface AuthState {
@@ -1854,7 +1854,25 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   setLocationError: (error) => set({ locationError: error }),
-  setDemoMode: (value) => set({ demoMode: value, isAtGym: value ? true : get().isAtGym }),
+  setDemoMode: (value) => {
+    if (value) {
+      set({
+        demoMode: true,
+        isAtGym: true,
+        location: {
+          latitude: GYM_LOCATION.latitude,
+          longitude: GYM_LOCATION.longitude,
+        },
+        locationError: null,
+      });
+      return;
+    }
+    set({
+      demoMode: false,
+      isAtGym: false,
+      location: null,
+    });
+  },
   setOpenRegistration: async (value) => {
     const prev = get().openRegistration;
     set({ openRegistration: value });

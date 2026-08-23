@@ -1,4 +1,5 @@
 import { getSupabase, isSupabaseEnabled } from '@/src/lib/supabase';
+import { webPushClassFromPlatform } from '@/src/utils/clientDevice';
 
 export interface PushNotifySettings {
   enabled: boolean;
@@ -103,6 +104,7 @@ export type PushTokenStats = {
   android: number;
   removable: number;
   extraWeb: number;
+  extraWebStrict: number;
   heavy: PushTokenHeavyUser[];
 };
 
@@ -120,8 +122,6 @@ type ProfileLite = {
   member_status?: string | null;
   membership_tier?: string | null;
 };
-
-const WEB_KEEP_PER_USER = 3;
 
 export function classifyPushToken(token: string, platform?: string | null): PushTokenKind {
   if (token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[')) return 'app';
@@ -143,19 +143,20 @@ function tokenTime(row: PushTokenRow): number {
   return Number.isFinite(ms) ? ms : 0;
 }
 
-function extraWebTokens(rows: PushTokenRow[]): string[] {
-  const byUser = new Map<string, PushTokenRow[]>();
+function extraWebTokens(rows: PushTokenRow[], perUserOnly: boolean): string[] {
+  const byGroup = new Map<string, PushTokenRow[]>();
   for (const row of rows) {
     if (classifyPushToken(row.token, row.platform) !== 'web') continue;
-    const list = byUser.get(row.user_id) ?? [];
+    const key = perUserOnly ? row.user_id : `${row.user_id}:${webPushClassFromPlatform(row.platform)}`;
+    const list = byGroup.get(key) ?? [];
     list.push(row);
-    byUser.set(row.user_id, list);
+    byGroup.set(key, list);
   }
   const extra: string[] = [];
-  for (const list of byUser.values()) {
-    if (list.length <= WEB_KEEP_PER_USER) continue;
+  for (const list of byGroup.values()) {
+    if (list.length <= 1) continue;
     list.sort((a, b) => tokenTime(b) - tokenTime(a));
-    extra.push(...list.slice(WEB_KEEP_PER_USER).map((row) => row.token));
+    extra.push(...list.slice(1).map((row) => row.token));
   }
   return extra;
 }
@@ -203,7 +204,8 @@ function summarizeTokens(rows: PushTokenRow[], profiles: ProfileLite[]): PushTok
     other,
     android: app,
     removable,
-    extraWeb: extraWebTokens(rows).length,
+    extraWeb: extraWebTokens(rows, false).length,
+    extraWebStrict: extraWebTokens(rows, true).length,
     heavy,
   };
 }
@@ -253,7 +255,7 @@ async function deleteTokenChunks(tokens: string[]): Promise<number> {
   return removed;
 }
 
-export async function prunePushTokens(): Promise<{
+export async function prunePushTokens(mode: 'normal' | 'strict' = 'normal'): Promise<{
   unapproved: number;
   invalid: number;
   extraWeb: number;
@@ -270,7 +272,10 @@ export async function prunePushTokens(): Promise<{
   const invalid = rows
     .filter((row) => classifyPushToken(row.token, row.platform) === 'other')
     .map((row) => row.token);
-  const extraWeb = extraWebTokens(rows.filter((row) => !invalid.includes(row.token)));
+  const extraWeb = extraWebTokens(
+    rows.filter((row) => !invalid.includes(row.token)),
+    mode === 'strict'
+  );
   const cleaned = await deleteTokenChunks([...invalid, ...extraWeb]);
 
   return {

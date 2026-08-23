@@ -66,6 +66,7 @@ Table Editor에서 `profiles`, `courts` 등 생성 여부를 확인한다.
 | `033_club_roster.sql` | 가입 명단(학번+실명). **034보다 먼저** |
 | `034_roles_occupancy_attendance.sql` | 관리자/운영자 분리, 코트 현황 기본, 참석 의사, 게스트 일일 삭제. 학번 `202662024` 운영자 고정 |
 | `035_prune_push_tokens.sql` | 못 쓰는 푸시 기기 정리 RPC (`rpc_prune_push_tokens`). 같은 사람의 여러 기기는 유지 |
+| `036_attendance_seoul_date.sql` | 출석 RPC 날짜를 `Asia/Seoul` 당일로 맞춤 |
 
 라이브 DB에는 SQL Editor에서 **033 → 034 → 035** 순으로 실행한다. 034를 안 넣으면 정회원 변경 시 운영자가 빠지거나 현황 모드 RPC가 없다.
 
