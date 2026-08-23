@@ -20,6 +20,35 @@ import { colors } from '@/src/theme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
+/** 웹에서 href가 <a>가 되면 문서 전체가 다시 로드된다. 탭은 앱 안에서만 전환. */
+function SpaTabButton({
+  href: _href,
+  onPress,
+  style,
+  children,
+  ...rest
+}: {
+  href?: string;
+  onPress?: (e: unknown) => void;
+  style?: object;
+  children?: React.ReactNode;
+  [key: string]: unknown;
+}) {
+  return (
+    <Pressable
+      {...rest}
+      accessibilityRole="button"
+      style={[style, { flex: 1 }, Platform.select({ web: { cursor: 'pointer' as const } })]}
+      onPress={(e) => {
+        e?.preventDefault?.();
+        onPress?.(e);
+      }}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
 function TabIcon({ name, focused, size }: { name: IconName; focused: boolean; size: number }) {
   return (
     <Ionicons
@@ -102,7 +131,7 @@ export default function TabLayout() {
             tabBarAccessibilityLabel: item.label,
             tabBarButton: (props) => (
               <TourAnchor href={item.href} style={{ flex: 1 }}>
-                <Pressable {...props} style={[props.style, { flex: 1 }]} />
+                <SpaTabButton {...props} />
               </TourAnchor>
             ),
             tabBarItemStyle: [
@@ -129,6 +158,11 @@ export default function TabLayout() {
           title: ADMIN_NAV_ITEM.tabLabel,
           tabBarIcon: ({ focused }) => <AdminTabIcon focused={focused} size={tabIconSize} />,
           tabBarAccessibilityLabel: ADMIN_NAV_ITEM.label,
+          tabBarButton: (props) => (
+            <TourAnchor href={ADMIN_NAV_ITEM.href} style={{ flex: 1 }}>
+              <SpaTabButton {...props} />
+            </TourAnchor>
+          ),
         }}
       />
     </Tabs>

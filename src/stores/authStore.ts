@@ -1514,47 +1514,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   adminSetOperator: (userId, enabled) => {
-    const user = get().users.find((u) => u.id === userId);
-    if (!user) return { success: false, message: '회원을 찾을 수 없어요.' };
-    if (isOwnerStudentId(user.studentId) && !enabled) {
-      return { success: false, message: '운영자 계정은 운영자 권한을 해제할 수 없어요.' };
-    }
-    if (user.memberStatus !== 'approved') {
-      return { success: false, message: '승인된 회원에게만 운영자 권한을 줄 수 있어요.' };
-    }
-
-    set((state) => {
-      const users = state.users.map((u) =>
-        u.id === userId ? { ...u, isOperator: enabled } : u
-      );
-      const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
-      return { users, currentUser };
-    });
-    syncAdminProfileRemote(get().users.find((u) => u.id === userId));
-
-    runtime().pushInbox({
-      type: 'system',
-      title: enabled ? '운영자 권한 부여' : '운영자 권한 회수',
-      message: enabled
-        ? '운영자 권한이 부여됐어요. 관리 패널에서 일상 운영을 할 수 있습니다.'
-        : '운영자 권한이 회수됐어요.',
-      targetUserId: userId,
-    });
-
-    recordAdminLogAsCurrentUser({
-      category: 'member',
-      action: enabled ? 'operator.grant' : 'operator.revoke',
-      message: `${user.name} 운영자 권한 ${enabled ? '부여' : '해제'}`,
-      targetId: userId,
-      targetName: user.name,
-    });
-    persistAppState();
-    return {
-      success: true,
-      message: enabled
-        ? `${user.name}님에게 운영자 권한을 부여했어요.`
-        : `${user.name}님의 운영자 권한을 해제했어요.`,
-    };
+    void userId;
+    void enabled;
+    return { success: false, message: '운영자 권한은 고정되어 화면에서 바꿀 수 없어요.' };
   },
 
   adminAdjustPoints: (userId, delta, reason) => {

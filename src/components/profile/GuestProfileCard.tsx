@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Avatar } from '@/src/components/ui/Avatar';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { colors, spacing, typography, borderRadius, shadows } from '@/src/theme';
 
 interface GuestProfileCardProps {
@@ -12,15 +13,15 @@ interface GuestProfileCardProps {
   onLogout: () => void;
 }
 
-const GUEST_FEATURES = [
-  { ok: true, label: '코트 현황 보기' },
-  { ok: true, label: '모집방 참여' },
-  { ok: true, label: '이용 안내 보기' },
-  { ok: false, label: '포인트 · 전적 · 랭크' },
-  { ok: false, label: '친구 · 출석 · 봉사 인증' },
-];
-
 export function GuestProfileCard({ name, avatarColor, onLogout }: GuestProfileCardProps) {
+  const pointsOn = useFeatureFlagsStore((s) => s.pointsFeaturesEnabled);
+  const features = [
+    { ok: true, label: '코트 현황 보기' },
+    { ok: true, label: '모집방 참여' },
+    { ok: true, label: '이용 안내 보기' },
+    { ok: false, label: pointsOn ? '포인트 · 전적 · 랭크' : '전적 · 랭크' },
+    { ok: false, label: pointsOn ? '친구 · 출석 · 봉사 인증' : '친구 · 출석' },
+  ];
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
@@ -36,7 +37,7 @@ export function GuestProfileCard({ name, avatarColor, onLogout }: GuestProfileCa
 
       <Card style={styles.card} padding="md">
         <Text style={styles.sectionTitle}>이용 가능 기능</Text>
-        {GUEST_FEATURES.map((f) => (
+        {features.map((f) => (
           <View key={f.label} style={styles.featureRow}>
             <Text style={[styles.featureIcon, f.ok ? styles.ok : styles.no]}>{f.ok ? '✓' : '—'}</Text>
             <Text style={[styles.featureLabel, !f.ok && styles.featureMuted]}>{f.label}</Text>

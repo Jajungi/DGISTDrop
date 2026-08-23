@@ -77,7 +77,6 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
   const adminSetMemberStatus = useAuthStore((s) => s.adminSetMemberStatus);
   const adminSetLessonStatus = useAuthStore((s) => s.adminSetLessonStatus);
   const adminSetCoach = useAuthStore((s) => s.adminSetCoach);
-  const adminSetOperator = useAuthStore((s) => s.adminSetOperator);
   const currentUser = useAuthStore((s) => s.currentUser);
   const canManageAdminTier = isAdminUser(currentUser);
   const adminAdjustPoints = useAuthStore((s) => s.adminAdjustPoints);
@@ -430,34 +429,10 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
 
           <Section title="운영자 권한">
             <Text style={styles.sectionHint}>
-              최상위 권한입니다. 학번 {selected.studentId} · 현재:{' '}
+              운영자 권한은 고정입니다. 이 화면에서 부여하거나 회수하지 않습니다. 현재:{' '}
               {selected.isOperator || isOwnerUser(selected) ? '운영자' : '없음'}
-              {isOwnerUser(selected) ? ' (고정)' : ''}
+              {isOwnerUser(selected) ? ' (고정 학번)' : ''}
             </Text>
-            <View style={styles.chipRow}>
-              <Chip
-                label="운영자 부여"
-                active={!!selected.isOperator || isOwnerUser(selected)}
-                onPress={() =>
-                  confirmRoleChange(`${selected.name}님에게 운영자 권한을 부여할까요?`, () =>
-                    notify(adminSetOperator(selected.id, true))
-                  )
-                }
-              />
-              <Chip
-                label={isOwnerUser(selected) ? '해제 불가' : '권한 해제'}
-                active={!selected.isOperator && !isOwnerUser(selected)}
-                onPress={() => {
-                  if (isOwnerUser(selected)) {
-                    onToast('warning', '운영자 계정은 운영자 권한을 해제할 수 없어요.');
-                    return;
-                  }
-                  confirmRoleChange(`${selected.name}님의 운영자 권한을 회수할까요?`, () =>
-                    notify(adminSetOperator(selected.id, false))
-                  );
-                }}
-              />
-            </View>
           </Section>
 
           <Section title={pointsOn ? '동아리비 · 포인트' : '동아리비'}>
@@ -604,7 +579,9 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
           <Section title="활동 요약">
             <DetailLine label="가입일" value={new Date(selected.createdAt).toLocaleDateString('ko-KR')} />
             <DetailLine label="누적 출석" value={`${attendanceCount}회`} />
-            <DetailLine label="청소 기여" value={`${selected.cleaningContributions}회`} />
+            {pointsOn ? (
+              <DetailLine label="청소 기여" value={`${selected.cleaningContributions}회`} />
+            ) : null}
             <DetailLine label="피크 예약(오늘)" value={`${selected.peakTimeReservations}회`} />
             {sched.start && (
               <DetailLine

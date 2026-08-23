@@ -369,12 +369,11 @@ export default function ProfileScreen() {
           </Card>
         </View>
 
+        {pointsOn ? (
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>🧹 봉사 · 소모품</Text>
           <Text style={styles.sectionHint}>
-            {pointsOn
-              ? `청소 +${POINT_EARN.CLEANING}P · 네트 +${POINT_EARN.NET_SETUP}P · 셔틀콕 -${POINT_SPEND.SHUTTLECOCK}P`
-              : '청소·네트·셔틀콕 인증은 그대로 남고, 포인트만 숨겼어요.'}
+            청소 +{POINT_EARN.CLEANING}P · 네트 +{POINT_EARN.NET_SETUP}P · 셔틀콕 -{POINT_SPEND.SHUTTLECOCK}P
           </Text>
           {cleaningEntries.length === 0 ? (
             <ProfileEmptyState message="아직 청소 인증 기록이 없어요" />
@@ -390,31 +389,32 @@ export default function ProfileScreen() {
           )}
           <View style={styles.serviceActions}>
             <Button
-              title={pointsOn ? `청소 인증 (+${POINT_EARN.CLEANING}P)` : '청소 인증'}
+              title={`청소 인증 (+${POINT_EARN.CLEANING}P)`}
               onPress={() => setShowCleaning(true)}
               fullWidth
               variant="outline"
             />
             <Button
-              title={pointsOn ? `네트 설치·철거 (+${POINT_EARN.NET_SETUP}P)` : '네트 설치·철거'}
+              title={`네트 설치·철거 (+${POINT_EARN.NET_SETUP}P)`}
               onPress={() => setShowNetSetup(true)}
               fullWidth
               variant="outline"
             />
             <Button
-              title={pointsOn ? `콕 운반 (동방) (+${POINT_EARN.NET_SETUP}P)` : '콕 운반 (동방)'}
+              title={`콕 운반 (동방) (+${POINT_EARN.NET_SETUP}P)`}
               onPress={() => setShowCockCarry(true)}
               fullWidth
               variant="outline"
             />
             <Button
-              title={pointsOn ? `셔틀콕 수령 (-${POINT_SPEND.SHUTTLECOCK}P)` : '셔틀콕 수령'}
+              title={`셔틀콕 수령 (-${POINT_SPEND.SHUTTLECOCK}P)`}
               onPress={handleShuttlecockClaim}
               fullWidth
               variant="secondary"
             />
           </View>
         </Card>
+        ) : null}
 
         <Button
           title="로그아웃"
@@ -463,7 +463,7 @@ export default function ProfileScreen() {
         />
       )}
 
-      {showNetSetup && (
+      {pointsOn && showNetSetup && (
         <View style={styles.cleaningModal}>
           <View style={styles.cleaningSheet}>
             <Text style={styles.modalTitle}>네트 설치 · 철거 인증</Text>
@@ -495,7 +495,7 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
-      {showCockCarry && (
+      {pointsOn && showCockCarry && (
         <View style={styles.cleaningModal}>
           <View style={styles.cleaningSheet}>
             <Text style={styles.modalTitle}>셔틀콕 운반 인증</Text>
@@ -527,7 +527,7 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
-      {showCleaning && (
+      {pointsOn && showCleaning && (
         <View style={styles.cleaningModal}>
           <View style={styles.cleaningSheet}>
             <Text style={styles.modalTitle}>청소 인증</Text>
