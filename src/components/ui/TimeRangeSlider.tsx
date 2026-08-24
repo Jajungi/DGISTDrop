@@ -5,9 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   buildSlotMarks,
   rangeToSelectedIndices,
-  rangeIndicesToTimes,
   selectedIndicesToTimes,
   formatSelectionSummary,
+  paintDragSelection,
 } from '@/src/utils/timeSlots';
 import { normalizeHHMM } from '@/src/utils/dateFormat';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
@@ -29,8 +29,9 @@ export interface TimeRangeSliderProps {
 
 /**
  * 도착 일정 칸 선택.
- * 드래그: 시작 칸~현재 칸으로 선택 범위를 통째로 교체.
- * 탭: 그 칸만 켜거나 끔. 다른 칸은 그대로 둔다.
+ * 탭: 그 칸만 켜거나 끔.
+ * 드래그: 지나간 칸만 칠함. 빈 칸에서 시작하면 켜고, 켜진 칸에서 시작하면 끈다.
+ * 손대지 않은 칸은 그대로 둔다.
  */
 export function TimeRangeSlider({
   startHour,
@@ -76,17 +77,6 @@ export function TimeRangeSlider({
     [onChange]
   );
 
-  const applyRange = useCallback(
-    (lo: number, hi: number) => {
-      const next = new Set<number>();
-      for (let i = lo; i <= hi; i++) next.add(i);
-      setSelectedIndices(next);
-      const times = rangeIndicesToTimes(marks, lo, hi);
-      emitTimes(times.start, times.end);
-    },
-    [marks, emitTimes]
-  );
-
   const emitFromIndices = useCallback(
     (next: Set<number>) => {
       setSelectedIndices(next);
@@ -111,6 +101,7 @@ export function TimeRangeSlider({
   const trackWidthRef = useRef(0);
   const anchorRef = useRef(-1);
   const startedSelectedRef = useRef(false);
+  const snapshotRef = useRef<Set<number>>(new Set());
   const hasDraggedRef = useRef(false);
   const startLocationXRef = useRef(0);
   const DRAG_THRESHOLD = 10;
@@ -139,7 +130,7 @@ export function TimeRangeSlider({
       anchorRef.current = index;
       hasDraggedRef.current = false;
       startedSelectedRef.current = selectedIndices.has(index);
-      // 드래그 시작 전에는 즉시 반영하지 않음 (옆 칸 오인·연쇄 삭제 방지)
+      snapshotRef.current = new Set(selectedIndices);
     },
     [indexFromLocationX, selectedIndices]
   );
@@ -155,10 +146,15 @@ export function TimeRangeSlider({
       }
       const cur = indexFromLocationX(locationX);
       if (cur < 0) return;
-      // 드래그는 항상 연속 구간으로 교체 (구멍·부분 삭제 없음)
-      applyRange(Math.min(anchor, cur), Math.max(anchor, cur));
+      const next = paintDragSelection(
+        snapshotRef.current,
+        anchor,
+        cur,
+        startedSelectedRef.current
+      );
+      emitFromIndices(next);
     },
-    [indexFromLocationX, applyRange]
+    [indexFromLocationX, emitFromIndices]
   );
 
   const handleRelease = useCallback(() => {
@@ -256,7 +252,7 @@ export function TimeRangeSlider({
               <Text style={styles.rangeSummary}>{rangeSummary}</Text>
             ) : (
               <Text style={styles.rangeHint}>
-                칸을 누르면 그 칸만 바뀌고, 드래그하면 구간을 고를 수 있어요.
+                드래그는 지나간 칸만 칠합니다. 빈 칸에서 시작하면 켜고, 켜진 칸에서 시작하면 끕니다.
               </Text>
             )}
           </View>

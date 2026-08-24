@@ -83,6 +83,26 @@ export function rangeToSelectedIndices(
   return set;
 }
 
+/**
+ * 드래그 칠하기: 시작 시점 선택을 기준으로, 지나간 칸만 켜거나 끈다.
+ * 손대지 않은 칸은 그대로 둔다. paintOff=true 이면 구간을 끈다.
+ */
+export function paintDragSelection(
+  snapshot: Iterable<number>,
+  lo: number,
+  hi: number,
+  paintOff: boolean
+): Set<number> {
+  const next = new Set(snapshot);
+  const from = Math.min(lo, hi);
+  const to = Math.max(lo, hi);
+  for (let i = from; i <= to; i++) {
+    if (paintOff) next.delete(i);
+    else next.add(i);
+  }
+  return next;
+}
+
 /** 선택된 인덱스를 연속 구간들로 분리 */
 export function getContiguousRuns(indices: number[]): [number, number][] {
   if (!indices.length) return [];

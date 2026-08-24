@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, View, Text, StyleSheet } from 'react-native';
+import { Modal, Pressable, View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { Button } from '@/src/components/ui/Button';
@@ -70,12 +71,18 @@ export function AttendanceIntentGate() {
     setDismissed(true);
   };
 
+  const skipTime = () => {
+    setDismissed(true);
+  };
+
   const saveTime = () => {
-    if (arrivalTime) {
-      const r = updateUserSchedule(currentUser.id, arrivalTime, endTime || undefined);
-      showToast({ type: r.success ? 'success' : 'warning', title: '', message: r.message });
-      if (!r.success) return;
+    if (!arrivalTime) {
+      showToast({ type: 'info', title: '', message: '시간을 모르면 건너뛰어도 돼요.' });
+      return;
     }
+    const r = updateUserSchedule(currentUser.id, arrivalTime, endTime || undefined);
+    showToast({ type: r.success ? 'success' : 'warning', title: '', message: r.message });
+    if (!r.success) return;
     setDismissed(true);
   };
 
@@ -83,11 +90,23 @@ export function AttendanceIntentGate() {
     <Modal transparent animationType="fade" visible>
       <View style={styles.overlay}>
         <View style={styles.card}>
-          <Text style={styles.kicker}>{todayLabel}</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.kicker}>{todayLabel}</Text>
+            {showTimePicker ? (
+              <Pressable
+                onPress={skipTime}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="닫기"
+              >
+                <Ionicons name="close" size={22} color={colors.textMuted} />
+              </Pressable>
+            ) : null}
+          </View>
           <Text style={styles.title}>{showTimePicker ? '언제 참석하시나요?' : '오늘 오시나요?'}</Text>
           <Text style={styles.body}>
             {showTimePicker
-              ? '프로필과 같은 칸입니다. 누르면 그 칸만 바뀌고, 드래그하면 구간을 고를 수 있어요.'
+              ? '모를 때는 건너뛰어도 됩니다. 참석은 그대로 유지돼요.'
               : '참석하면 올 사람 수에 들어가요. 불참이면 오늘 일정에서 빠져요.'}
           </Text>
 
@@ -107,7 +126,7 @@ export function AttendanceIntentGate() {
                 showDateRow={false}
               />
               <Button title="시간 저장" onPress={saveTime} fullWidth />
-              <Button title="나중에" variant="ghost" onPress={() => setDismissed(true)} fullWidth />
+              <Button title="건너뛰기" variant="ghost" onPress={skipTime} fullWidth />
             </>
           ) : (
             <View style={styles.row}>
@@ -142,6 +161,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 24,
   },
   kicker: { ...typography.caption, color: colors.textMuted },
   title: { ...typography.h2, color: colors.text },
