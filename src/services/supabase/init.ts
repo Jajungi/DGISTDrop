@@ -264,8 +264,8 @@ function setupSocialSubscriptions(userId: string, isAdmin: boolean) {
           try {
             const { requests, friendships } = await social.fetchFriendData(userId);
             useFriendStore.getState().hydrate(friendships, requests);
-          } catch {
-            /* ignore */
+          } catch (err) {
+            console.warn('[friend] refetch failed', err);
           }
         })
       );

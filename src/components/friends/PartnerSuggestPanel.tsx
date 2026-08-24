@@ -15,6 +15,8 @@ export function PartnerSuggestPanel() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const users = useAuthStore((s) => s.users);
   const matchHistory = useNotificationStore((s) => s.matchHistory);
+  const friendships = useFriendStore((s) => s.friendships);
+  const friendRequests = useFriendStore((s) => s.friendRequests);
   const getRelationStatus = useFriendStore((s) => s.getRelationStatus);
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
 
@@ -36,7 +38,7 @@ export function PartnerSuggestPanel() {
       count: number;
       rel: ReturnType<typeof getRelationStatus>;
     }[];
-  }, [currentUser, users, matchHistory, getRelationStatus]);
+  }, [currentUser, users, matchHistory, getRelationStatus, friendships, friendRequests]);
 
   if (!currentUser || suggestions.length === 0) return null;
 
@@ -76,7 +78,7 @@ export function PartnerSuggestPanel() {
 }
 
 const styles = StyleSheet.create({
-  section: { gap: spacing.sm },
+  section: { gap: spacing.sm, marginBottom: spacing.lg },
   sectionHeader: { gap: 2, paddingHorizontal: spacing.xs },
   sectionTitle: {
     ...typography.label,

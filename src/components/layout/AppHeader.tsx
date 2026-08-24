@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, Platform, Switch } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore, useAppStore } from '@/src/stores/authStore';
@@ -11,6 +11,7 @@ import { useSearchStore } from '@/src/stores/searchStore';
 import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
 import { isStaffUser } from '@/src/utils/staffAccess';
 import { Avatar } from '@/src/components/ui/Avatar';
+import { Toggle } from '@/src/components/ui/Toggle';
 import { NotificationPanel } from './NotificationPanel';
 import { DropBrand } from './DropBrand';
 import { HamburgerIcon } from './HamburgerIcon';
@@ -157,12 +158,11 @@ export function AppHeader() {
       <View style={[styles.right, isMobile && styles.rightMobile]}>
         {isStaffUser(currentUser) && (
           <View style={styles.demoToggle}>
-            <Switch
+            <Toggle
+              size="sm"
               value={demoMode}
               onValueChange={setDemoMode}
-              trackColor={{ false: colors.borderSubtle, true: colors.primaryLight }}
-              thumbColor={demoMode ? colors.primary : colors.textMuted}
-              style={styles.demoSwitch}
+              accessibilityLabel="데모 모드"
             />
             {!isMobile && <Text style={styles.demoLabel}>데모</Text>}
           </View>
@@ -338,9 +338,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     marginRight: 4,
-  },
-  demoSwitch: {
-    transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }],
   },
   demoLabel: {
     ...typography.small,

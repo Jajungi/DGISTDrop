@@ -49,10 +49,19 @@ export function FriendRequestsPanel({ incoming, outgoing }: FriendRequestsPanelP
                       onPress={() => router.push(`/user/${req.fromUserId}` as Href)}
                       style={styles.rowMain}
                     >
-                      <Avatar name={av.name} color={av.color} size={40} />
+                      <Avatar
+                        name={av.name}
+                        color={av.color}
+                        imageUri={users.find((x) => x.id === req.fromUserId)?.avatarUri}
+                        size={40}
+                      />
                       <View style={styles.body}>
-                        <Text style={styles.name}>{req.fromUserName}</Text>
-                        <Text style={styles.sub}>친구 신청을 보냈어요</Text>
+                        <Text style={styles.name} numberOfLines={1}>
+                          {req.fromUserName}
+                        </Text>
+                        <Text style={styles.sub} numberOfLines={1}>
+                          친구 신청을 보냈어요
+                        </Text>
                       </View>
                     </Pressable>
                     <View style={styles.actions}>
@@ -60,13 +69,17 @@ export function FriendRequestsPanel({ incoming, outgoing }: FriendRequestsPanelP
                         onPress={() => notify(acceptFriendRequest(req.id, currentUser.id))}
                         style={[styles.btn, styles.accept]}
                       >
-                        <Text style={styles.btnTextLight}>수락</Text>
+                        <Text style={styles.btnTextLight} numberOfLines={1}>
+                          수락
+                        </Text>
                       </Pressable>
                       <Pressable
                         onPress={() => notify(rejectFriendRequest(req.id, currentUser.id))}
                         style={[styles.btn, styles.reject]}
                       >
-                        <Text style={styles.btnTextMuted}>거절</Text>
+                        <Text style={styles.btnTextMuted} numberOfLines={1}>
+                          거절
+                        </Text>
                       </Pressable>
                     </View>
                   </View>
@@ -81,23 +94,39 @@ export function FriendRequestsPanel({ incoming, outgoing }: FriendRequestsPanelP
         <View style={styles.section}>
           <Text style={styles.title}>보낸 친구 신청 ({outgoing.length})</Text>
           <View style={styles.card}>
-            {outgoing.map((req, i) => (
-              <View key={req.id}>
-                {i > 0 && <View style={styles.divider} />}
-                <View style={styles.row}>
-                  <View style={styles.body}>
-                    <Text style={styles.name}>{req.toUserName}</Text>
-                    <Text style={styles.sub}>응답 대기 중</Text>
+            {outgoing.map((req, i) => {
+              const av = avatarFor(req.toUserId, req.toUserName);
+              const u = users.find((x) => x.id === req.toUserId);
+              return (
+                <View key={req.id}>
+                  {i > 0 && <View style={styles.divider} />}
+                  <View style={styles.row}>
+                    <Pressable
+                      onPress={() => router.push(`/user/${req.toUserId}` as Href)}
+                      style={styles.rowMain}
+                    >
+                      <Avatar name={av.name} color={av.color} imageUri={u?.avatarUri} size={40} />
+                      <View style={styles.body}>
+                        <Text style={styles.name} numberOfLines={1}>
+                          {req.toUserName}
+                        </Text>
+                        <Text style={styles.sub} numberOfLines={1}>
+                          응답 대기 중
+                        </Text>
+                      </View>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => notify(cancelFriendRequest(req.id, currentUser.id))}
+                      style={[styles.btn, styles.reject]}
+                    >
+                      <Text style={styles.btnTextMuted} numberOfLines={1}>
+                        취소
+                      </Text>
+                    </Pressable>
                   </View>
-                  <Pressable
-                    onPress={() => notify(cancelFriendRequest(req.id, currentUser.id))}
-                    style={[styles.btn, styles.reject]}
-                  >
-                    <Text style={styles.btnTextMuted}>취소</Text>
-                  </Pressable>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
       )}
@@ -123,19 +152,21 @@ const styles = StyleSheet.create({
   },
   rowMain: {
     flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     ...Platform.select({ web: { cursor: 'pointer' as const } }),
   },
-  body: { flex: 1, gap: 2 },
+  body: { flex: 1, minWidth: 0, gap: 2 },
+  actions: { flexDirection: 'row', gap: spacing.xs, flexShrink: 0 },
   name: { ...typography.bodyBold, color: colors.text },
   sub: { ...typography.caption, color: colors.textMuted },
-  actions: { flexDirection: 'row', gap: spacing.xs },
   btn: {
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: borderRadius.sm,
+    flexShrink: 0,
     ...Platform.select({ web: { cursor: 'pointer' as const } }),
   },
   accept: { backgroundColor: colors.primary },

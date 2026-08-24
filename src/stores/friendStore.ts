@@ -88,15 +88,23 @@ export const useFriendStore = create<FriendState>((set, get) => ({
     return pending.fromUserId === userId ? 'pending_out' : 'pending_in';
   },
 
-  getIncomingRequests: (userId) =>
-    get()
-      .friendRequests.filter((r) => r.status === 'pending' && r.toUserId === userId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+  getIncomingRequests: (userId) => {
+    const friends = new Set(get().friendships[userId] ?? []);
+    return get()
+      .friendRequests.filter(
+        (r) => r.status === 'pending' && r.toUserId === userId && !friends.has(r.fromUserId)
+      )
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
 
-  getOutgoingRequests: (userId) =>
-    get()
-      .friendRequests.filter((r) => r.status === 'pending' && r.fromUserId === userId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+  getOutgoingRequests: (userId) => {
+    const friends = new Set(get().friendships[userId] ?? []);
+    return get()
+      .friendRequests.filter(
+        (r) => r.status === 'pending' && r.fromUserId === userId && !friends.has(r.toUserId)
+      )
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
 
   sendFriendRequest: (fromUserId, toUserId) => {
     if (fromUserId === toUserId) {
@@ -128,14 +136,39 @@ export const useFriendStore = create<FriendState>((set, get) => ({
       createdAt: new Date().toISOString(),
     };
 
-    set((state) => ({ friendRequests: [req, ...state.friendRequests] }));
+    set((state) => ({
+      friendRequests: [
+        req,
+        ...state.friendRequests.filter(
+          (r) => !(r.fromUserId === fromUserId && r.toUserId === toUserId)
+        ),
+      ],
+    }));
     persistAppState();
 
     if (isSupabaseEnabled()) {
       import('@/src/services/supabase/social')
         .then(({ sendFriendRequestRemote }) =>
           sendFriendRequestRemote(req).then((remoteId) => {
-            if (!remoteId) return;
+            if (!remoteId) {
+              set((state) => ({
+                friendRequests: state.friendRequests.filter((r) => r.id !== req.id),
+              }));
+              persistAppState();
+              const again = get().getRelationStatus(fromUserId, toUserId);
+              const message =
+                again === 'friends'
+                  ? '이미 친구예요.'
+                  : again === 'pending_in'
+                    ? '상대가 먼저 신청했어요. 받은 신청을 확인해 주세요.'
+                    : '친구 신청을 저장하지 못했어요.';
+              useNotificationStore.getState().showToast({
+                type: 'info',
+                title: '',
+                message,
+              });
+              return;
+            }
             set((state) => ({
               friendRequests: state.friendRequests.map((r) =>
                 r.id === req.id ? { ...r, id: remoteId } : r
@@ -143,7 +176,18 @@ export const useFriendStore = create<FriendState>((set, get) => ({
             }));
           })
         )
-        .catch((err) => console.warn('[friend] send failed', err));
+        .catch((err) => {
+          console.warn('[friend] send failed', err);
+          set((state) => ({
+            friendRequests: state.friendRequests.filter((r) => r.id !== req.id),
+          }));
+          persistAppState();
+          useNotificationStore.getState().showToast({
+            type: 'warning',
+            title: '',
+            message: '친구 신청에 실패했어요. 잠시 후 다시 시도해 주세요.',
+          });
+        });
     }
 
     useNotificationStore.getState().pushInbox({
@@ -167,9 +211,16 @@ export const useFriendStore = create<FriendState>((set, get) => ({
       addFriendPair(friendships, req.fromUserId, req.toUserId);
       return {
         friendships,
-        friendRequests: state.friendRequests.map((r) =>
-          r.id === requestId ? { ...r, status: 'accepted' as const } : r
-        ),
+        friendRequests: state.friendRequests
+          .filter(
+            (r) =>
+              !(
+                r.status === 'pending' &&
+                r.fromUserId === req.toUserId &&
+                r.toUserId === req.fromUserId
+              )
+          )
+          .map((r) => (r.id === requestId ? { ...r, status: 'accepted' as const } : r)),
       };
     });
     persistAppState();
@@ -227,7 +278,16 @@ export const useFriendStore = create<FriendState>((set, get) => ({
     set((state) => {
       const friendships = { ...state.friendships };
       removeFriendPair(friendships, userId, friendId);
-      return { friendships };
+      return {
+        friendships,
+        friendRequests: state.friendRequests.filter(
+          (r) =>
+            !(
+              (r.fromUserId === userId && r.toUserId === friendId) ||
+              (r.fromUserId === friendId && r.toUserId === userId)
+            )
+        ),
+      };
     });
     persistAppState();
     remoteFriend((m) => m.removeFriendRemote(userId, friendId));

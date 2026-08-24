@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo } from 'react';
-import { ScrollView, View, Text, StyleSheet, Switch, Pressable, Platform } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { Card } from '@/src/components/ui/Card';
 import { Avatar } from '@/src/components/ui/Avatar';
+import { Toggle } from '@/src/components/ui/Toggle';
 import { PushNotificationCard } from '@/src/components/profile/PushNotificationCard';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useFriendStore } from '@/src/stores/friendStore';
@@ -154,8 +155,9 @@ export default function SettingsScreen() {
                       />
                       <Text style={styles.friendName}>{u.name}</Text>
                     </Pressable>
-                    <Switch
+                    <Toggle
                       value={on}
+                      accessibilityLabel={`${u.name} 도착 알림`}
                       onValueChange={(next) => {
                         void setArrivalNotify(currentUser.id, u.id, next);
                         showToast({
@@ -166,8 +168,6 @@ export default function SettingsScreen() {
                             : `${u.name}님 도착 알림을 껐어요.`,
                         });
                       }}
-                      trackColor={{ false: colors.border, true: colors.primaryLight }}
-                      thumbColor={on ? colors.primary : colors.textMuted}
                     />
                   </View>
                 );
@@ -199,11 +199,10 @@ function PrefRow({
         <Text style={styles.prefTitle}>{title}</Text>
         <Text style={styles.prefHint}>{hint}</Text>
       </View>
-      <Switch
+      <Toggle
         value={value}
         onValueChange={onChange}
-        trackColor={{ false: colors.border, true: colors.primaryLight }}
-        thumbColor={value ? colors.primary : colors.textMuted}
+        accessibilityLabel={title}
       />
     </View>
   );

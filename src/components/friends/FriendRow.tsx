@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Platform, Switch } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { router, type Href } from 'expo-router';
 import type { User } from '@/src/types';
 import { Avatar } from '@/src/components/ui/Avatar';
 import { Button } from '@/src/components/ui/Button';
+import { Toggle } from '@/src/components/ui/Toggle';
 import { RANK_THRESHOLDS } from '@/src/constants';
 import { formatArrivalLabel, formatScheduleRange } from '@/src/utils/friendsPresence';
 import { FriendActionButton } from './FriendActionButton';
@@ -22,27 +23,35 @@ interface FriendRowProps {
 
 export function FriendRow({ user, compact = false }: FriendRowProps) {
   const currentUser = useAuthStore((s) => s.currentUser);
+  const currentUserId = currentUser?.id;
   const isGuest = useAuthStore((s) => s.isGuestSession);
-  const getRelationStatus = useFriendStore((s) => s.getRelationStatus);
-  const isArrivalNotifyOn = useFriendPrefsStore((s) => s.isArrivalNotifyOn);
+  const isFriend = useFriendStore((s) =>
+    currentUserId ? (s.friendships[currentUserId] ?? []).includes(user.id) : false
+  );
+  const notifyOn = useFriendPrefsStore((s) =>
+    currentUserId ? (s.arrivalNotify[currentUserId] ?? []).includes(user.id) : false
+  );
   const setArrivalNotify = useFriendPrefsStore((s) => s.setArrivalNotify);
   const showToast = useNotificationStore((s) => s.showToast);
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
+  const reservationOn = useFeatureFlagsStore((s) => s.reservationEnabled);
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const arrival = formatArrivalLabel(user);
   const range = formatScheduleRange(user);
   const rankLabel = RANK_THRESHOLDS[user.rank]?.label ?? user.rank;
-  const isFriend =
-    !!currentUser && getRelationStatus(currentUser.id, user.id) === 'friends';
   const canInvite =
-    !!currentUser && !isGuest && !compact && user.id !== currentUser.id && isFriend;
-  const notifyOn =
-    !!currentUser && isFriend && isArrivalNotifyOn(currentUser.id, user.id);
+    reservationOn &&
+    !!currentUser &&
+    !isGuest &&
+    !compact &&
+    user.id !== currentUser.id &&
+    isFriend;
+  const showActions = isFriend && !compact;
 
   return (
     <>
-      <View style={[styles.row, compact && styles.rowCompact]}>
+      <View style={[styles.wrap, compact && styles.wrapCompact]}>
         <Pressable
           onPress={() => router.push(`/user/${user.id}` as Href)}
           style={({ pressed }) => [styles.main, pressed && styles.rowPressed]}
@@ -56,75 +65,93 @@ export function FriendRow({ user, compact = false }: FriendRowProps) {
           />
           <View style={styles.body}>
             <View style={styles.nameRow}>
-              <Text style={styles.name}>{user.name}</Text>
-              {eloOn ? <Text style={styles.rank}>{rankLabel}</Text> : null}
+              <Text style={styles.name} numberOfLines={1}>
+                {user.name}
+              </Text>
+              {eloOn ? (
+                <Text style={styles.rank} numberOfLines={1}>
+                  {rankLabel}
+                </Text>
+              ) : null}
             </View>
             {arrival ? (
-              <Text style={styles.arrival}>{arrival}</Text>
+              <Text style={styles.arrival} numberOfLines={1}>
+                {arrival}
+              </Text>
             ) : (
-              <Text style={styles.noSchedule}>일정 미등록</Text>
+              <Text style={styles.noSchedule} numberOfLines={1}>
+                일정 미등록
+              </Text>
             )}
-            {range && user.scheduledEnd && (
-              <Text style={styles.range}>{range}</Text>
-            )}
+            {range && user.scheduledEnd ? (
+              <Text style={styles.range} numberOfLines={1}>
+                {range}
+              </Text>
+            ) : null}
           </View>
-          {user.isAtGym && (
+          {user.isAtGym ? (
             <View style={styles.hereBadge}>
-              <Text style={styles.hereText}>체육관</Text>
+              <Text style={styles.hereText} numberOfLines={1}>
+                체육관
+              </Text>
             </View>
-          )}
+          ) : null}
         </Pressable>
-        {isFriend && !compact && (
-          <View style={styles.notifyCol}>
-            <Text style={styles.notifyLabel}>도착</Text>
-            <Switch
-              value={notifyOn}
-              onValueChange={(on) => {
-                if (!currentUser) return;
-                void setArrivalNotify(currentUser.id, user.id, on);
-                showToast({
-                  type: 'info',
-                  title: '',
-                  message: on
-                    ? `${user.name}님 도착 시 알려드릴게요.`
-                    : `${user.name}님 도착 알림을 껐어요.`,
-                });
-              }}
-              trackColor={{ false: colors.border, true: colors.primaryLight }}
-              thumbColor={notifyOn ? colors.primary : colors.textMuted}
-            />
+        {showActions ? (
+          <View style={styles.actions}>
+            <View style={styles.notifyCol}>
+              <Text
+                style={[styles.notifyLabel, notifyOn && styles.notifyLabelOn]}
+                numberOfLines={1}
+              >
+                도착
+              </Text>
+              <Toggle
+                size="sm"
+                value={notifyOn}
+                accessibilityLabel={`${user.name} 도착 알림`}
+                onValueChange={(on) => {
+                  if (!currentUserId) return;
+                  void setArrivalNotify(currentUserId, user.id, on);
+                  showToast({
+                    type: 'info',
+                    title: '',
+                    message: on
+                      ? `${user.name}님 도착 시 알려드릴게요.`
+                      : `${user.name}님 도착 알림을 껐어요.`,
+                  });
+                }}
+              />
+            </View>
+            {canInvite ? (
+              <Button title="초대" size="sm" variant="outline" onPress={() => setInviteOpen(true)} />
+            ) : null}
+            <FriendActionButton otherUserId={user.id} compact />
           </View>
-        )}
-        {canInvite && (
-          <Button title="초대" size="sm" variant="outline" onPress={() => setInviteOpen(true)} />
-        )}
-        {!compact && <FriendActionButton otherUserId={user.id} compact />}
+        ) : null}
       </View>
-      {canInvite && (
+      {canInvite ? (
         <FriendInviteModal
           visible={inviteOpen}
           friendId={user.id}
           friendName={user.name}
           onClose={() => setInviteOpen(false)}
         />
-      )}
+      ) : null}
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+  wrap: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
+    gap: spacing.sm,
   },
-  rowCompact: {
+  wrapCompact: {
     paddingVertical: spacing.sm,
   },
   main: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
@@ -135,6 +162,7 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+    minWidth: 0,
     gap: 2,
   },
   nameRow: {
@@ -146,11 +174,13 @@ const styles = StyleSheet.create({
     ...typography.bodyBold,
     color: colors.text,
     fontSize: 16,
+    flexShrink: 1,
   },
   rank: {
     ...typography.small,
     color: colors.textMuted,
     fontSize: 12,
+    flexShrink: 0,
   },
   arrival: {
     fontSize: 18,
@@ -169,20 +199,34 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 1,
   },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexWrap: 'nowrap',
+    gap: spacing.sm,
+    flexShrink: 0,
+  },
   notifyCol: {
     alignItems: 'center',
     gap: 2,
+    flexShrink: 0,
   },
   notifyLabel: {
     ...typography.small,
     color: colors.textMuted,
     fontSize: 10,
   },
+  notifyLabelOn: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
   hereBadge: {
     backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
+    flexShrink: 0,
   },
   hereText: {
     ...typography.small,

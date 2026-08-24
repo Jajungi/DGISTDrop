@@ -66,7 +66,9 @@ export function FriendActionButton({ otherUserId, compact = false }: FriendActio
         onPress={() => notify(removeFriend(currentUserId, otherUserId))}
         style={[styles.btn, styles.btnGhost, compact && styles.btnCompact]}
       >
-        <Text style={[styles.btnText, styles.btnTextGhost]}>친구 삭제</Text>
+        <Text style={[styles.btnText, styles.btnTextGhost]} numberOfLines={1}>
+          친구 삭제
+        </Text>
       </Pressable>
     );
   }
@@ -78,13 +80,17 @@ export function FriendActionButton({ otherUserId, compact = false }: FriendActio
           onPress={() => notify(acceptFriendRequest(incoming.id, currentUserId))}
           style={[styles.btn, styles.btnPrimary, compact && styles.btnCompact]}
         >
-          <Text style={styles.btnText}>수락</Text>
+          <Text style={styles.btnText} numberOfLines={1}>
+            수락
+          </Text>
         </Pressable>
         <Pressable
           onPress={() => notify(rejectFriendRequest(incoming.id, currentUserId))}
           style={[styles.btn, styles.btnGhost, compact && styles.btnCompact]}
         >
-          <Text style={[styles.btnText, styles.btnTextGhost]}>거절</Text>
+          <Text style={[styles.btnText, styles.btnTextGhost]} numberOfLines={1}>
+            거절
+          </Text>
         </Pressable>
       </View>
     );
@@ -96,7 +102,9 @@ export function FriendActionButton({ otherUserId, compact = false }: FriendActio
         onPress={() => notify(cancelFriendRequest(outgoing.id, currentUserId))}
         style={[styles.btn, styles.btnGhost, compact && styles.btnCompact]}
       >
-        <Text style={[styles.btnText, styles.btnTextGhost]}>신청 취소</Text>
+        <Text style={[styles.btnText, styles.btnTextGhost]} numberOfLines={1}>
+          신청 취소
+        </Text>
       </Pressable>
     );
   }
@@ -106,7 +114,9 @@ export function FriendActionButton({ otherUserId, compact = false }: FriendActio
       onPress={() => notify(sendFriendRequest(currentUserId, otherUserId))}
       style={[styles.btn, styles.btnPrimary, compact && styles.btnCompact]}
     >
-      <Text style={styles.btnText}>친구 신청</Text>
+      <Text style={styles.btnText} numberOfLines={1}>
+        친구 신청
+      </Text>
     </Pressable>
   );
 }
@@ -117,6 +127,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: borderRadius.sm,
+    flexShrink: 0,
     ...Platform.select({ web: { cursor: 'pointer' as const } }),
   },
   btnCompact: {

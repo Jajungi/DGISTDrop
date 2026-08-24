@@ -180,7 +180,7 @@
         <tr><th>작성 주체</th><td>DGIST 배드민턴 동아리 Drop</td></tr>
         <tr><th>열람 대상</th><td>동아리 운영진</td></tr>
         <tr><th>개정일</th><td>2026-08-24</td></tr>
-        <tr><th>대상 범위</th><td>v0.1 ~ v1.10 (Git 저장소 및 미푸시 반영분 포함)</td></tr>
+        <tr><th>대상 범위</th><td>v0.1 ~ v1.11 (Git 저장소 및 미푸시 반영분 포함)</td></tr>
         <tr><th>근거 저장소</th><td>https://github.com/Jajungi/DGISTDrop</td></tr>
       </table>
     </div>
@@ -211,7 +211,7 @@
       <tbody>
         <tr><td class="toc-no">1</td><td>개요</td><td>—</td><td></td></tr>
         <tr><td class="toc-no">2</td><td>목차</td><td>—</td><td></td></tr>
-        <tr><td class="toc-no">3</td><td>버전별 변경 내역</td><td>v0.1–v1.10</td><td></td></tr>
+        <tr><td class="toc-no">3</td><td>버전별 변경 내역</td><td>v0.1–v1.11</td><td></td></tr>
         
       <tr>
         <td class="toc-no">3.1</td>
@@ -332,6 +332,12 @@
         <td>v1.10 취소 안내와 활동일 디테일</td>
         <td class="toc-date">2026-08-24</td>
         <td class="toc-page"><a href="#v1.10">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.21</td>
+        <td>v1.11 친구 신청·목록 정리</td>
+        <td class="toc-date">2026-08-24</td>
+        <td class="toc-page"><a href="#v1.11">이동</a></td>
       </tr>
       </tbody>
     </table>
@@ -1075,6 +1081,45 @@
         <tr>
           <td class="col-no">5</td>
           <td class="col-what">활동일·시각·참석 날짜를 기기 시계가 아니라 한국 시간으로 맞춤. 날짜가 없는 옛 참석·시각은 오늘로 보지 않음.</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v1.11">
+        <h2 class="h2">3.21　v1.11　친구 신청·목록 정리</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-08-24</td><th>항목 수</th><td>5</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>친구는 신청 후 수락하면 서로 친구가 되고, 신청 칸과 친구 목록이 겹치지 않으며 양쪽 화면에 바로 보이게 함.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">친구 행을 이름·체육관 뱃지와 도착·초대·삭제로 나눠 모바일에서 글자가 세로로 깨지거나 스위치가 겹치지 않게 함.</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">이미 친구면 보낸·받은 신청 목록에서 빼 줌. 둘 다 신청했을 때 한쪽만 수락해도 반대 신청은 사라지고 한 쌍만 남음. 같은 방향으로는 신청을 한 번만 보냄.</td>
+        </tr>
+        <tr>
+          <td class="col-no">3</td>
+          <td class="col-what">친구를 삭제하면 수락·남은 신청 줄도 같이 지움. 친구 탭을 열 때와 상대가 신청·수락할 때 목록이 바로 갱신됨. Supabase에 038_friend_request_unique.sql 적용 필요.</td>
+        </tr>
+        <tr>
+          <td class="col-no">4</td>
+          <td class="col-what">친구 도착 알림 스위치를 켜면 바로 색이 바뀌게 함. 설정·데모·모집방 비밀번호 스위치도 같이 맞춤.</td>
+        </tr>
+        <tr>
+          <td class="col-no">5</td>
+          <td class="col-what">거절된 뒤에도 다시 친구 신청할 수 있게 함. 저장에 실패하면 보낸 신청 칸에서 바로 지움.</td>
         </tr></tbody>
         </table>
       </section>

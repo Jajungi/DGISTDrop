@@ -47,8 +47,10 @@ export async function fetchFriendData(
   const rows = (data as DbFriendRequest[]).map(mapFriendRequest);
   const friendships: Record<string, string[]> = {};
   const addPair = (a: string, b: string) => {
-    (friendships[a] ??= []).push(b);
-    (friendships[b] ??= []).push(a);
+    const la = (friendships[a] ??= []);
+    const lb = (friendships[b] ??= []);
+    if (!la.includes(b)) la.push(b);
+    if (!lb.includes(a)) lb.push(a);
   };
   rows
     .filter((r) => r.status === 'accepted')
@@ -57,7 +59,50 @@ export async function fetchFriendData(
 }
 
 export async function sendFriendRequestRemote(req: FriendRequest): Promise<string | null> {
-  const { data, error } = await getSupabase()
+  const sb = getSupabase();
+  const { data: existing, error: findErr } = await sb
+    .from('friend_requests')
+    .select('*')
+    .or(
+      `and(from_user_id.eq.${req.fromUserId},to_user_id.eq.${req.toUserId}),and(from_user_id.eq.${req.toUserId},to_user_id.eq.${req.fromUserId})`
+    );
+  if (findErr) throw findErr;
+
+  const rows = (existing as DbFriendRequest[]) ?? [];
+  if (rows.some((r) => r.status === 'accepted')) return null;
+
+  const minePending = rows.find(
+    (r) => r.status === 'pending' && r.from_user_id === req.fromUserId
+  );
+  if (minePending) return minePending.id;
+
+  if (rows.some((r) => r.status === 'pending' && r.from_user_id === req.toUserId)) {
+    return null;
+  }
+
+  // 거절·기타 같은 방향 행이 있으면 insert 대신 pending으로 재사용 (038 unique)
+  const mineSame = rows.find(
+    (r) => r.from_user_id === req.fromUserId && r.to_user_id === req.toUserId
+  );
+  if (mineSame) {
+    const now = new Date().toISOString();
+    const { data, error } = await sb
+      .from('friend_requests')
+      .update({
+        status: 'pending',
+        from_user_name: req.fromUserName,
+        to_user_name: req.toUserName,
+        created_at: now,
+        responded_at: null,
+      })
+      .eq('id', mineSame.id)
+      .select('id')
+      .single();
+    if (error) throw error;
+    return (data as { id: string })?.id ?? mineSame.id;
+  }
+
+  const { data, error } = await sb
     .from('friend_requests')
     .insert({
       from_user_id: req.fromUserId,
@@ -76,11 +121,30 @@ export async function respondFriendRequestRemote(
   id: string,
   status: FriendRequestStatus
 ): Promise<void> {
-  const { error } = await getSupabase()
+  const sb = getSupabase();
+  const { data: row, error: getErr } = await sb
+    .from('friend_requests')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (getErr) throw getErr;
+
+  const { error } = await sb
     .from('friend_requests')
     .update({ status, responded_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw error;
+
+  if (status === 'accepted' && row) {
+    const r = row as DbFriendRequest;
+    const { error: delErr } = await sb
+      .from('friend_requests')
+      .delete()
+      .eq('status', 'pending')
+      .eq('from_user_id', r.to_user_id)
+      .eq('to_user_id', r.from_user_id);
+    if (delErr) throw delErr;
+  }
 }
 
 export async function deleteFriendRequestRemote(id: string): Promise<void> {
@@ -88,12 +152,11 @@ export async function deleteFriendRequestRemote(id: string): Promise<void> {
   if (error) throw error;
 }
 
-/** 두 사용자 사이의 수락된(=친구) 신청 행 삭제 — 친구 해제 */
+/** 두 사용자 사이의 친구 행(수락·남은 신청) 삭제 — 친구 해제 */
 export async function removeFriendRemote(userA: string, userB: string): Promise<void> {
   const { error } = await getSupabase()
     .from('friend_requests')
     .delete()
-    .eq('status', 'accepted')
     .or(
       `and(from_user_id.eq.${userA},to_user_id.eq.${userB}),and(from_user_id.eq.${userB},to_user_id.eq.${userA})`
     );

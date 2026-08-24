@@ -8,7 +8,6 @@ import {
   TextInput,
   Modal,
   Pressable,
-  Switch,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,6 +24,7 @@ import { SystemNoticeBanner } from '@/src/components/guide/SystemNoticeBanner';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { Button } from '@/src/components/ui/Button';
+import { Toggle } from '@/src/components/ui/Toggle';
 import { RANK_ORDER, RANK_THRESHOLDS } from '@/src/constants';
 import { getRankIndex } from '@/src/services/elo';
 import type { RankTier } from '@/src/types';
@@ -290,11 +290,10 @@ export default function LobbyScreen() {
 
                 <View style={styles.switchRow}>
                   <Text style={styles.switchLabel}>비밀번호 설정</Text>
-                  <Switch
+                  <Toggle
                     value={usePassword}
                     onValueChange={setUsePassword}
-                    trackColor={{ false: colors.border, true: colors.primaryLight }}
-                    thumbColor={usePassword ? colors.primary : colors.textMuted}
+                    accessibilityLabel="비밀번호 설정"
                   />
                 </View>
 

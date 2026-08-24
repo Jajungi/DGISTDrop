@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { FriendsSegmentTabs, type FriendsTab } from '@/src/components/friends/FriendsSegmentTabs';
 import { FriendsListPanel } from '@/src/components/friends/FriendsListPanel';
@@ -12,8 +13,11 @@ import { ActivityNoticeBanner } from '@/src/components/guide/ActivityNoticeBanne
 import { ClubEventBanner } from '@/src/components/guide/ClubEventBanner';
 import { SystemNoticeBanner } from '@/src/components/guide/SystemNoticeBanner';
 import { useSearchStore } from '@/src/stores/searchStore';
+import { useAuthStore } from '@/src/stores/authStore';
+import { useFriendStore } from '@/src/stores/friendStore';
 import { useFriendsPresence } from '@/src/hooks/useFriendsPresence';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
+import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { colors, spacing, typography } from '@/src/theme';
 
 export default function FriendsScreen() {
@@ -31,6 +35,20 @@ export default function FriendsScreen() {
     activityStart,
     activityEnd,
   } = useFriendsPresence();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isSupabaseEnabled()) return;
+      const userId = useAuthStore.getState().currentUser?.id;
+      if (!userId) return;
+      void import('@/src/services/supabase/social')
+        .then(({ fetchFriendData }) => fetchFriendData(userId))
+        .then(({ requests, friendships }) => {
+          useFriendStore.getState().hydrate(friendships, requests);
+        })
+        .catch((err) => console.warn('[friend] focus refetch failed', err));
+    }, [])
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>

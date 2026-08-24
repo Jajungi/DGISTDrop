@@ -20,15 +20,29 @@ function pad(n: number) {
   return String(n).padStart(2, '0');
 }
 
-function filterIncoming(requests: FriendRequest[], userId: string): FriendRequest[] {
+function filterIncoming(
+  requests: FriendRequest[],
+  userId: string,
+  friendIds: string[]
+): FriendRequest[] {
+  const friends = new Set(friendIds);
   return requests
-    .filter((r) => r.status === 'pending' && r.toUserId === userId)
+    .filter(
+      (r) => r.status === 'pending' && r.toUserId === userId && !friends.has(r.fromUserId)
+    )
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-function filterOutgoing(requests: FriendRequest[], userId: string): FriendRequest[] {
+function filterOutgoing(
+  requests: FriendRequest[],
+  userId: string,
+  friendIds: string[]
+): FriendRequest[] {
+  const friends = new Set(friendIds);
   return requests
-    .filter((r) => r.status === 'pending' && r.fromUserId === userId)
+    .filter(
+      (r) => r.status === 'pending' && r.fromUserId === userId && !friends.has(r.toUserId)
+    )
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
@@ -47,13 +61,13 @@ export function useFriendsPresence() {
 
   const incomingRequests = useMemo(() => {
     if (!currentUserId) return EMPTY_REQUESTS;
-    return filterIncoming(friendRequests, currentUserId);
-  }, [friendRequests, currentUserId]);
+    return filterIncoming(friendRequests, currentUserId, friendIds);
+  }, [friendRequests, currentUserId, friendIds]);
 
   const outgoingRequests = useMemo(() => {
     if (!currentUserId) return EMPTY_REQUESTS;
-    return filterOutgoing(friendRequests, currentUserId);
-  }, [friendRequests, currentUserId]);
+    return filterOutgoing(friendRequests, currentUserId, friendIds);
+  }, [friendRequests, currentUserId, friendIds]);
 
   const today = useMemo(() => getSeoulTodayKey(), []);
   const session = getTodaySession();
