@@ -12,9 +12,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   isExpoToken,
-  isWebSubscription,
   sendExpoAndPrune,
   sendWebAndPrune,
+  splitWebTokensPerUser,
+  deleteTokens,
 } from '../_shared/pushSend.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -77,7 +78,7 @@ Deno.serve(async (req) => {
 
     const { data: tokens, error } = await supabase
       .from('push_tokens')
-      .select('token, platform')
+      .select('token, platform, updated_at, created_at')
       .eq('user_id', userId);
 
     if (error) throw error;
@@ -91,7 +92,18 @@ Deno.serve(async (req) => {
         token: t.token,
         platform: t.platform,
       }));
-    const webTokens = tokens.map((t: { token: string }) => t.token).filter(isWebSubscription);
+    const { keep: webTokens, drop: extraWeb } = splitWebTokensPerUser(
+      tokens.map((t: {
+        token: string;
+        platform?: string | null;
+        updated_at?: string | null;
+        created_at?: string | null;
+      }) => ({
+        ...t,
+        user_id: userId,
+      }))
+    );
+    const extraPruned = await deleteTokens(supabase, extraWeb);
 
     const expoRes = await sendExpoAndPrune(
       supabase,
@@ -112,7 +124,7 @@ Deno.serve(async (req) => {
         sent: expoRes.sent + webRes.sent,
         expo: expoRes.sent,
         web: webRes.sent,
-        pruned: expoRes.pruned + webRes.pruned,
+        pruned: expoRes.pruned + webRes.pruned + extraPruned,
       }),
       {
       status: 200,

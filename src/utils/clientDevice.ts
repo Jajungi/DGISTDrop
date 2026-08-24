@@ -19,7 +19,7 @@ export function currentWebPushPlatform(): `web-${WebPushClass}` {
   return 'web-desktop';
 }
 
-/** 같은 사람·같은 환경(PC/안드/아이폰) 웹 구독은 하나만 남긴다. 예전 platform=web 은 PC로 본다. */
+/** 같은 사람의 웹 구독 분류용. 등록 시에는 환경과 무관하게 사람당 1개만 남긴다. */
 export function webPushClassFromPlatform(platform?: string | null): WebPushClass {
   if (platform === 'web-android') return 'android';
   if (platform === 'web-ios') return 'ios';

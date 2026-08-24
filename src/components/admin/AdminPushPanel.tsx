@@ -42,7 +42,6 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
     android: 0,
     removable: 0,
     extraWeb: 0,
-    extraWebStrict: 0,
     heavy: [],
   });
   const [pruning, setPruning] = useState(false);
@@ -122,10 +121,10 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
     } catch { onToast('warning', '저장 실패'); }
   };
 
-  const pruneDeadTokens = async (mode: 'normal' | 'strict' = 'normal') => {
+  const pruneDeadTokens = async () => {
     setPruning(true);
     try {
-      const result = await prunePushTokens(mode);
+      const result = await prunePushTokens();
       await fetchAll();
       const parts: string[] = [];
       if (result.unapproved) parts.push(`미승인·게스트 ${result.unapproved}`);
@@ -143,7 +142,7 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
       onToast(
         'warning',
         msg.includes('rpc_prune_push_tokens') || msg.includes('does not exist') || msg.includes('42883')
-          ? 'Supabase에서 035_prune_push_tokens.sql 을 실행해 주세요.'
+          ? 'Supabase에서 037_web_push_one_per_user.sql 을 실행해 주세요.'
           : msg
       );
     }
@@ -278,10 +277,6 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
                 <Text style={styles.statValue}>{tokenStats.extraWeb}</Text>
                 <Text style={styles.statLabel}>여분 웹</Text>
               </View>
-              <View style={styles.stat}>
-                <Text style={styles.statValue}>{tokenStats.extraWebStrict}</Text>
-                <Text style={styles.statLabel}>사람당 1개면</Text>
-              </View>
               {tokenStats.other > 0 ? (
                 <View style={styles.stat}>
                   <Text style={styles.statValue}>{tokenStats.other}</Text>
@@ -300,18 +295,11 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
               </View>
             ) : null}
             <Text style={styles.hint}>
-              사람 = 알림을 켠 회원 수. 기기 = DB에 남은 구독 수. 여분 웹 = 같은 환경(PC/안드/아이폰)에서 둘 이상인 분. 사람당 1개면 = 웹을 최근 하나만 남길 때 지워지는 수입니다. 더 줄이려면 「웹은 사람당 하나만」을 누르거나, 활동 알림을 한 번 보내 죽은 구독을 빠지게 하세요.
+              사람 = 알림을 켠 회원 수. 기기 = DB에 남은 구독 수. 웹은 사람당 최근 1개만 유지합니다(PC·폰 웹 합산). 여분 웹이 보이면 「못 쓰는 등록 정리」로 지울 수 있고, 알림을 다시 켜거나 활동 알림을 보내면 죽은 구독도 빠집니다.
             </Text>
             <Button
               title={pruning ? '정리 중…' : '못 쓰는 등록 정리'}
-              onPress={() => void pruneDeadTokens('normal')}
-              variant="outline"
-              fullWidth
-              disabled={pruning || loading}
-            />
-            <Button
-              title={pruning ? '정리 중…' : '웹은 사람당 하나만'}
-              onPress={() => void pruneDeadTokens('strict')}
+              onPress={() => void pruneDeadTokens()}
               variant="outline"
               fullWidth
               disabled={pruning || loading}
