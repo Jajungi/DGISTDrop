@@ -1,7 +1,13 @@
 import { getActivitySchedule, isActivityCancelledToday } from '@/src/stores/activityScheduleStore';
-import { getSeoulTodayKey } from '@/src/utils/dateFormat';
+import {
+  addCalendarDays,
+  getSeoulClock,
+  getSeoulTodayKey,
+  getSeoulWeekday,
+  seoulDateTime,
+} from '@/src/utils/dateFormat';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
-import { isClubEventActiveOn, todayLocalISODate } from '@/src/utils/siteOps';
+import { isClubEventActiveOn } from '@/src/utils/siteOps';
 import { parseHHMM } from '@/src/utils/activitySchedule';
 import type { ActivitySession } from '@/src/types';
 
@@ -35,20 +41,21 @@ function hasExtraActivityOn(dateISO: string): boolean {
 }
 
 export function isActivityDay(now: Date = new Date()): boolean {
-  const dateISO = todayLocalISODate(now);
-  if (isActivityCancelledToday(getSeoulTodayKey(now))) return false;
+  const dateISO = getSeoulTodayKey(now);
+  if (isActivityCancelledToday(dateISO)) return false;
   if (isClosedOn(dateISO)) return false;
   if (hasExtraActivityOn(dateISO)) return true;
-  const day = now.getDay();
+  const day = getSeoulWeekday(now);
   return schedule().some((s) => s.day === day);
 }
 
 export function isActivityTime(now: Date = new Date()): boolean {
-  const dateISO = todayLocalISODate(now);
-  if (isActivityCancelledToday(getSeoulTodayKey(now))) return false;
+  const dateISO = getSeoulTodayKey(now);
+  if (isActivityCancelledToday(dateISO)) return false;
   if (isClosedOn(dateISO)) return false;
 
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const clock = getSeoulClock(now);
+  const currentMinutes = clock.hour * 60 + clock.minute;
 
   if (hasExtraActivityOn(dateISO)) {
     const t = defaultSessionTimes();
@@ -57,7 +64,7 @@ export function isActivityTime(now: Date = new Date()): boolean {
     return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
   }
 
-  const day = now.getDay();
+  const day = getSeoulWeekday(now);
   const sessions = schedule().filter((s) => s.day === day);
   if (!sessions.length) return false;
 
@@ -72,15 +79,15 @@ export function getNextActivityTime(now: Date = new Date()): Date | null {
   const candidates: Date[] = [];
   const sessions = schedule();
   const times = defaultSessionTimes();
+  const today = getSeoulTodayKey(now);
 
   for (let offset = 0; offset < 21; offset++) {
-    const checkDate = new Date(now);
-    checkDate.setDate(checkDate.getDate() + offset);
-    const dateISO = todayLocalISODate(checkDate);
+    const dateISO = addCalendarDays(today, offset);
     if (isClosedOn(dateISO)) continue;
-    if (offset === 0 && isActivityCancelledToday(getSeoulTodayKey(checkDate))) continue;
+    if (offset === 0 && isActivityCancelledToday(dateISO)) continue;
 
-    const day = checkDate.getDay();
+    const midday = seoulDateTime(dateISO, 12, 0);
+    const day = getSeoulWeekday(midday);
     const daySessions = hasExtraActivityOn(dateISO)
       ? [
           {
@@ -94,8 +101,7 @@ export function getNextActivityTime(now: Date = new Date()): Date | null {
       : sessions.filter((s) => s.day === day);
 
     for (const session of daySessions) {
-      const activityStart = new Date(checkDate);
-      activityStart.setHours(session.startHour, session.startMinute, 0, 0);
+      const activityStart = seoulDateTime(dateISO, session.startHour, session.startMinute);
       if (activityStart > now) candidates.push(activityStart);
     }
   }
@@ -107,9 +113,10 @@ export function getNextActivityTime(now: Date = new Date()): Date | null {
 export function getActivityTimeRemaining(now: Date = new Date()): string | null {
   if (!isActivityTime(now)) return null;
 
-  const dateISO = todayLocalISODate(now);
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const day = now.getDay();
+  const dateISO = getSeoulTodayKey(now);
+  const clock = getSeoulClock(now);
+  const currentMinutes = clock.hour * 60 + clock.minute;
+  const day = getSeoulWeekday(now);
   const times = defaultSessionTimes();
 
   const ends = hasExtraActivityOn(dateISO)
@@ -121,9 +128,7 @@ export function getActivityTimeRemaining(now: Date = new Date()): string | null 
 
   if (!ends.length) return null;
   const endMinutes = Math.max(...ends);
-
-  const endDate = new Date(now);
-  endDate.setHours(Math.floor(endMinutes / 60), endMinutes % 60, 0, 0);
+  const endDate = seoulDateTime(dateISO, Math.floor(endMinutes / 60), endMinutes % 60);
 
   const diff = endDate.getTime() - now.getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -151,16 +156,14 @@ export function getActivityDayLabel(day: number): string {
 /** 오늘 활동 시작 시각. 활동일 아니면 null. */
 export function getTodayActivityStart(now: Date = new Date()): Date | null {
   if (!isActivityDay(now)) return null;
-  const dateISO = todayLocalISODate(now);
+  const dateISO = getSeoulTodayKey(now);
   const times = defaultSessionTimes();
-  const day = now.getDay();
+  const day = getSeoulWeekday(now);
   const session = hasExtraActivityOn(dateISO)
     ? { startHour: times.startHour, startMinute: times.startMinute }
     : schedule().find((s) => s.day === day);
   if (!session) return null;
-  const start = new Date(now);
-  start.setHours(session.startHour, session.startMinute, 0, 0);
-  return start;
+  return seoulDateTime(dateISO, session.startHour, session.startMinute);
 }
 
 /**
@@ -170,9 +173,11 @@ export function isBetweenNotifyAndActivityStart(notifyTime: string, now: Date = 
   const start = getTodayActivityStart(now);
   const parsed = parseHHMM(notifyTime);
   if (!start || !parsed) return false;
-  const n = now.getHours() * 60 + now.getMinutes();
+  const clock = getSeoulClock(now);
+  const startClock = getSeoulClock(start);
+  const n = clock.hour * 60 + clock.minute;
   const from = parsed.hour * 60 + parsed.minute;
-  const to = start.getHours() * 60 + start.getMinutes();
+  const to = startClock.hour * 60 + startClock.minute;
   if (from > to) return false;
   return n >= from && n <= to;
 }

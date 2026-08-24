@@ -50,16 +50,7 @@ export function activityStartHHMMForDay(sessions: ActivitySession[], day: number
   return earliestActivityStartHHMM(today.length ? today : sessions);
 }
 
-/** 한국 요일 0=일 … 6=토 */
-export function seoulWeekday(date = new Date()): number {
-  const weekday = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Seoul',
-    weekday: 'short',
-  }).format(date);
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const idx = days.indexOf(weekday);
-  return idx >= 0 ? idx : date.getDay();
-}
+export { getSeoulWeekday as seoulWeekday } from '@/src/utils/dateFormat';
 
 /** 활동 알림 템플릿의 {time}을 활동 시작 시각으로 채움 */
 export function fillActivityNotifyTemplate(template: string, activityStartHHMM: string): string {

@@ -56,6 +56,7 @@
     "web": "expo start --web",
     "build:web": "expo export -p web && node scripts/cloudflare-fixup.mjs",
     "typecheck": "tsc --noEmit",
+    "test:logic": "node --test scripts/test-attendance-details.mjs",
     "setup:check": "node scripts/check-supabase-env.mjs",
     "capture:intro": "node scripts/capture-intro-screenshots.mjs",
     "docs:changelog": "node scripts/build-changelog.mjs"

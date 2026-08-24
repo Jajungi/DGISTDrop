@@ -1,4 +1,4 @@
-/* Drop PWA service worker — v20260824-attendance */
+/* Drop PWA service worker — v20260824-cancel */
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -54,21 +54,26 @@ function readPushPayload(event) {
 
 function isAttendancePayload(payload) {
   const kind = String(payload.kind || '').toLowerCase();
+  if (kind === 'cancel' || kind === 'notice' || kind === 'custom' || kind === 'coach') return false;
   if (kind === 'activity' || kind === 'attendance') return true;
   if (payload.showAttendance) return true;
-  return String(payload.title || '').includes('활동');
+  const title = String(payload.title || '');
+  if (/취소|휴관/.test(title)) return false;
+  return title.includes('활동');
 }
 
 self.addEventListener('push', (event) => {
   const payload = readPushPayload(event);
   const isAttendance = isAttendancePayload(payload);
+  const kind = String(payload.kind || '').toLowerCase();
+  const replacesAttendance = isAttendance || kind === 'cancel';
 
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
       icon: '/icon-192.png',
       badge: '/icon-192.png',
-      tag: isAttendance ? 'drop-attendance' : 'drop-activity',
+      tag: replacesAttendance ? 'drop-attendance' : 'drop-notice',
       renotify: true,
       data: { ...payload.data, kind: isAttendance ? 'attendance' : payload.kind },
       actions: isAttendance

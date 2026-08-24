@@ -205,15 +205,25 @@ export async function initSupabaseApp(): Promise<boolean> {
   clubFlagsUnsub = subscribeClubFlags(() => {
     void (async () => {
       try {
-        const [reservationOn, pointsOn, eloOn] = await Promise.all([
+        const [reservationOn, pointsOn, eloOn, schedule, events] = await Promise.all([
           fetchReservationEnabled(),
           fetchPointsFeaturesEnabled(),
           fetchEloFeaturesEnabled(),
+          fetchActivitySchedule(),
+          fetchClubEvents(),
         ]);
         const flags = useFeatureFlagsStore.getState();
         flags.setReservationEnabledLocal(reservationOn);
         flags.setPointsFeaturesEnabledLocal(pointsOn);
         flags.setEloFeaturesEnabledLocal(eloOn);
+        if (schedule?.length) useActivityScheduleStore.getState().setScheduleLocal(schedule);
+        if (events) useClubEventStore.getState().setLocal(events);
+      } catch {
+        /* ignore */
+      }
+      try {
+        const { fetchPushNotifySettings } = await import('@/src/services/supabase/pushSettings');
+        await fetchPushNotifySettings();
       } catch {
         /* ignore */
       }

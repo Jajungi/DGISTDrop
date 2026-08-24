@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { View, StyleSheet, RefreshControl, ScrollView, Text } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useCourtStore } from '@/src/stores/courtStore';
@@ -18,6 +18,7 @@ import { SystemNoticeBanner } from '@/src/components/guide/SystemNoticeBanner';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { SiteOverlayHost } from '@/src/components/site/SiteOverlayHost';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
+import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { isGoingToday } from '@/src/utils/attendanceIntent';
 import { isStaffUser } from '@/src/utils/staffAccess';
 import { colors } from '@/src/theme';
@@ -57,7 +58,11 @@ export default function CourtsScreen() {
   const occupancyMode = !reservationEnabled;
   const isStaff = isStaffUser(currentUser);
 
-  const goingPeople = authHydrated ? users.filter((u) => isGoingToday(u)) : [];
+  const cancelledDate = useActivityScheduleStore((s) => s.cancelledDate);
+  const goingPeople = useMemo(
+    () => (authHydrated ? users.filter((u) => isGoingToday(u)) : []),
+    [authHydrated, users, cancelledDate]
+  );
   const goingCount = authHydrated ? goingPeople.length : undefined;
   const atGymCount = authHydrated
     ? users.filter((u) => u.isAtGym && u.memberStatus === 'approved').length

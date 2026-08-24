@@ -9,7 +9,8 @@ import { ACTIVITY_SCHEDULE } from '@/src/constants';
 import { getActivitySchedule, useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { hasArrivalTimeToday, todayAttendanceIntent } from '@/src/utils/attendanceIntent';
-import { formatCompactDayLabel } from '@/src/utils/dateFormat';
+import { formatCompactDayLabel, getSeoulWeekday } from '@/src/utils/dateFormat';
+import { useSeoulTodayKey } from '@/src/hooks/useSeoulTodayKey';
 import { isGuestUser } from '@/src/utils/guestAccess';
 import { isActivityDay } from '@/src/services/activityTime';
 import { useTabTourStore } from '@/src/stores/tabTourStore';
@@ -25,23 +26,25 @@ export function AttendanceIntentGate() {
   const updateUserSchedule = useAuthStore((s) => s.updateUserSchedule);
   const showToast = useNotificationStore((s) => s.showToast);
   const schedule = useActivityScheduleStore((s) => s.schedule);
+  const cancelledDate = useActivityScheduleStore((s) => s.cancelledDate);
   const events = useClubEventStore((s) => s.events);
+  const todayKey = useSeoulTodayKey();
   const [dismissed, setDismissed] = useState(false);
   const [pickingTime, setPickingTime] = useState(false);
   const [arrivalTime, setArrivalTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const tourOpen = useTabTourStore((s) => s.activeIndex !== null);
 
-  const todayLabel = useMemo(() => formatCompactDayLabel(), []);
+  const todayLabel = useMemo(() => formatCompactDayLabel(), [todayKey]);
   const activityBounds = useMemo(() => {
-    const day = new Date().getDay();
+    const day = getSeoulWeekday();
     const sessions = getActivitySchedule();
     return sessions.find((s) => s.day === day) ?? sessions[0] ?? ACTIVITY_SCHEDULE[0];
-  }, [schedule]);
+  }, [schedule, todayKey]);
 
-  const activityDay = useMemo(() => isActivityDay(), [schedule, events]);
-  const intent = todayAttendanceIntent(currentUser);
-  const hasTime = hasArrivalTimeToday(currentUser);
+  const activityDay = useMemo(() => isActivityDay(), [schedule, events, cancelledDate, todayKey]);
+  const intent = todayAttendanceIntent(currentUser, todayKey);
+  const hasTime = hasArrivalTimeToday(currentUser, todayKey);
   const needsChoice = !intent;
   const needsTime = intent === 'going' && !hasTime;
 
@@ -61,8 +64,8 @@ export function AttendanceIntentGate() {
 
   const chooseGoing = () => {
     const r = setAttendanceIntent(currentUser.id, 'going');
-    showToast({ type: 'success', title: '', message: r.message });
-    setPickingTime(true);
+    showToast({ type: r.success ? 'success' : 'warning', title: '', message: r.message });
+    if (r.success) setPickingTime(true);
   };
 
   const chooseNotGoing = () => {

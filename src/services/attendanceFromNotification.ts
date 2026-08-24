@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { isActivityDay } from '@/src/services/activityTime';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { isGuestUser } from '@/src/utils/guestAccess';
@@ -11,6 +12,14 @@ import {
 export { parseAttendanceIntent };
 
 export function applyAttendanceIntentFromNotification(intent: 'going' | 'not_going') {
+  if (!isActivityDay()) {
+    useNotificationStore.getState().showToast({
+      type: 'info',
+      title: '',
+      message: '오늘은 활동이 없어 참석을 기록하지 않았어요.',
+    });
+    return;
+  }
   const user = useAuthStore.getState().currentUser;
   if (!user || isGuestUser(user) || user.memberStatus !== 'approved') {
     void savePendingAttendanceIntent(intent);

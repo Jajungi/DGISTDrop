@@ -21,6 +21,7 @@ import {
 } from '@/src/services/supabase/auth';
 import { fetchAllProfiles, uploadAvatar, removeAvatar } from '@/src/services/supabase/profiles';
 import { clearSavedLogin, loadSavedLogin, saveSavedLogin } from '@/src/services/quickLogin';
+import { isActivityDay } from '@/src/services/activityTime';
 import { getSeoulTodayKey, normalizeHHMM } from '@/src/utils/dateFormat';
 import { INFINITE_DEV_POINTS } from '@/src/utils/responsive';
 import {
@@ -1473,6 +1474,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setAttendanceIntent: (userId, intent) => {
     const today = getSeoulTodayKey();
+    if (intent && !isActivityDay()) {
+      return { success: false, message: '오늘은 활동일이 아니에요. 참석을 기록하지 않았어요.' };
+    }
     set((state) => {
       const users = state.users.map((u) =>
         u.id === userId

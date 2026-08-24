@@ -8,7 +8,8 @@ import { ACTIVITY_SCHEDULE } from '@/src/constants';
 import { getActivitySchedule, useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { todayAttendanceIntent } from '@/src/utils/attendanceIntent';
-import { formatCompactDayLabel, getSeoulTodayKey, isScheduleForToday, normalizeHHMM } from '@/src/utils/dateFormat';
+import { formatCompactDayLabel, getSeoulWeekday, isScheduleForToday, normalizeHHMM } from '@/src/utils/dateFormat';
+import { useSeoulTodayKey } from '@/src/hooks/useSeoulTodayKey';
 import { isActivityDay, getActivityDayLabel } from '@/src/services/activityTime';
 import { formatActivityScheduleLabel } from '@/src/utils/activitySchedule';
 import { colors, spacing, typography } from '@/src/theme';
@@ -24,10 +25,11 @@ export function ArrivalScheduleCard() {
   const showToast = useNotificationStore((s) => s.showToast);
 
   const schedule = useActivityScheduleStore((s) => s.schedule);
+  const cancelledDate = useActivityScheduleStore((s) => s.cancelledDate);
   const events = useClubEventStore((s) => s.events);
-  const todayKey = useMemo(() => getSeoulTodayKey(), []);
-  const todayLabel = useMemo(() => formatCompactDayLabel(), []);
-  const activityDay = useMemo(() => isActivityDay(), [schedule, events]);
+  const todayKey = useSeoulTodayKey();
+  const todayLabel = useMemo(() => formatCompactDayLabel(), [todayKey]);
+  const activityDay = useMemo(() => isActivityDay(), [schedule, events, cancelledDate, todayKey]);
   const scheduleLabel = useMemo(
     () => formatActivityScheduleLabel(schedule, getActivityDayLabel),
     [schedule]
@@ -36,11 +38,11 @@ export function ArrivalScheduleCard() {
   const showTime = activityDay && intent === 'going';
 
   const activityBounds = useMemo(() => {
-    const day = new Date().getDay();
+    const day = getSeoulWeekday();
     const sessions = getActivitySchedule();
     const session = sessions.find((s) => s.day === day);
     return session ?? sessions[0] ?? ACTIVITY_SCHEDULE[0];
-  }, []);
+  }, [schedule, todayKey]);
 
   const savedForToday =
     currentUser &&

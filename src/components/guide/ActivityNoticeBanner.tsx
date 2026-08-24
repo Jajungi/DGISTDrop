@@ -5,14 +5,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useActivityStatus } from '@/src/hooks/useActivityStatus';
 import { useActivityScheduleLabel } from '@/src/hooks/useGuideSections';
 import { formatCountdownToNext } from '@/src/services/activityTime';
+import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
+import { useSeoulTodayKey } from '@/src/hooks/useSeoulTodayKey';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 /** 정기 활동 시간 외 안내 — 기능은 그대로, 이용 안내 페이지로 대체하지 않음 */
 export function ActivityNoticeBanner() {
   const { isActive, nextActivity } = useActivityStatus();
   const scheduleLabel = useActivityScheduleLabel();
+  const todayKey = useSeoulTodayKey();
+  const cancelledToday = useActivityScheduleStore((s) => s.cancelledDate === todayKey);
 
-  if (isActive) return null;
+  if (isActive && !cancelledToday) return null;
 
   return (
     <Pressable
@@ -23,7 +27,9 @@ export function ActivityNoticeBanner() {
     >
       <Ionicons name="time-outline" size={18} color={colors.primary} />
       <View style={styles.body}>
-        <Text style={styles.title}>정기 활동 시간이 아니에요</Text>
+        <Text style={styles.title}>
+          {cancelledToday ? '오늘 활동이 취소됐어요' : '정기 활동 시간이 아니에요'}
+        </Text>
         <Text style={styles.sub}>
           {nextActivity
             ? `다음 활동 ${formatCountdownToNext(nextActivity)} · ${scheduleLabel}`

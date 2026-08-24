@@ -90,18 +90,32 @@ export async function savePushNotifySettings(
   return settings;
 }
 
-export async function toggleActivityCancelToday(cancel: boolean): Promise<PushNotifySettings> {
+export const CANCEL_PUSH_TITLE = 'Drop 활동 취소';
+
+export async function toggleActivityCancelToday(
+  cancel: boolean,
+  extras?: { cancel_message?: string }
+): Promise<PushNotifySettings> {
   const current = await fetchPushNotifySettings();
   const today = getSeoulTodayKey();
   const next: PushNotifySettings = {
     ...current,
     cancel_today: cancel,
     cancel_date: cancel ? today : null,
+    ...(extras?.cancel_message != null ? { cancel_message: extras.cancel_message } : {}),
   };
   const saved = await savePushNotifySettings(next);
   const { useActivityScheduleStore } = await import('@/src/stores/activityScheduleStore');
   useActivityScheduleStore.getState().setCancelledDate(saved.cancel_date);
   return saved;
+}
+
+export async function invokeCancelNoticePush(message?: string) {
+  return invokeBroadcastPush({
+    title: CANCEL_PUSH_TITLE,
+    message: (message ?? DEFAULT_PUSH_SETTINGS.cancel_message).trim() || DEFAULT_PUSH_SETTINGS.cancel_message,
+    type: 'cancel',
+  });
 }
 
 export async function fetchPushNotifyLogs(limit = 20): Promise<PushNotifyLog[]> {

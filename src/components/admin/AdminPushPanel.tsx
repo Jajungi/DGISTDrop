@@ -15,6 +15,8 @@ import {
   fetchPushNotifySettings,
   savePushNotifySettings,
   toggleActivityCancelToday,
+  invokeCancelNoticePush,
+  CANCEL_PUSH_TITLE,
   fetchPushNotifyLogs,
   fetchPushTokenStats,
   prunePushTokens,
@@ -63,6 +65,7 @@ interface AdminPushPanelProps {
 
 export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
   const schedule = useActivityScheduleStore((s) => s.schedule);
+  const cancelledDate = useActivityScheduleStore((s) => s.cancelledDate);
   const [sub, setSub] = useState<PushSub>('status');
   const [settings, setSettings] = useState<PushNotifySettings>(DEFAULT_PUSH_SETTINGS);
   const [logs, setLogs] = useState<PushNotifyLog[]>([]);
@@ -116,6 +119,14 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
 
   useEffect(() => { void fetchAll(); }, [fetchAll]);
 
+  useEffect(() => {
+    setSettings((s) => ({
+      ...s,
+      cancel_today: cancelledDate != null,
+      cancel_date: cancelledDate,
+    }));
+  }, [cancelledDate]);
+
   const saveSettings = useCallback(async () => {
     setSaving(true);
     try {
@@ -150,11 +161,35 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
     } catch { onToast('warning', '저장 실패'); }
   };
 
+  const sendCancelNotice = async (message: string) => {
+    const result = await invokeCancelNoticePush(message);
+    onToast(
+      'success',
+      `취소 안내 ${result.sent}명 (앱 ${result.expo ?? 0} · 웹 ${result.web ?? 0}${
+        result.pruned ? ` · 못 받는 기기 ${result.pruned}대 정리` : ''
+      })`
+    );
+    void fetchAll();
+    return result;
+  };
+
   const toggleCancelToday = async () => {
+    const turningOn = !settings.cancel_today;
     try {
-      const next = await toggleActivityCancelToday(!settings.cancel_today);
+      const next = await toggleActivityCancelToday(turningOn, {
+        cancel_message: editCancelMsg,
+      });
       setSettings(next);
-      onToast('info', next.cancel_today ? '오늘 활동 취소됨' : '오늘 활동 복구됨');
+      if (!next.cancel_today) {
+        onToast('info', '오늘 활동 복구됨');
+        return;
+      }
+      try {
+        await sendCancelNotice(next.cancel_message);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : '발송 실패';
+        onToast('warning', `취소는 저장됐지만 안내는 못 보냈어요. ${msg}`);
+      }
     } catch { onToast('warning', '저장 실패'); }
   };
 
@@ -186,7 +221,7 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
     setPruning(false);
   };
 
-  const previewTitle = 'Drop 활동 알림';
+  const previewTitle = settings.cancel_today ? CANCEL_PUSH_TITLE : 'Drop 활동 알림';
   const previewMessage = fillActivityNotifyTemplate(
     settings.cancel_today ? editCancelMsg : editTemplate,
     activityStartLabel
@@ -195,7 +230,7 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
 
   const sendActivityNotify = async () => {
     if (settings.cancel_today) {
-      onToast('info', '오늘은 활동이 취소되어 활동 알림을 보내지 않아요. 안내는 커스텀으로 보내세요.');
+      onToast('info', '오늘은 활동이 취소되어 활동 알림을 보내지 않아요. 취소 안내를 다시 보내 주세요.');
       return;
     }
     const message = previewMessage;
@@ -283,7 +318,7 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
 
           {settings.cancel_today && (
             <Card style={styles.cancelBanner}>
-              <Text style={styles.cancelText}>⚠️ 오늘 활동 취소 — 활동 알림은 자동·수동 모두 안 갑니다. 날짜가 바뀌면 취소는 풀립니다.</Text>
+              <Text style={styles.cancelText}>⚠️ 오늘 활동 취소 — 활동 알림은 안 가고, 취소 안내만 보냅니다. 날짜가 바뀌면 취소는 풀립니다.</Text>
             </Card>
           )}
 
@@ -448,16 +483,29 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
               showActions={showAttendanceActions}
             />
             {settings.cancel_today ? (
-              <Text style={styles.hint}>오늘은 취소라 활동 알림을 보내지 않습니다. 필요하면 아래 커스텀으로 안내하세요.</Text>
+              <Text style={styles.hint}>오늘은 취소라 활동 알림을 보내지 않습니다. 취소 안내를 다시 보낼 수 있습니다.</Text>
             ) : null}
             <View style={styles.gap} />
-            <Button
-              title="활동 알림 발송"
-              onPress={() => void sendActivityNotify()}
-              variant="secondary"
-              fullWidth
-              disabled={settings.cancel_today}
-            />
+            {settings.cancel_today ? (
+              <Button
+                title="취소 안내 다시 보내기"
+                onPress={() => {
+                  void sendCancelNotice(editCancelMsg).catch((err) => {
+                    const msg = err instanceof Error ? err.message : '발송 실패';
+                    onToast('warning', msg);
+                  });
+                }}
+                variant="danger"
+                fullWidth
+              />
+            ) : (
+              <Button
+                title="활동 알림 발송"
+                onPress={() => void sendActivityNotify()}
+                variant="secondary"
+                fullWidth
+              />
+            )}
           </Card>
 
           <Card style={styles.block}>

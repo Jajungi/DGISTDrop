@@ -8,6 +8,7 @@ import { GYM_VENUE } from '@/src/constants/court';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import { isBetweenNotifyAndActivityStart } from '@/src/services/activityTime';
 import { DEFAULT_PUSH_SETTINGS, fetchPushNotifySettings } from '@/src/services/supabase/pushSettings';
+import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 
 interface CourtOverviewHeaderProps {
   courts: Court[];
@@ -28,8 +29,8 @@ interface CourtOverviewHeaderProps {
 }
 
 function formatDate() {
-  const now = new Date();
-  return `${now.getMonth() + 1}월 ${now.getDate()}일`;
+  const [, m, d] = getSeoulTodayKey().split('-');
+  return `${Number(m)}월 ${Number(d)}일`;
 }
 
 const GOING_HINT = '눌러서 누가 오는지 확인해보세요!';

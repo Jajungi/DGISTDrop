@@ -1,10 +1,9 @@
 import type { ClubEvent, SiteOverlay, SiteOverlaySurface } from '@/src/types';
+import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 
+/** 동아리 달력·휴관은 한국 날짜 기준 */
 export function todayLocalISODate(d = new Date()): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return getSeoulTodayKey(d);
 }
 
 export function isClubEventActiveOn(event: ClubEvent, dateISO = todayLocalISODate()): boolean {

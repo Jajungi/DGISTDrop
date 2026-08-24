@@ -19,6 +19,9 @@ import { colors, spacing, typography, borderRadius, shadows } from '@/src/theme'
 import { formatLessonEtaLabel } from '@/src/utils/lessonEta';
 import { todayAttendanceIntent } from '@/src/utils/attendanceIntent';
 import { isActivityDay } from '@/src/services/activityTime';
+import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
+import { useClubEventStore } from '@/src/stores/clubEventStore';
+import { useSeoulTodayKey } from '@/src/hooks/useSeoulTodayKey';
 import { isGuestUser } from '@/src/utils/guestAccess';
 import { router } from 'expo-router';
 
@@ -71,6 +74,10 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
   const acceptInvite = useLobbyStore((s) => s.acceptInvite);
   const currentUser = useAuthStore((s) => s.currentUser);
   const setAttendanceIntent = useAuthStore((s) => s.setAttendanceIntent);
+  const schedule = useActivityScheduleStore((s) => s.schedule);
+  const cancelledDate = useActivityScheduleStore((s) => s.cancelledDate);
+  const events = useClubEventStore((s) => s.events);
+  const todayKey = useSeoulTodayKey();
   const lessonQueue = useLessonStore((s) => s.lessonQueue);
   const lessonTurnOn = useNotificationPrefsStore((s) => s.lessonTurn);
   const [expanded, setExpanded] = useState(false);
@@ -129,7 +136,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
       return null;
     }
     if (!isActivityDay()) return null;
-    if (todayAttendanceIntent(currentUser)) return null;
+    if (todayAttendanceIntent(currentUser, todayKey)) return null;
     return {
       id: 'attendance-today',
       type: 'system' as const,
@@ -139,7 +146,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
       createdAt: new Date().toISOString(),
       targetUserId: currentUser.id,
     };
-  }, [currentUser]);
+  }, [currentUser, schedule, events, cancelledDate, todayKey]);
 
   const coachAlerts = useMemo(() => {
     if (!currentUser || !lessonTurnOn) return [];
@@ -186,7 +193,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
       type: result.success ? (intent === 'going' ? 'success' : 'info') : 'warning',
       title: '',
       message:
-        intent === 'going'
+        result.success && intent === 'going'
           ? '참석으로 표시했어요. 언제 올지 칸에서 골라 주세요.'
           : result.message,
     });
