@@ -35,6 +35,28 @@ export function formatHHMM(hour: number, minute: number): string {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
+/** 여러 세션 중 가장 이른 시작 시각 HH:MM */
+export function earliestActivityStartHHMM(sessions: ActivitySession[]): string {
+  if (!sessions.length) return '18:30';
+  const sorted = [...sessions].sort(
+    (a, b) => a.startHour * 60 + a.startMinute - (b.startHour * 60 + b.startMinute)
+  );
+  return formatHHMM(sorted[0].startHour, sorted[0].startMinute);
+}
+
+/** 그날 세션이 있으면 그 시작, 없으면 주간 일정 중 가장 이른 시작 */
+export function activityStartHHMMForDay(sessions: ActivitySession[], day: number): string {
+  const today = sessions.filter((s) => s.day === day);
+  return earliestActivityStartHHMM(today.length ? today : sessions);
+}
+
+/** 한국 요일 0=일 … 6=토 */
+export function seoulWeekday(date = new Date()): number {
+  return Number(
+    new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' })).getDay()
+  );
+}
+
 /** 이용 안내·배너용 활동 일정 한 줄 요약 */
 export function formatActivityScheduleLabel(
   sessions: { day: number; startHour: number; startMinute: number; endHour: number; endMinute: number }[],

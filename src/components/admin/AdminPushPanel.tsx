@@ -1,10 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, Platform } from 'react-native';
 import { Card } from '@/src/components/ui/Card';
 import { Button } from '@/src/components/ui/Button';
 import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/theme';
 import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
-import { formatActivityScheduleLabel } from '@/src/utils/activitySchedule';
+import {
+  activityStartHHMMForDay,
+  formatActivityScheduleLabel,
+  seoulWeekday,
+} from '@/src/utils/activitySchedule';
 import { getActivityDayLabel } from '@/src/services/activityTime';
 import {
   fetchPushNotifySettings,
@@ -55,6 +59,10 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
   const [editCancelMsg, setEditCancelMsg] = useState(DEFAULT_PUSH_SETTINGS.cancel_message);
 
   const activityLabel = formatActivityScheduleLabel(schedule, getActivityDayLabel);
+  const activityStartLabel = useMemo(
+    () => activityStartHHMMForDay(schedule, seoulWeekday()),
+    [schedule]
+  );
 
   const fetchAll = useCallback(async () => {
     if (!isSupabaseEnabled()) return;
@@ -150,12 +158,9 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
   };
 
   const sendActivityNotify = async () => {
-    const firstStart = schedule[0]
-      ? `${String(schedule[0].startHour).padStart(2, '0')}:${String(schedule[0].startMinute).padStart(2, '0')}`
-      : '18:30';
     const message = settings.cancel_today
       ? settings.cancel_message
-      : settings.message_template.replace('{time}', firstStart);
+      : settings.message_template.replace('{time}', activityStartLabel);
     try {
       const result = await invokeBroadcastPush({
         title: 'Drop 활동 알림',
@@ -200,7 +205,7 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
 
   const previewMessage = settings.cancel_today
     ? settings.cancel_message
-    : editTemplate.replace('{time}', editNotifyTime);
+    : editTemplate.replace('{time}', activityStartLabel);
 
   return (
     <View style={styles.wrap}>
@@ -340,7 +345,9 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
 
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>자동 발송 시간</Text>
-            <Text style={styles.hint}>활동일에 KST 기준 이 시간에 푸시가 발송됩니다 (5분 간격 Cron 필요).</Text>
+            <Text style={styles.hint}>
+              활동일에 KST 기준 이 시각에 푸시가 나갑니다. 본문의 {'{time}'}은 여기가 아니라 당일 활동 시작 시간입니다.
+            </Text>
             <View style={styles.inputRow}>
               <Text style={styles.inputLabel}>알림 시간</Text>
               <TextInput
@@ -355,7 +362,7 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
 
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>메시지 템플릿</Text>
-            <Text style={styles.hint}>{'{time}'} → 당일 첫 활동 시작 시간</Text>
+            <Text style={styles.hint}>{`{time} → 당일 활동 시작 (오늘 ${activityStartLabel}). 자동 발송 시각이 아닙니다.`}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={editTemplate}
