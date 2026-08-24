@@ -15,6 +15,7 @@ interface PushSettings {
   notify_time?: string;
   message_template?: string;
   cancel_today?: boolean;
+  cancel_date?: string | null;
   cancel_message?: string;
   last_auto_sent_date?: string | null;
 }
@@ -150,9 +151,26 @@ Deno.serve(async (req) => {
       }
     }
 
+    const cancelledToday = settings.cancel_today === true && settings.cancel_date === now.date;
+    if (settings.cancel_today && settings.cancel_date !== now.date) {
+      settings.cancel_today = false;
+      settings.cancel_date = null;
+      await supabase
+        .from('club_metadata')
+        .update({
+          push_notify_settings: settings,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', 1);
+    }
+
     // ---------- 추가 활동일: 활동 자동 알림 시각에 발송 ----------
     const activityNotifyMinutes = parseHHMM(settings.notify_time ?? '18:00');
-    if (activityNotifyMinutes != null && Math.abs(now.minutes - activityNotifyMinutes) <= 4) {
+    if (
+      !cancelledToday &&
+      activityNotifyMinutes != null &&
+      Math.abs(now.minutes - activityNotifyMinutes) <= 4
+    ) {
       const activityTime = earliestActivityTime(
         schedule.filter((s) => s.day === now.day).length
           ? schedule.filter((s) => s.day === now.day)
@@ -167,15 +185,10 @@ Deno.serve(async (req) => {
         if (sent.includes(now.date)) continue;
 
         let title = 'Drop 활동 알림';
-        let message: string;
-        if (settings.cancel_today) {
-          message = settings.cancel_message ?? '❌ 오늘 활동이 취소되었습니다.';
-        } else {
-          message = (settings.message_template ?? '🏸 오늘 {time}부터 활동 있습니다!')
-            .replace('{time}', activityTime);
-          if (ev.title?.trim()) {
-            title = `Drop 활동 알림 · ${ev.title.trim()}`;
-          }
+        let message = (settings.message_template ?? '🏸 오늘 {time}부터 활동 있습니다!')
+          .replace('{time}', activityTime);
+        if (ev.title?.trim()) {
+          title = `Drop 활동 알림 · ${ev.title.trim()}`;
         }
 
         try {
@@ -222,6 +235,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (cancelledToday) {
+      results.activity = { skipped: 'cancelled_today' };
+      return new Response(JSON.stringify(results), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     const closedToday = events.some((e) => e.kind === 'closure' && isActiveOn(e, now.date));
     if (closedToday) {
       results.activity = { skipped: 'closure_today' };
@@ -256,14 +277,8 @@ Deno.serve(async (req) => {
 
     const activityTime = earliestActivityTime(todaySessions);
     let title = 'Drop 활동 알림';
-    let message: string;
-
-    if (settings.cancel_today) {
-      message = settings.cancel_message ?? '❌ 오늘 활동이 취소되었습니다.';
-    } else {
-      message = (settings.message_template ?? '🏸 오늘 {time}부터 활동 있습니다!')
-        .replace('{time}', activityTime);
-    }
+    const message = (settings.message_template ?? '🏸 오늘 {time}부터 활동 있습니다!')
+      .replace('{time}', activityTime);
 
     const result = await broadcast(title, message, 'activity');
 

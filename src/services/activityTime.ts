@@ -1,4 +1,5 @@
-import { getActivitySchedule } from '@/src/stores/activityScheduleStore';
+import { getActivitySchedule, isActivityCancelledToday } from '@/src/stores/activityScheduleStore';
+import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { isClubEventActiveOn, todayLocalISODate } from '@/src/utils/siteOps';
 import { parseHHMM } from '@/src/utils/activitySchedule';
@@ -35,6 +36,7 @@ function hasExtraActivityOn(dateISO: string): boolean {
 
 export function isActivityDay(now: Date = new Date()): boolean {
   const dateISO = todayLocalISODate(now);
+  if (isActivityCancelledToday(getSeoulTodayKey(now))) return false;
   if (isClosedOn(dateISO)) return false;
   if (hasExtraActivityOn(dateISO)) return true;
   const day = now.getDay();
@@ -43,6 +45,7 @@ export function isActivityDay(now: Date = new Date()): boolean {
 
 export function isActivityTime(now: Date = new Date()): boolean {
   const dateISO = todayLocalISODate(now);
+  if (isActivityCancelledToday(getSeoulTodayKey(now))) return false;
   if (isClosedOn(dateISO)) return false;
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -75,6 +78,7 @@ export function getNextActivityTime(now: Date = new Date()): Date | null {
     checkDate.setDate(checkDate.getDate() + offset);
     const dateISO = todayLocalISODate(checkDate);
     if (isClosedOn(dateISO)) continue;
+    if (offset === 0 && isActivityCancelledToday(getSeoulTodayKey(checkDate))) continue;
 
     const day = checkDate.getDay();
     const daySessions = hasExtraActivityOn(dateISO)

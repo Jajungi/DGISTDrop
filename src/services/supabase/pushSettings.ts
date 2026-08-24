@@ -1,4 +1,5 @@
 import { getSupabase, isSupabaseEnabled } from '@/src/lib/supabase';
+import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 
 /** 웹 푸시는 사람당 최근 구독 1개만 유지 (PC·폰 웹 합산). */
 export const MAX_WEB_PUSH_PER_USER = 1;
@@ -9,6 +10,8 @@ export interface PushNotifySettings {
   notify_time: string;
   message_template: string;
   cancel_today: boolean;
+  /** 취소한 한국 날짜. 없으면 당일 취소로 보지 않음 */
+  cancel_date: string | null;
   cancel_message: string;
   last_auto_sent_date: string | null;
 }
@@ -29,18 +32,32 @@ export const DEFAULT_PUSH_SETTINGS: PushNotifySettings = {
   notify_time: '18:00',
   message_template: '🏸 오늘 {time}부터 활동 있습니다! 앱에서 출석·코트를 확인하세요.',
   cancel_today: false,
+  cancel_date: null,
   cancel_message: '❌ 오늘 활동이 취소되었습니다.',
   last_auto_sent_date: null,
 };
 
+export function isActivityCancelledOn(
+  settings: Pick<PushNotifySettings, 'cancel_today' | 'cancel_date'>,
+  today = getSeoulTodayKey()
+): boolean {
+  return settings.cancel_today === true && settings.cancel_date === today;
+}
+
 function normalizeSettings(raw: unknown): PushNotifySettings {
-  const s = (raw && typeof raw === 'object' ? raw : {}) as Partial<PushNotifySettings>;
+  const s = (raw && typeof raw === 'object' ? raw : {}) as Partial<PushNotifySettings> & {
+    cancel_date?: string | null;
+  };
+  const today = getSeoulTodayKey();
+  const cancelDate = typeof s.cancel_date === 'string' ? s.cancel_date : null;
+  const cancelToday = s.cancel_today === true && cancelDate === today;
   return {
     enabled: s.enabled ?? DEFAULT_PUSH_SETTINGS.enabled,
     auto_notify_enabled: s.auto_notify_enabled ?? DEFAULT_PUSH_SETTINGS.auto_notify_enabled,
     notify_time: s.notify_time ?? DEFAULT_PUSH_SETTINGS.notify_time,
     message_template: s.message_template ?? DEFAULT_PUSH_SETTINGS.message_template,
-    cancel_today: s.cancel_today ?? DEFAULT_PUSH_SETTINGS.cancel_today,
+    cancel_today: cancelToday,
+    cancel_date: cancelToday ? cancelDate : null,
     cancel_message: s.cancel_message ?? DEFAULT_PUSH_SETTINGS.cancel_message,
     last_auto_sent_date: s.last_auto_sent_date ?? null,
   };
@@ -54,9 +71,13 @@ export async function fetchPushNotifySettings(): Promise<PushNotifySettings> {
     .eq('id', 1)
     .maybeSingle();
   if (error) throw error;
-  return normalizeSettings(
+  const settings = normalizeSettings(
     (data as { push_notify_settings?: unknown } | null)?.push_notify_settings
   );
+  void import('@/src/stores/activityScheduleStore').then(({ useActivityScheduleStore }) => {
+    useActivityScheduleStore.getState().setCancelledDate(settings.cancel_date);
+  });
+  return settings;
 }
 
 export async function savePushNotifySettings(
@@ -70,11 +91,17 @@ export async function savePushNotifySettings(
 }
 
 export async function toggleActivityCancelToday(cancel: boolean): Promise<PushNotifySettings> {
-  const { data, error } = await getSupabase().rpc('rpc_toggle_activity_cancel_today', {
-    p_cancel: cancel,
-  });
-  if (error) throw error;
-  return normalizeSettings(data);
+  const current = await fetchPushNotifySettings();
+  const today = getSeoulTodayKey();
+  const next: PushNotifySettings = {
+    ...current,
+    cancel_today: cancel,
+    cancel_date: cancel ? today : null,
+  };
+  const saved = await savePushNotifySettings(next);
+  const { useActivityScheduleStore } = await import('@/src/stores/activityScheduleStore');
+  useActivityScheduleStore.getState().setCancelledDate(saved.cancel_date);
+  return saved;
 }
 
 export async function fetchPushNotifyLogs(limit = 20): Promise<PushNotifyLog[]> {

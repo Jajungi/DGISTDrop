@@ -9,6 +9,9 @@ import { isSupabaseEnabled } from '@/src/lib/supabase';
 
 interface ActivityScheduleState {
   schedule: ActivitySession[];
+  /** 오늘 활동 취소인 한국 날짜. 아니면 null */
+  cancelledDate: string | null;
+  setCancelledDate: (date: string | null) => void;
   setScheduleLocal: (sessions: ActivitySession[]) => void;
   setSchedule: (
     sessions: ActivitySession[]
@@ -18,6 +21,9 @@ interface ActivityScheduleState {
 
 export const useActivityScheduleStore = create<ActivityScheduleState>((set, get) => ({
   schedule: cloneSchedule(DEFAULT_ACTIVITY_SCHEDULE),
+  cancelledDate: null,
+
+  setCancelledDate: (date) => set({ cancelledDate: date }),
 
   setScheduleLocal: (sessions) => {
     set({ schedule: normalizeSchedule(sessions) });
@@ -50,4 +56,8 @@ export const useActivityScheduleStore = create<ActivityScheduleState>((set, get)
 
 export function getActivitySchedule(): ActivitySession[] {
   return useActivityScheduleStore.getState().schedule;
+}
+
+export function isActivityCancelledToday(today: string): boolean {
+  return useActivityScheduleStore.getState().cancelledDate === today;
 }

@@ -98,6 +98,13 @@ export async function initSupabaseApp(): Promise<boolean> {
   }
 
   try {
+    const { fetchPushNotifySettings } = await import('@/src/services/supabase/pushSettings');
+    await fetchPushNotifySettings();
+  } catch {
+    /* keep default */
+  }
+
+  try {
     const overlays = await fetchSiteOverlays();
     if (overlays) useSiteOverlayStore.getState().setLocal(overlays);
   } catch {

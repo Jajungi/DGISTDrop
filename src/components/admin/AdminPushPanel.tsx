@@ -194,6 +194,10 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
   const showAttendanceActions = !settings.cancel_today;
 
   const sendActivityNotify = async () => {
+    if (settings.cancel_today) {
+      onToast('info', '오늘은 활동이 취소되어 활동 알림을 보내지 않아요. 안내는 커스텀으로 보내세요.');
+      return;
+    }
     const message = previewMessage;
     try {
       const result = await invokeBroadcastPush({
@@ -279,7 +283,7 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
 
           {settings.cancel_today && (
             <Card style={styles.cancelBanner}>
-              <Text style={styles.cancelText}>⚠️ 오늘 활동 취소 상태</Text>
+              <Text style={styles.cancelText}>⚠️ 오늘 활동 취소 — 활동 알림은 자동·수동 모두 안 갑니다. 날짜가 바뀌면 취소는 풀립니다.</Text>
             </Card>
           )}
 
@@ -443,8 +447,17 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
               body={previewMessage}
               showActions={showAttendanceActions}
             />
+            {settings.cancel_today ? (
+              <Text style={styles.hint}>오늘은 취소라 활동 알림을 보내지 않습니다. 필요하면 아래 커스텀으로 안내하세요.</Text>
+            ) : null}
             <View style={styles.gap} />
-            <Button title="활동 알림 발송" onPress={() => void sendActivityNotify()} variant="secondary" fullWidth />
+            <Button
+              title="활동 알림 발송"
+              onPress={() => void sendActivityNotify()}
+              variant="secondary"
+              fullWidth
+              disabled={settings.cancel_today}
+            />
           </Card>
 
           <Card style={styles.block}>
