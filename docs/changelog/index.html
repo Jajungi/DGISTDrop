@@ -180,7 +180,7 @@
         <tr><th>작성 주체</th><td>DGIST 배드민턴 동아리 Drop</td></tr>
         <tr><th>열람 대상</th><td>동아리 운영진</td></tr>
         <tr><th>개정일</th><td>2026-08-24</td></tr>
-        <tr><th>대상 범위</th><td>v0.1 ~ v1.4 (Git 저장소 및 미푸시 반영분 포함)</td></tr>
+        <tr><th>대상 범위</th><td>v0.1 ~ v1.5 (Git 저장소 및 미푸시 반영분 포함)</td></tr>
         <tr><th>근거 저장소</th><td>https://github.com/Jajungi/DGISTDrop</td></tr>
       </table>
     </div>
@@ -211,7 +211,7 @@
       <tbody>
         <tr><td class="toc-no">1</td><td>개요</td><td>—</td><td></td></tr>
         <tr><td class="toc-no">2</td><td>목차</td><td>—</td><td></td></tr>
-        <tr><td class="toc-no">3</td><td>버전별 변경 내역</td><td>v0.1–v1.4</td><td></td></tr>
+        <tr><td class="toc-no">3</td><td>버전별 변경 내역</td><td>v0.1–v1.5</td><td></td></tr>
         
       <tr>
         <td class="toc-no">3.1</td>
@@ -296,6 +296,12 @@
         <td>v1.4 출석 버튼·한국 날짜</td>
         <td class="toc-date">2026-08-24</td>
         <td class="toc-page"><a href="#v1.4">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.15</td>
+        <td>v1.5 웹 푸시 사람당 1개</td>
+        <td class="toc-date">2026-08-24</td>
+        <td class="toc-page"><a href="#v1.5">이동</a></td>
       </tr>
       </tbody>
     </table>
@@ -865,6 +871,33 @@
         <tr>
           <td class="col-no">2</td>
           <td class="col-what">같은 사람의 PC 웹 구독(크롬 탭·웹앱)은 하나만 남김. 관리 → 알림에 「웹은 사람당 하나만」을 넣어, 폰·PC 웹을 합쳐 최근 웹 구독 하나만 남길 수 있음.</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v1.5">
+        <h2 class="h2">3.15　v1.5　웹 푸시 사람당 1개</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-08-24</td><th>항목 수</th><td>2</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>한 사람에게 웹 구독이 수십 개 쌓이지 않게 자동으로 막음.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">웹 푸시는 사람당 최근 구독 1개만 유지(PC·폰 웹 합산). 알림을 켤 때·관리 정리·활동 알림 발송 때 여분을 지움.</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">관리 → 알림의 「못 쓰는 등록 정리」가 여분 웹까지 한 번에 지움. Supabase에 037_web_push_one_per_user.sql 적용 필요.</td>
         </tr></tbody>
         </table>
       </section>

@@ -4,7 +4,6 @@ import {
   currentWebPushPlatform,
   detectClientDevice,
   isStandalonePwa,
-  webPushClassFromPlatform,
 } from '@/src/utils/clientDevice';
 import { classifyPushToken } from '@/src/services/supabase/pushSettings';
 
@@ -80,6 +79,7 @@ export async function registerWebPushForUser(userId: string): Promise<boolean> {
       );
     if (error) throw error;
 
+    // 사람당 웹 구독은 지금 기기 하나만. PC·폰 웹을 합쳐 여분은 바로 지운다.
     const { data: mine } = await getSupabase()
       .from('push_tokens')
       .select('token, platform')
@@ -87,9 +87,7 @@ export async function registerWebPushForUser(userId: string): Promise<boolean> {
     const stale = (mine ?? [])
       .filter(
         (row) =>
-          row.token !== token &&
-          classifyPushToken(row.token, row.platform) === 'web' &&
-          webPushClassFromPlatform(row.platform) === webPushClassFromPlatform(platform)
+          row.token !== token && classifyPushToken(row.token, row.platform) === 'web'
       )
       .map((row) => row.token);
     if (stale.length) {

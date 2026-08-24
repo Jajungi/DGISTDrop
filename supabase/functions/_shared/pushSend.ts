@@ -5,6 +5,44 @@ import { buildPushPayload } from 'https://esm.sh/@block65/webcrypto-web-push@1.0
 
 export type PushSendResult = { sent: number; pruned: number };
 
+/** 웹 푸시는 사람당 최근 구독 1개만 발송·유지 */
+export const MAX_WEB_PUSH_PER_USER = 1;
+
+export type PushTokenRow = {
+  token: string;
+  user_id: string;
+  platform?: string | null;
+  updated_at?: string | null;
+  created_at?: string | null;
+};
+
+function tokenTime(row: Pick<PushTokenRow, 'updated_at' | 'created_at'>): number {
+  const raw = row.updated_at || row.created_at;
+  const ms = raw ? Date.parse(raw) : 0;
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+/**
+ * 사람당 웹 구독 MAX개만 남긴다. keep = 발송 대상, drop = DB에서 지울 여분.
+ */
+export function splitWebTokensPerUser(rows: PushTokenRow[]): { keep: string[]; drop: string[] } {
+  const byUser = new Map<string, PushTokenRow[]>();
+  for (const row of rows) {
+    if (!isWebSubscription(row.token)) continue;
+    const list = byUser.get(row.user_id) ?? [];
+    list.push(row);
+    byUser.set(row.user_id, list);
+  }
+  const keep: string[] = [];
+  const drop: string[] = [];
+  for (const list of byUser.values()) {
+    list.sort((a, b) => tokenTime(b) - tokenTime(a));
+    keep.push(...list.slice(0, MAX_WEB_PUSH_PER_USER).map((r) => r.token));
+    drop.push(...list.slice(MAX_WEB_PUSH_PER_USER).map((r) => r.token));
+  }
+  return { keep, drop };
+}
+
 export function isExpoToken(token: string): boolean {
   return token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[');
 }
@@ -32,7 +70,7 @@ function isWebSubscriptionGone(status: number): boolean {
   return status === 404 || status === 410 || status === 403 || status === 400;
 }
 
-async function deleteTokens(supabase: SupabaseClient, tokens: string[]): Promise<number> {
+export async function deleteTokens(supabase: SupabaseClient, tokens: string[]): Promise<number> {
   const unique = [...new Set(tokens.filter(Boolean))];
   if (!unique.length) return 0;
   const { error } = await supabase.from('push_tokens').delete().in('token', unique);

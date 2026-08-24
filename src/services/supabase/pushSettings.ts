@@ -1,5 +1,7 @@
 import { getSupabase, isSupabaseEnabled } from '@/src/lib/supabase';
-import { webPushClassFromPlatform } from '@/src/utils/clientDevice';
+
+/** 웹 푸시는 사람당 최근 구독 1개만 유지 (PC·폰 웹 합산). */
+export const MAX_WEB_PUSH_PER_USER = 1;
 
 export interface PushNotifySettings {
   enabled: boolean;
@@ -104,7 +106,6 @@ export type PushTokenStats = {
   android: number;
   removable: number;
   extraWeb: number;
-  extraWebStrict: number;
   heavy: PushTokenHeavyUser[];
 };
 
@@ -143,20 +144,20 @@ function tokenTime(row: PushTokenRow): number {
   return Number.isFinite(ms) ? ms : 0;
 }
 
-function extraWebTokens(rows: PushTokenRow[], perUserOnly: boolean): string[] {
-  const byGroup = new Map<string, PushTokenRow[]>();
+/** 사람당 웹 구독이 MAX_WEB_PUSH_PER_USER를 넘으면 최근 것만 남기고 나머지를 반환 */
+export function extraWebTokens(rows: PushTokenRow[]): string[] {
+  const byUser = new Map<string, PushTokenRow[]>();
   for (const row of rows) {
     if (classifyPushToken(row.token, row.platform) !== 'web') continue;
-    const key = perUserOnly ? row.user_id : `${row.user_id}:${webPushClassFromPlatform(row.platform)}`;
-    const list = byGroup.get(key) ?? [];
+    const list = byUser.get(row.user_id) ?? [];
     list.push(row);
-    byGroup.set(key, list);
+    byUser.set(row.user_id, list);
   }
   const extra: string[] = [];
-  for (const list of byGroup.values()) {
-    if (list.length <= 1) continue;
+  for (const list of byUser.values()) {
+    if (list.length <= MAX_WEB_PUSH_PER_USER) continue;
     list.sort((a, b) => tokenTime(b) - tokenTime(a));
-    extra.push(...list.slice(1).map((row) => row.token));
+    extra.push(...list.slice(MAX_WEB_PUSH_PER_USER).map((row) => row.token));
   }
   return extra;
 }
@@ -204,8 +205,7 @@ function summarizeTokens(rows: PushTokenRow[], profiles: ProfileLite[]): PushTok
     other,
     android: app,
     removable,
-    extraWeb: extraWebTokens(rows, false).length,
-    extraWebStrict: extraWebTokens(rows, true).length,
+    extraWeb: extraWebTokens(rows).length,
     heavy,
   };
 }
@@ -255,7 +255,7 @@ async function deleteTokenChunks(tokens: string[]): Promise<number> {
   return removed;
 }
 
-export async function prunePushTokens(mode: 'normal' | 'strict' = 'normal'): Promise<{
+export async function prunePushTokens(): Promise<{
   unapproved: number;
   invalid: number;
   extraWeb: number;
@@ -266,24 +266,24 @@ export async function prunePushTokens(mode: 'normal' | 'strict' = 'normal'): Pro
   if (error) throw error;
   const raw = (data ?? {}) as Record<string, unknown>;
   const unapproved = Number(raw.unapproved) || 0;
+  const rpcExtraWeb = Number(raw.extra_web ?? raw.duplicates) || 0;
   const oldLogs = Number(raw.old_logs) || 0;
 
   const rows = await fetchTokenRows();
   const invalid = rows
     .filter((row) => classifyPushToken(row.token, row.platform) === 'other')
     .map((row) => row.token);
-  const extraWeb = extraWebTokens(
-    rows.filter((row) => !invalid.includes(row.token)),
-    mode === 'strict'
-  );
-  const cleaned = await deleteTokenChunks([...invalid, ...extraWeb]);
+  // RPC가 아직 구버전이면 클라이언트에서 사람당 웹 1개로 한 번 더 정리
+  const leftoverExtra = extraWebTokens(rows.filter((row) => !invalid.includes(row.token)));
+  await deleteTokenChunks([...invalid, ...leftoverExtra]);
+  const extraWeb = rpcExtraWeb + leftoverExtra.length;
 
   return {
     unapproved,
     invalid: invalid.length,
-    extraWeb: extraWeb.length,
+    extraWeb,
     old_logs: oldLogs,
-    removed: unapproved + cleaned,
+    removed: unapproved + extraWeb + invalid.length,
   };
 }
 
