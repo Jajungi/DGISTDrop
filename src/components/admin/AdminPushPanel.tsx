@@ -6,6 +6,7 @@ import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/them
 import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import {
   activityStartHHMMForDay,
+  fillActivityNotifyTemplate,
   formatActivityScheduleLabel,
   seoulWeekday,
 } from '@/src/utils/activitySchedule';
@@ -26,6 +27,34 @@ import {
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 
 type PushSub = 'status' | 'settings' | 'send' | 'logs';
+
+function ActivityNotifyPreview({
+  title,
+  body,
+  showActions,
+}: {
+  title: string;
+  body: string;
+  showActions: boolean;
+}) {
+  return (
+    <View style={styles.notifyCard}>
+      <Text style={styles.notifyApp}>Drop</Text>
+      <Text style={styles.notifyTitle}>{title}</Text>
+      <Text style={styles.notifyBody}>{body}</Text>
+      {showActions ? (
+        <View style={styles.notifyActions}>
+          <View style={styles.notifyAction}>
+            <Text style={styles.notifyActionText}>참석</Text>
+          </View>
+          <View style={styles.notifyAction}>
+            <Text style={styles.notifyActionText}>불참</Text>
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 interface AdminPushPanelProps {
   adminId: string;
@@ -157,10 +186,15 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
     setPruning(false);
   };
 
+  const previewTitle = 'Drop 활동 알림';
+  const previewMessage = fillActivityNotifyTemplate(
+    settings.cancel_today ? editCancelMsg : editTemplate,
+    activityStartLabel
+  );
+  const showAttendanceActions = !settings.cancel_today;
+
   const sendActivityNotify = async () => {
-    const message = settings.cancel_today
-      ? settings.cancel_message
-      : settings.message_template.replace('{time}', activityStartLabel);
+    const message = previewMessage;
     try {
       const result = await invokeBroadcastPush({
         title: 'Drop 활동 알림',
@@ -202,10 +236,6 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
       onToast('warning', msg);
     }
   };
-
-  const previewMessage = settings.cancel_today
-    ? settings.cancel_message
-    : editTemplate.replace('{time}', activityStartLabel);
 
   return (
     <View style={styles.wrap}>
@@ -362,7 +392,9 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
 
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>메시지 템플릿</Text>
-            <Text style={styles.hint}>{`{time} → 당일 활동 시작 (오늘 ${activityStartLabel}). 자동 발송 시각이 아닙니다.`}</Text>
+            <Text style={styles.hint}>
+              {'{time}'}은 당일 활동 시작으로 바뀝니다. 자동 발송 시각({editNotifyTime})이 아닙니다.
+            </Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={editTemplate}
@@ -371,6 +403,7 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
               numberOfLines={3}
               placeholderTextColor={colors.textMuted}
             />
+            <Text style={styles.resolvedSample}>보낼 문장: {previewMessage}</Text>
             <View style={styles.inputRow}>
               <Text style={styles.inputLabel}>취소 메시지</Text>
               <TextInput
@@ -384,10 +417,11 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
 
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>미리보기</Text>
-            <View style={styles.previewBubble}>
-              <Text style={styles.previewTitle}>Drop 활동 알림</Text>
-              <Text style={styles.previewText}>{previewMessage}</Text>
-            </View>
+            <ActivityNotifyPreview
+              title={previewTitle}
+              body={previewMessage}
+              showActions={showAttendanceActions}
+            />
           </Card>
 
           <Button
@@ -404,10 +438,11 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
         <View style={styles.content}>
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>활동 알림 수동 발송</Text>
-            <View style={styles.previewBubble}>
-              <Text style={styles.previewTitle}>Drop 활동 알림</Text>
-              <Text style={styles.previewText}>{previewMessage}</Text>
-            </View>
+            <ActivityNotifyPreview
+              title={previewTitle}
+              body={previewMessage}
+              showActions={showAttendanceActions}
+            />
             <View style={styles.gap} />
             <Button title="활동 알림 발송" onPress={() => void sendActivityNotify()} variant="secondary" fullWidth />
           </Card>
@@ -535,9 +570,27 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSubtle,
   },
   textArea: { minHeight: 80, textAlignVertical: 'top', marginTop: spacing.xs },
-  previewBubble: { backgroundColor: colors.primaryLight, borderRadius: borderRadius.md, padding: spacing.md, gap: spacing.xs },
-  previewTitle: { ...typography.caption, color: colors.primary, fontWeight: '700' },
-  previewText: { ...typography.body, color: colors.text },
+  resolvedSample: { ...typography.small, color: colors.primary, marginTop: spacing.xs, lineHeight: 18 },
+  notifyCard: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  notifyApp: { ...typography.caption, color: colors.textMuted, fontWeight: '700' },
+  notifyTitle: { ...typography.bodyBold, color: colors.text, fontSize: 16 },
+  notifyBody: { ...typography.body, color: colors.textSecondary, lineHeight: 20 },
+  notifyActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  notifyAction: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    borderRadius: borderRadius.sm,
+  },
+  notifyActionText: { ...typography.caption, color: colors.primary, fontWeight: '800' },
   logCard: { backgroundColor: colors.surfaceAlt, borderRadius: borderRadius.sm, padding: spacing.md, gap: 4 },
   logHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   logBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: colors.border },

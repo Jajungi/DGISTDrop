@@ -52,9 +52,18 @@ export function activityStartHHMMForDay(sessions: ActivitySession[], day: number
 
 /** 한국 요일 0=일 … 6=토 */
 export function seoulWeekday(date = new Date()): number {
-  return Number(
-    new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' })).getDay()
-  );
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul',
+    weekday: 'short',
+  }).format(date);
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const idx = days.indexOf(weekday);
+  return idx >= 0 ? idx : date.getDay();
+}
+
+/** 활동 알림 템플릿의 {time}을 활동 시작 시각으로 채움 */
+export function fillActivityNotifyTemplate(template: string, activityStartHHMM: string): string {
+  return template.replace(/\{time\}/g, activityStartHHMM);
 }
 
 /** 이용 안내·배너용 활동 일정 한 줄 요약 */
