@@ -30,12 +30,38 @@ export function isScheduleForToday(scheduleDate?: string, today = getSeoulTodayK
   return scheduleDate === today;
 }
 
+/** DB time(18:30:00) · HH:MM → 18:30. 형식이 아니면 undefined */
+export function normalizeHHMM(value?: string | null): string | undefined {
+  if (!value) return undefined;
+  const match = String(value)
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/);
+  if (!match) return undefined;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return undefined;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+/** 화면용 시각. 초는 숨김. */
+export function formatClockTime(value?: string | null): string {
+  return normalizeHHMM(value) ?? '';
+}
+
+export function formatClockRange(start?: string | null, end?: string | null): string {
+  const from = formatClockTime(start);
+  if (!from) return '';
+  const to = formatClockTime(end);
+  return to ? `${from}–${to}` : from;
+}
+
 export function getEffectiveSchedule(user: {
   scheduleDate?: string;
   scheduledStart?: string;
   scheduledEnd?: string;
 }): { start?: string; end?: string } {
-  if (!user.scheduledStart) return {};
+  const start = normalizeHHMM(user.scheduledStart);
+  if (!start) return {};
   if (user.scheduleDate && !isScheduleForToday(user.scheduleDate)) return {};
-  return { start: user.scheduledStart, end: user.scheduledEnd };
+  return { start, end: normalizeHHMM(user.scheduledEnd) };
 }

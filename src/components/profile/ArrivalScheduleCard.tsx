@@ -8,7 +8,7 @@ import { ACTIVITY_SCHEDULE } from '@/src/constants';
 import { getActivitySchedule, useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { todayAttendanceIntent } from '@/src/utils/attendanceIntent';
-import { formatCompactDayLabel, getSeoulTodayKey, isScheduleForToday } from '@/src/utils/dateFormat';
+import { formatCompactDayLabel, getSeoulTodayKey, isScheduleForToday, normalizeHHMM } from '@/src/utils/dateFormat';
 import { isActivityDay, getActivityDayLabel } from '@/src/services/activityTime';
 import { formatActivityScheduleLabel } from '@/src/utils/activitySchedule';
 import { colors, spacing, typography } from '@/src/theme';
@@ -47,9 +47,11 @@ export function ArrivalScheduleCard() {
     isScheduleForToday(currentUser.scheduleDate, todayKey) &&
     currentUser.scheduledStart;
 
-  const [arrivalTime, setArrivalTime] = useState(savedForToday ? currentUser!.scheduledStart! : '');
+  const [arrivalTime, setArrivalTime] = useState(
+    savedForToday ? normalizeHHMM(currentUser!.scheduledStart) ?? '' : ''
+  );
   const [endTime, setEndTime] = useState(
-    savedForToday && currentUser?.scheduledEnd ? currentUser.scheduledEnd : ''
+    savedForToday && currentUser?.scheduledEnd ? normalizeHHMM(currentUser.scheduledEnd) ?? '' : ''
   );
 
   const timeReveal = useRef(new Animated.Value(showTime ? 1 : 0)).current;
@@ -57,8 +59,8 @@ export function ArrivalScheduleCard() {
   useEffect(() => {
     if (!currentUser) return;
     const valid = isScheduleForToday(currentUser.scheduleDate, todayKey) && currentUser.scheduledStart;
-    setArrivalTime(valid ? currentUser.scheduledStart! : '');
-    setEndTime(valid && currentUser.scheduledEnd ? currentUser.scheduledEnd : '');
+    setArrivalTime(valid ? normalizeHHMM(currentUser.scheduledStart) ?? '' : '');
+    setEndTime(valid && currentUser.scheduledEnd ? normalizeHHMM(currentUser.scheduledEnd) ?? '' : '');
   }, [currentUser?.id, currentUser?.scheduleDate, currentUser?.scheduledStart, currentUser?.scheduledEnd, todayKey]);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 import type { User } from '@/src/types';
-import { getSeoulTodayKey } from '@/src/utils/dateFormat';
+import { getSeoulTodayKey, isScheduleForToday, normalizeHHMM } from '@/src/utils/dateFormat';
 
 export function todayAttendanceIntent(
   user: Pick<User, 'attendanceIntent' | 'attendanceIntentDate'> | null | undefined,
@@ -15,4 +15,13 @@ export function isGoingToday(
   today = getSeoulTodayKey()
 ): boolean {
   return user?.memberStatus === 'approved' && todayAttendanceIntent(user, today) === 'going';
+}
+
+/** 오늘 도착·퇴장 시각이 저장돼 있는지 */
+export function hasArrivalTimeToday(
+  user: Pick<User, 'scheduleDate' | 'scheduledStart'> | null | undefined,
+  today = getSeoulTodayKey()
+): boolean {
+  if (!user?.scheduledStart || !normalizeHHMM(user.scheduledStart)) return false;
+  return isScheduleForToday(user.scheduleDate, today);
 }

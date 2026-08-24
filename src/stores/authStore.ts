@@ -21,7 +21,7 @@ import {
 } from '@/src/services/supabase/auth';
 import { fetchAllProfiles, uploadAvatar, removeAvatar } from '@/src/services/supabase/profiles';
 import { clearSavedLogin, loadSavedLogin, saveSavedLogin } from '@/src/services/quickLogin';
-import { getSeoulTodayKey } from '@/src/utils/dateFormat';
+import { getSeoulTodayKey, normalizeHHMM } from '@/src/utils/dateFormat';
 import { INFINITE_DEV_POINTS } from '@/src/utils/responsive';
 import {
   createLocalGuestUser,
@@ -950,8 +950,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   updateUserSchedule: (userId, arrivalTime, endTime) => {
-    const start = arrivalTime.trim();
-    if (!/^\d{2}:\d{2}$/.test(start)) {
+    const start = normalizeHHMM(arrivalTime.trim());
+    if (!start) {
       return { success: false, message: '도착 시간을 HH:MM 형식으로 입력해 주세요. (예: 18:30)' };
     }
     const [sh, sm] = start.split(':').map(Number);
@@ -961,14 +961,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     let scheduledEnd: string | undefined;
     if (endTime?.trim()) {
-      const end = endTime.trim();
-      if (!/^\d{2}:\d{2}$/.test(end)) {
+      const end = normalizeHHMM(endTime.trim());
+      if (!end) {
         return { success: false, message: '퇴장 시간을 HH:MM 형식으로 입력해 주세요.' };
       }
       const [eh, em] = end.split(':').map(Number);
-      if (eh > 23 || em > 59) {
-        return { success: false, message: '올바른 퇴장 시간을 입력해 주세요.' };
-      }
       if (eh * 60 + em <= sh * 60 + sm) {
         return { success: false, message: '퇴장 시간은 도착 시간보다 늦어야 해요.' };
       }

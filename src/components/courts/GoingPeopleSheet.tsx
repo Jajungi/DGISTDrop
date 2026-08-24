@@ -14,7 +14,7 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/src/components/ui/Avatar';
 import type { User } from '@/src/types';
-import { getSeoulTodayKey } from '@/src/utils/dateFormat';
+import { formatClockRange, formatClockTime, getSeoulTodayKey } from '@/src/utils/dateFormat';
 import { colors, spacing, typography, borderRadius, glass, shadows } from '@/src/theme';
 
 const SCROLL_AFTER = 6;
@@ -91,9 +91,7 @@ export function GoingPeopleSheet({
               {people.map((u) => {
                 const time =
                   u.scheduleDate === today && u.scheduledStart
-                    ? u.scheduledEnd
-                      ? `${u.scheduledStart}–${u.scheduledEnd}`
-                      : u.scheduledStart
+                    ? formatClockRange(u.scheduledStart, u.scheduledEnd) || formatClockTime(u.scheduledStart)
                     : null;
                 return (
                   <View key={u.id} style={styles.row}>

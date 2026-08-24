@@ -3,6 +3,7 @@ import { AVATAR_LIMITS } from '@/src/constants/dataRetention';
 import { COACH_COURT_ID } from '@/src/constants/court';
 import { CENTER_COURTS } from '@/src/constants';
 import { getSupabase } from '@/src/lib/supabase';
+import { normalizeHHMM } from '@/src/utils/dateFormat';
 
 type DbProfile = {
   id: string;
@@ -113,8 +114,8 @@ export function mapProfileRow(row: DbProfile): User {
     peakTimeReservations: row.peak_time_reservations,
     isAtGym: row.is_at_gym,
     scheduleDate: row.schedule_date ?? undefined,
-    scheduledStart: row.scheduled_start ?? undefined,
-    scheduledEnd: row.scheduled_end ?? undefined,
+    scheduledStart: normalizeHHMM(row.scheduled_start),
+    scheduledEnd: normalizeHHMM(row.scheduled_end),
     lessonStatus: row.lesson_status,
     lessonRequestedAt: row.lesson_requested_at ?? undefined,
     isCoach: row.is_coach ?? false,

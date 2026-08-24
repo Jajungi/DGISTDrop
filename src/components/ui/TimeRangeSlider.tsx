@@ -9,6 +9,7 @@ import {
   selectedIndicesToTimes,
   formatSelectionSummary,
 } from '@/src/utils/timeSlots';
+import { normalizeHHMM } from '@/src/utils/dateFormat';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 export interface TimeRangeSliderProps {
@@ -27,9 +28,9 @@ export interface TimeRangeSliderProps {
 }
 
 /**
- * 연속 구간 위주 (도착 일정 start~end).
+ * 도착 일정 칸 선택.
  * 드래그: 시작 칸~현재 칸으로 선택 범위를 통째로 교체.
- * 탭: 칸 단위 토글 — 미선택 칸은 추가(기존과 사이 채움), 선택 칸은 해당 칸만 해제.
+ * 탭: 그 칸만 켜거나 끔. 다른 칸은 그대로 둔다.
  */
 export function TimeRangeSlider({
   startHour,
@@ -55,10 +56,25 @@ export function TimeRangeSlider({
     rangeToSelectedIndices(marks, selectedStart, selectedEnd)
   );
   const [timeExpanded, setTimeExpanded] = useState(true);
+  const lastEmittedRef = useRef<{ start: string; end: string } | null>(null);
 
   useEffect(() => {
+    const start = normalizeHHMM(selectedStart) ?? '';
+    const end = normalizeHHMM(selectedEnd) ?? '';
+    const emitted = lastEmittedRef.current;
+    // 방금 이 슬라이더가 올린 값이면 칸 상태를 덮어쓰지 않음 (한 칸만 끈 뒤 다시 채워지는 것 방지)
+    if (emitted && emitted.start === start && emitted.end === end) return;
+    lastEmittedRef.current = start || end ? { start, end } : { start: '', end: '' };
     setSelectedIndices(rangeToSelectedIndices(marks, selectedStart, selectedEnd));
   }, [marks, selectedStart, selectedEnd]);
+
+  const emitTimes = useCallback(
+    (start: string, end: string) => {
+      lastEmittedRef.current = { start, end };
+      onChange(start, end);
+    },
+    [onChange]
+  );
 
   const applyRange = useCallback(
     (lo: number, hi: number) => {
@@ -66,35 +82,27 @@ export function TimeRangeSlider({
       for (let i = lo; i <= hi; i++) next.add(i);
       setSelectedIndices(next);
       const times = rangeIndicesToTimes(marks, lo, hi);
-      onChange(times.start, times.end);
+      emitTimes(times.start, times.end);
     },
-    [marks, onChange]
+    [marks, emitTimes]
   );
 
   const emitFromIndices = useCallback(
     (next: Set<number>) => {
       setSelectedIndices(next);
       const times = selectedIndicesToTimes(marks, next);
-      if (times) onChange(times.start, times.end);
-      else onChange('', '');
+      if (times) emitTimes(times.start, times.end);
+      else emitTimes('', '');
     },
-    [marks, onChange]
+    [marks, emitTimes]
   );
 
-  /** 탭: 칸 단위 토글 — 추가 시 기존~새 칸 사이를 채움, 해제는 해당 칸만 */
+  /** 탭: 누른 칸만 켜거나 끔. 다른 칸은 그대로. */
   const toggleIndex = useCallback(
     (index: number) => {
       const next = new Set(selectedIndices);
-      if (next.has(index)) {
-        next.delete(index);
-      } else if (next.size === 0) {
-        next.add(index);
-      } else {
-        const lo = Math.min(...next, index);
-        const hi = Math.max(...next, index);
-        next.clear();
-        for (let i = lo; i <= hi; i++) next.add(i);
-      }
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
       emitFromIndices(next);
     },
     [emitFromIndices, selectedIndices]
@@ -248,7 +256,7 @@ export function TimeRangeSlider({
               <Text style={styles.rangeSummary}>{rangeSummary}</Text>
             ) : (
               <Text style={styles.rangeHint}>
-                막대를 드래그하거나 칸을 눌러 구간을 고르세요.
+                칸을 누르면 그 칸만 바뀌고, 드래그하면 구간을 고를 수 있어요.
               </Text>
             )}
           </View>

@@ -134,7 +134,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
       id: 'attendance-today',
       type: 'system' as const,
       title: '오늘 오시나요?',
-      message: '참석하면 올 사람 수에 바로 들어가요. 시간은 프로필에서 고르면 됩니다.',
+      message: '참석하면 올 사람 수에 바로 들어가요. 언제 올지는 바로 고를 수 있어요.',
       read: false,
       createdAt: new Date().toISOString(),
       targetUserId: currentUser.id,
@@ -187,13 +187,10 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
       title: '',
       message:
         intent === 'going'
-          ? '참석으로 표시했어요. 프로필에서 오늘 시간을 고를 수 있어요.'
+          ? '참석으로 표시했어요. 언제 올지 칸에서 골라 주세요.'
           : result.message,
     });
-    if (intent === 'going') {
-      onClose();
-      router.push('/profile');
-    }
+    if (intent === 'going') onClose();
   };
 
   const handleAccept = (item: AppNotification) => {

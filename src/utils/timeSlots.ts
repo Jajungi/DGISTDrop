@@ -1,7 +1,30 @@
-/** HH:MM → 자정 기준 분 */
+import { normalizeHHMM } from '@/src/utils/dateFormat';
+
+/** HH:MM(또는 18:30:00) → 자정 기준 분 */
 export function minutesFromHHMM(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
+  const norm = normalizeHHMM(hhmm);
+  if (!norm) return Number.NaN;
+  const [h, m] = norm.split(':').map(Number);
   return h * 60 + m;
+}
+
+function markIndexByTime(marks: string[], hhmm?: string): number {
+  const norm = normalizeHHMM(hhmm);
+  if (!norm) return -1;
+  const exact = marks.indexOf(norm);
+  if (exact >= 0) return exact;
+  const mins = minutesFromHHMM(norm);
+  if (!Number.isFinite(mins)) return -1;
+  let best = -1;
+  let bestDist = Infinity;
+  for (let i = 0; i < marks.length; i++) {
+    const dist = Math.abs(minutesFromHHMM(marks[i]) - mins);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = i;
+    }
+  }
+  return best;
 }
 
 /** 분 → HH:MM */
@@ -79,17 +102,15 @@ export function getContiguousRuns(indices: number[]): [number, number][] {
   return runs;
 }
 
-/** 선택된 구간 인덱스 → 시작·끝 HH:MM (가장 긴 연속 구간 기준, 없으면 null) */
+/** 선택된 구간 인덱스 → 시작·끝 HH:MM (선택된 칸의 최소~최대, 없으면 null) */
 export function selectedIndicesToTimes(
   marks: string[],
   selected: Set<number>
 ): { start: string; end: string } | null {
-  const runs = getContiguousRuns([...selected]);
-  if (!runs.length) return null;
-  const [lo, hi] = runs.reduce((best, run) =>
-    run[1] - run[0] > best[1] - best[0] ? run : best
-  );
-  return { start: marks[lo], end: marks[hi + 1] ?? marks[marks.length - 1] };
+  if (!selected.size) return null;
+  const lo = Math.min(...selected);
+  const hi = Math.max(...selected);
+  return rangeIndicesToTimes(marks, lo, hi);
 }
 
 /** 선택 요약 — 연속 구간별 표시 */
@@ -101,21 +122,22 @@ export function formatSelectionSummary(marks: string[], selected: Set<number>): 
     .join(' · ');
 }
 
-/** HH:MM 범위 → 구간 인덱스 (없으면 null) */
+/** HH:MM 범위 → 구간 인덱스 (없으면 null). 18:30:00 도 맞춘다. */
 export function timesToRangeIndices(
   marks: string[],
   start?: string,
   end?: string
 ): { startIdx: number; endIdx: number } | null {
-  if (!start) return null;
-  const startIdx = marks.indexOf(start);
+  const startIdx = markIndexByTime(marks, start);
   if (startIdx < 0) return null;
 
   if (!end) {
     return { startIdx, endIdx: startIdx };
   }
 
-  const endIdx = marks.indexOf(end) - 1;
+  const endMark = markIndexByTime(marks, end);
+  if (endMark < 0) return { startIdx, endIdx: startIdx };
+  const endIdx = endMark - 1;
   if (endIdx < startIdx) return { startIdx, endIdx: startIdx };
   return { startIdx, endIdx };
 }

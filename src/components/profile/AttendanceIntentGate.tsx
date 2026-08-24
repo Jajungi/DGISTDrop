@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, View, Text, StyleSheet } from 'react-native';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
@@ -7,7 +7,7 @@ import { TimeRangeSlider } from '@/src/components/ui/TimeRangeSlider';
 import { ACTIVITY_SCHEDULE } from '@/src/constants';
 import { getActivitySchedule, useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
-import { todayAttendanceIntent } from '@/src/utils/attendanceIntent';
+import { hasArrivalTimeToday, todayAttendanceIntent } from '@/src/utils/attendanceIntent';
 import { formatCompactDayLabel } from '@/src/utils/dateFormat';
 import { isGuestUser } from '@/src/utils/guestAccess';
 import { isActivityDay } from '@/src/services/activityTime';
@@ -15,7 +15,8 @@ import { useTabTourStore } from '@/src/stores/tabTourStore';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 /**
- * 활동일에만, 푸시에서 참석/불참을 안 골랐을 때 앱에 들어오면 묻는다.
+ * 활동일에 참석/불참을 아직 안 골랐거나,
+ * 푸시·알림에서 참석만 고르고 시간이 없을 때 프로필과 같은 시간 칸을 띄운다.
  */
 export function AttendanceIntentGate() {
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -38,15 +39,24 @@ export function AttendanceIntentGate() {
   }, [schedule]);
 
   const activityDay = useMemo(() => isActivityDay(), [schedule, events]);
+  const intent = todayAttendanceIntent(currentUser);
+  const hasTime = hasArrivalTimeToday(currentUser);
+  const needsChoice = !intent;
+  const needsTime = intent === 'going' && !hasTime;
 
-  const shouldAsk =
+  useEffect(() => {
+    if (needsTime) setPickingTime(true);
+  }, [needsTime, currentUser?.id]);
+
+  const eligible =
     !!currentUser &&
     !isGuestUser(currentUser) &&
     currentUser.memberStatus === 'approved' &&
-    !todayAttendanceIntent(currentUser) &&
     activityDay;
 
-  if (tourOpen || !shouldAsk || dismissed) return null;
+  const showTimePicker = pickingTime || needsTime;
+
+  if (tourOpen || !eligible || dismissed || (!needsChoice && !needsTime)) return null;
 
   const chooseGoing = () => {
     const r = setAttendanceIntent(currentUser.id, 'going');
@@ -64,6 +74,7 @@ export function AttendanceIntentGate() {
     if (arrivalTime) {
       const r = updateUserSchedule(currentUser.id, arrivalTime, endTime || undefined);
       showToast({ type: r.success ? 'success' : 'warning', title: '', message: r.message });
+      if (!r.success) return;
     }
     setDismissed(true);
   };
@@ -73,14 +84,14 @@ export function AttendanceIntentGate() {
       <View style={styles.overlay}>
         <View style={styles.card}>
           <Text style={styles.kicker}>{todayLabel}</Text>
-          <Text style={styles.title}>{pickingTime ? '몇 시에 올까요?' : '오늘 오시나요?'}</Text>
+          <Text style={styles.title}>{showTimePicker ? '언제 참석하시나요?' : '오늘 오시나요?'}</Text>
           <Text style={styles.body}>
-            {pickingTime
-              ? '시간을 고르면 친구 탭에 표시돼요. 나중에 프로필에서 바꿔도 됩니다.'
+            {showTimePicker
+              ? '프로필과 같은 칸입니다. 누르면 그 칸만 바뀌고, 드래그하면 구간을 고를 수 있어요.'
               : '참석하면 올 사람 수에 들어가요. 불참이면 오늘 일정에서 빠져요.'}
           </Text>
 
-          {pickingTime ? (
+          {showTimePicker ? (
             <>
               <TimeRangeSlider
                 startHour={activityBounds.startHour}

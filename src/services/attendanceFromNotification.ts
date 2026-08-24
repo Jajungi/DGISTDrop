@@ -22,7 +22,7 @@ export function applyAttendanceIntentFromNotification(intent: 'going' | 'not_goi
     title: '',
     message:
       intent === 'going'
-        ? '참석으로 표시했어요. 프로필에서 오늘 시간을 고를 수 있어요.'
+        ? '참석으로 표시했어요. 언제 올지 칸에서 골라 주세요.'
         : result.message,
   });
 }
