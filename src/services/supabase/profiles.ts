@@ -1,4 +1,4 @@
-import { getSupabase } from '@/src/lib/supabase';
+import { getSupabase, isSupabaseEnabled } from '@/src/lib/supabase';
 import { AVATAR_LIMITS } from '@/src/constants/dataRetention';
 import { compressAvatarForUpload, avatarStoragePath } from '@/src/services/avatarImage';
 import { mapProfileRow, type DbProfile } from '@/src/services/supabase/mappers';
@@ -117,4 +117,19 @@ export async function updateProfileStatsRemote(
 export async function resetPeakReservationsRemote(): Promise<void> {
   const { error } = await getSupabase().rpc('rpc_reset_peak_reservations');
   if (error) throw error;
+}
+
+/** 활동 시간 종료 후 전원 is_at_gym 해제 (보안 컬럼 → RPC) */
+export async function clearAtGymAfterActivityRemote(): Promise<number> {
+  if (!isSupabaseEnabled()) return 0;
+  const { data, error } = await getSupabase().rpc('rpc_clear_at_gym_after_activity');
+  if (error) throw error;
+  return typeof data === 'number' ? data : 0;
+}
+
+/** 활동 종료 후 전원 체육관(is_at_gym) 해제 */
+export async function clearAtGymAfterActivityRemote(): Promise<number> {
+  const { data, error } = await getSupabase().rpc('rpc_clear_at_gym_after_activity');
+  if (error) throw error;
+  return typeof data === 'number' ? data : 0;
 }

@@ -136,6 +136,8 @@ interface AuthState {
     patch: { avatarUri?: string | null }
   ) => Promise<{ success: boolean; message: string }>;
   setUserAtGym: (userId: string, atGym: boolean) => void;
+  /** 로컬만: 전원 체육관 해제 (활동 종료 시). DB는 RPC로 맞춤 */
+  clearAllAtGymLocal: () => void;
   canPerformMemberAction: (userId: string) => { allowed: boolean; reason?: string };
   setLastCleaningBonusMonth: (month: string) => void;
   /** Discord 스타일 회원 관리 */
@@ -1173,6 +1175,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { users, currentUser };
     }),
 
+  clearAllAtGymLocal: () =>
+    set((state) => {
+      if (!state.users.some((u) => u.isAtGym)) return state;
+      const users = state.users.map((u) => (u.isAtGym ? { ...u, isAtGym: false } : u));
+      const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
+      return { users, currentUser };
+    }),
+
   canPerformMemberAction: (userId) => {
     const user = get().users.find((u) => u.id === userId);
     if (!user) return { allowed: false, reason: '사용자를 찾을 수 없어요.' };
@@ -1850,7 +1860,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     const demo = get().demoMode;
     set({ location, isAtGym: atGym || demo, locationError: null });
     const currentUser = useAuthStore.getState().currentUser;
-    if (currentUser && !demo) {
+    // 활동 시간 밖에서는 체육관 표시를 올리지 않음 (종료 후 잔상 방지)
+    if (currentUser && !demo && get().isActivityTime) {
       useAuthStore.getState().setUserAtGym(currentUser.id, atGym);
     }
   },

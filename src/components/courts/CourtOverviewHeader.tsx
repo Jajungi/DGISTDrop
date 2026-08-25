@@ -18,11 +18,12 @@ interface CourtOverviewHeaderProps {
   isAtGym: boolean;
   /**
    * 올 사람 = 오늘 참석 의사
-   * 지금 = 체육관 지오펜스 도착
+   * 온 사람 = 체육관 도착
    */
   goingCount?: number;
   goingPeople?: User[];
   atGymCount?: number;
+  atGymPeople?: User[];
   occupancyMode?: boolean;
   remaining?: string | null;
   isExpanded?: boolean;
@@ -68,6 +69,7 @@ export function CourtOverviewHeader({
   goingCount,
   goingPeople,
   atGymCount,
+  atGymPeople,
   occupancyMode = false,
   remaining,
   isExpanded = false,
@@ -157,9 +159,10 @@ export function CourtOverviewHeader({
             {atGymCount != null && (
               <StatusItem
                 number={`${atGymCount}명`}
-                label="지금"
+                label="온 사람"
                 isText
                 compact={isMobile}
+                onPress={() => setGoingOpen(true)}
               />
             )}
             <StatusItem number={emptyCount} label="가능" compact={isMobile} />
@@ -205,7 +208,8 @@ export function CourtOverviewHeader({
       <GoingPeopleSheet
         visible={goingOpen}
         onClose={() => setGoingOpen(false)}
-        people={goingPeople ?? []}
+        goingPeople={goingPeople ?? []}
+        atGymPeople={atGymPeople ?? []}
       />
     </View>
   );

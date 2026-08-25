@@ -64,9 +64,14 @@ export default function CourtsScreen() {
     [authHydrated, users, cancelledDate]
   );
   const goingCount = authHydrated ? goingPeople.length : undefined;
-  const atGymCount = authHydrated
-    ? users.filter((u) => u.isAtGym && u.memberStatus === 'approved').length
-    : undefined;
+  const atGymPeople = useMemo(
+    () =>
+      authHydrated
+        ? users.filter((u) => u.isAtGym && u.memberStatus === 'approved')
+        : [],
+    [authHydrated, users]
+  );
+  const atGymCount = authHydrated ? atGymPeople.length : undefined;
 
   const [refreshing, setRefreshing] = useState(false);
   const [showScoreSheet, setShowScoreSheet] = useState(false);
@@ -287,6 +292,7 @@ export default function CourtsScreen() {
             goingCount={goingCount}
             goingPeople={goingPeople}
             atGymCount={atGymCount}
+            atGymPeople={atGymPeople}
             occupancyMode={occupancyMode}
             remaining={remaining}
             isExpanded={selectedCourtId !== null}

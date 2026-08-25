@@ -179,8 +179,8 @@
         <tr><th>문서 분류</th><td>내부용 (배포 제한)</td></tr>
         <tr><th>작성 주체</th><td>DGIST 배드민턴 동아리 Drop</td></tr>
         <tr><th>열람 대상</th><td>동아리 운영진</td></tr>
-        <tr><th>개정일</th><td>2026-08-24</td></tr>
-        <tr><th>대상 범위</th><td>v0.1 ~ v1.11 (Git 저장소 및 미푸시 반영분 포함)</td></tr>
+        <tr><th>개정일</th><td>2026-08-25</td></tr>
+        <tr><th>대상 범위</th><td>v0.1 ~ v1.12 (Git 저장소 및 미푸시 반영분 포함)</td></tr>
         <tr><th>근거 저장소</th><td>https://github.com/Jajungi/DGISTDrop</td></tr>
       </table>
     </div>
@@ -211,7 +211,7 @@
       <tbody>
         <tr><td class="toc-no">1</td><td>개요</td><td>—</td><td></td></tr>
         <tr><td class="toc-no">2</td><td>목차</td><td>—</td><td></td></tr>
-        <tr><td class="toc-no">3</td><td>버전별 변경 내역</td><td>v0.1–v1.11</td><td></td></tr>
+        <tr><td class="toc-no">3</td><td>버전별 변경 내역</td><td>v0.1–v1.12</td><td></td></tr>
         
       <tr>
         <td class="toc-no">3.1</td>
@@ -338,6 +338,12 @@
         <td>v1.11 친구 신청·목록 정리</td>
         <td class="toc-date">2026-08-24</td>
         <td class="toc-page"><a href="#v1.11">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.22</td>
+        <td>v1.12 체육관 종료 리셋·온 사람</td>
+        <td class="toc-date">2026-08-25</td>
+        <td class="toc-page"><a href="#v1.12">이동</a></td>
       </tr>
       </tbody>
     </table>
@@ -1120,6 +1126,33 @@
         <tr>
           <td class="col-no">5</td>
           <td class="col-what">거절된 뒤에도 다시 친구 신청할 수 있게 함. 저장에 실패하면 보낸 신청 칸에서 바로 지움.</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v1.12">
+        <h2 class="h2">3.22　v1.12　체육관 종료 리셋·온 사람</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-08-25</td><th>항목 수</th><td>2</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>활동이 끝나면 체육관 표시가 남기지 않고, 올 사람과 지금 온 사람을 같이 볼 수 있게 함.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">활동 시간이 끝나면 전원 체육관 표시를 끔. 활동 밖에서는 위치가 가까워도 체육관으로 다시 켜지지 않음. Supabase에 039_clear_at_gym_after_activity.sql 적용 필요.</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">코트 현황의 「올 사람」「온 사람」을 누르면 하단 시트에 참석 의사와 지금 체육관에 있는 사람을 나눠 보여 줌.</td>
         </tr></tbody>
         </table>
       </section>
