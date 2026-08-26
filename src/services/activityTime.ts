@@ -131,9 +131,13 @@ export function getActivityTimeRemaining(now: Date = new Date()): string | null 
   const endDate = seoulDateTime(dateISO, Math.floor(endMinutes / 60), endMinutes % 60);
 
   const diff = endDate.getTime() - now.getTime();
+  if (diff <= 0) return null;
+
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
+  if (hours <= 0 && minutes <= 0) return null;
+  if (hours <= 0) return `${minutes}분 남음`;
   return `${hours}시간 ${minutes}분 남음`;
 }
 

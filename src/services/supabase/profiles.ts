@@ -126,10 +126,3 @@ export async function clearAtGymAfterActivityRemote(): Promise<number> {
   if (error) throw error;
   return typeof data === 'number' ? data : 0;
 }
-
-/** 활동 종료 후 전원 체육관(is_at_gym) 해제 */
-export async function clearAtGymAfterActivityRemote(): Promise<number> {
-  const { data, error } = await getSupabase().rpc('rpc_clear_at_gym_after_activity');
-  if (error) throw error;
-  return typeof data === 'number' ? data : 0;
-}

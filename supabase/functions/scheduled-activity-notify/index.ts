@@ -3,6 +3,9 @@
 // 1) 휴관 당일 예약 푸시  2) 추가 활동일 활동알림 시각 푸시  3) 정기 활동일 자동 알림
 //
 // Cron 예: */5 * * * *  (Dashboard → Edge Functions → Schedules)
+//
+// 알림 시각: ±4분 창 + 놓친 경우 활동 시작(또는 +2시간)까지 당일 1회 따라잡기.
+// last_auto_sent_date 는 broadcast 성공 후에만 기록.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -56,10 +59,14 @@ function kstNow(): { date: string; day: number; minutes: number } {
   };
 }
 
+/** HH:MM 또는 HH:MM:SS */
 function parseHHMM(value: string): number | null {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  const m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(value.trim());
   if (!m) return null;
-  return Number(m[1]) * 60 + Number(m[2]);
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return null;
+  return h * 60 + min;
 }
 
 function formatHHMM(h: number, m: number): string {
@@ -74,11 +81,34 @@ function earliestActivityTime(schedule: ActivitySession[]): string {
   return formatHHMM(sorted[0].startHour, sorted[0].startMinute);
 }
 
+function earliestStartMinutes(schedule: ActivitySession[]): number | null {
+  if (!schedule.length) return null;
+  return Math.min(...schedule.map((s) => s.startHour * 60 + s.startMinute));
+}
+
+/**
+ * ±4분 정각 창, 또는 정각을 놓쳤을 때 catchUntil(활동 시작 등)까지 따라잡기.
+ * catchUntil 이 없으면 알림 시각 + 120분.
+ */
+function inNotifyWindow(
+  nowMinutes: number,
+  notifyMinutes: number,
+  catchUntilMinutes: number | null
+): boolean {
+  if (Math.abs(nowMinutes - notifyMinutes) <= 4) return true;
+  if (nowMinutes < notifyMinutes) return false;
+  const until =
+    catchUntilMinutes != null && catchUntilMinutes >= notifyMinutes
+      ? catchUntilMinutes
+      : notifyMinutes + 120;
+  return nowMinutes <= until;
+}
+
 async function broadcast(
   title: string,
   message: string,
   type: string
-): Promise<unknown> {
+): Promise<{ ok: boolean; status: number; body: unknown }> {
   const broadcastRes = await fetch(`${SUPABASE_URL}/functions/v1/broadcast-push`, {
     method: 'POST',
     headers: {
@@ -87,7 +117,13 @@ async function broadcast(
     },
     body: JSON.stringify({ title, message, type }),
   });
-  return broadcastRes.json();
+  let body: unknown = null;
+  try {
+    body = await broadcastRes.json();
+  } catch {
+    body = null;
+  }
+  return { ok: broadcastRes.ok, status: broadcastRes.status, body };
 }
 
 function isActiveOn(ev: ClubEventRow, date: string): boolean {
@@ -132,7 +168,11 @@ Deno.serve(async (req) => {
         .eq('id', 1);
     }
 
-    if (settings.enabled === false) {
+    // 마스터/자동: 명시 false만 끔. undefined면 기본 on으로 본다.
+    const pushMasterOn = settings.enabled !== false;
+    const autoOn = settings.auto_notify_enabled !== false;
+
+    if (!pushMasterOn) {
       results.skipped = 'push_disabled';
       results.closurePush = { sent: 0, ids: [] };
       results.extraPush = { sent: 0, ids: [] };
@@ -150,7 +190,8 @@ Deno.serve(async (req) => {
 
       const notifyMinutes = parseHHMM(ev.pushNotify.time ?? '09:00');
       if (notifyMinutes == null) continue;
-      if (Math.abs(now.minutes - notifyMinutes) > 4) continue;
+      // 휴관: ±4 또는 정각 후 2시간 따라잡기
+      if (!inNotifyWindow(now.minutes, notifyMinutes, notifyMinutes + 120)) continue;
 
       const sent = Array.isArray(ev.pushNotify.sentDates) ? ev.pushNotify.sentDates : [];
       if (sent.includes(now.date)) continue;
@@ -161,7 +202,11 @@ Deno.serve(async (req) => {
         `${now.date}은(는) 동아리 활동이 없습니다.`;
 
       try {
-        await broadcast(title, message, 'notice');
+        const br = await broadcast(title, message, 'notice');
+        if (!br.ok) {
+          results.closureError = `broadcast ${br.status}`;
+          continue;
+        }
         ev.pushNotify = {
           ...ev.pushNotify,
           enabled: true,
@@ -177,16 +222,19 @@ Deno.serve(async (req) => {
 
     // ---------- 추가 활동일: 활동 자동 알림 시각에 발송 ----------
     const activityNotifyMinutes = parseHHMM(settings.notify_time ?? '18:00');
+    const todaySessionsForExtra = schedule.filter((s) => s.day === now.day);
+    const extraCatchUntil = earliestStartMinutes(
+      todaySessionsForExtra.length ? todaySessionsForExtra : schedule
+    );
+
     if (
       !cancelledToday &&
-      settings.auto_notify_enabled !== false &&
+      autoOn &&
       activityNotifyMinutes != null &&
-      Math.abs(now.minutes - activityNotifyMinutes) <= 4
+      inNotifyWindow(now.minutes, activityNotifyMinutes, extraCatchUntil)
     ) {
       const activityTime = earliestActivityTime(
-        schedule.filter((s) => s.day === now.day).length
-          ? schedule.filter((s) => s.day === now.day)
-          : schedule
+        todaySessionsForExtra.length ? todaySessionsForExtra : schedule
       );
 
       for (const ev of events) {
@@ -206,7 +254,11 @@ Deno.serve(async (req) => {
         }
 
         try {
-          await broadcast(title, message, 'activity');
+          const br = await broadcast(title, message, 'activity');
+          if (!br.ok) {
+            results.extraError = `broadcast ${br.status}`;
+            continue;
+          }
           ev.pushNotify = {
             ...ev.pushNotify,
             enabled: true,
@@ -231,7 +283,7 @@ Deno.serve(async (req) => {
     results.extraPush = { sent: extraSent.length, ids: extraSent };
 
     // ---------- 정기 활동일 자동 알림 ----------
-    if (!settings.enabled || !settings.auto_notify_enabled) {
+    if (!autoOn) {
       results.activity = { skipped: 'disabled' };
       return new Response(JSON.stringify(results), {
         status: 200,
@@ -281,8 +333,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (Math.abs(now.minutes - activityNotifyMinutes) > 4) {
-      results.activity = { skipped: 'not_notify_time' };
+    const catchUntil = earliestStartMinutes(todaySessions);
+    if (!inNotifyWindow(now.minutes, activityNotifyMinutes, catchUntil)) {
+      results.activity = {
+        skipped: 'not_notify_time',
+        notify_minutes: activityNotifyMinutes,
+        catch_until: catchUntil,
+      };
       return new Response(JSON.stringify(results), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -290,11 +347,18 @@ Deno.serve(async (req) => {
     }
 
     const activityTime = earliestActivityTime(todaySessions);
-    let title = 'Drop 활동 알림';
+    const title = 'Drop 활동 알림';
     const message = (settings.message_template ?? '🏸 오늘 {time}부터 활동 있습니다!')
       .replace('{time}', activityTime);
 
-    const result = await broadcast(title, message, 'activity');
+    const br = await broadcast(title, message, 'activity');
+    if (!br.ok) {
+      results.activity = { sent: false, error: `broadcast ${br.status}`, result: br.body };
+      return new Response(JSON.stringify(results), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     await supabase
       .from('club_metadata')
@@ -304,7 +368,7 @@ Deno.serve(async (req) => {
       })
       .eq('id', 1);
 
-    results.activity = { sent: true, result };
+    results.activity = { sent: true, result: br.body };
     return new Response(JSON.stringify(results), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

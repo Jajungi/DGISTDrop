@@ -126,6 +126,8 @@ npx supabase functions deploy scheduled-activity-notify
 
 3. **Cron 스케줄** (Dashboard → Edge Functions → scheduled-activity-notify → Schedules):
    - `*/5 * * * *` (5분마다 KST 활동일·알림 시간 확인)
+   - 알림 시각 ±4분, 놓치면 **활동 시작 시각까지** 당일 1회 따라잡기. 발송 성공 후에만 `last_auto_sent_date` 기록.
+   - 함수 수정 후 `npx supabase functions deploy scheduled-activity-notify` 재배포 필요.
 
 4. **웹 푸시 (iOS PWA)** VAPID 키 생성 후 시크릿 등록:
 
@@ -150,5 +152,5 @@ supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=ma
 | 증상 | 원인 |
 |------|------|
 | 토큰 미생성 | EAS projectId 누락, 웹/에뮬레이터 실행, 알림 거부, 게스트 세션 |
-| 푸시 미수신 | FCM V1 미연결, 트리거 URL·키 오류, `send-push` 미배포 |
+| 활동일 자동 미발송 | Cron 미등록·401, 당일 취소/휴관, 활동일 아님, `last_auto_sent_date`가 이미 오늘, broadcast 실패 후 예전엔 날짜만 찍혀 재시도 불가(현재는 성공 시에만 기록) |
 | iOS | APNs 및 Apple Developer 계정 별도 구성 필요 |
