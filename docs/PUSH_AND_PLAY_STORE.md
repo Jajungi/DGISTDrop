@@ -124,8 +124,11 @@ npx supabase functions deploy broadcast-push
 npx supabase functions deploy scheduled-activity-notify
 ```
 
-3. **Cron 스케줄** (Dashboard → Edge Functions → scheduled-activity-notify → Schedules):
-   - `*/5 * * * *` (5분마다 KST 활동일·알림 시간 확인)
+3. **Cron 스케줄 (필수)** — Edge Function만 배포하면 **호출 0건**이라 자동 발송이 안 됩니다.
+   - SQL Editor에서 [`supabase/040_schedule_activity_notify_cron.sql`](../supabase/040_schedule_activity_notify_cron.sql) 실행.
+     `YOUR_SERVICE_ROLE_KEY`를 Dashboard → Settings → API의 **service_role**로 바꾼 뒤 Vault 시크릿을 넣고, cron.schedule 부분을 실행합니다.
+   - 또는 Dashboard → **Integrations → Cron** → Create job → Edge Function `scheduled-activity-notify`, 주기 `*/5 * * * *`, Authorization에 `Bearer <service_role>`.
+   - 확인: Edge Function Overview에 Invocations가 올라가는지, SQL로 `select * from cron.job_run_details order by start_time desc limit 10;`.
    - 알림 시각 ±4분, 놓치면 **활동 시작 시각까지** 당일 1회 따라잡기. 발송 성공 후에만 `last_auto_sent_date` 기록.
    - 함수 수정 후 `npx supabase functions deploy scheduled-activity-notify` 재배포 필요.
 

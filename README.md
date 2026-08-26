@@ -74,7 +74,7 @@ DGIST 배드민턴 동아리 **Drop**의 현장 운영 사이트입니다.
 
 1. Cloudflare Pages가 `main` 푸시를 받아 웹을 빌드합니다.
 2. Pages 프로젝트 환경 변수에 `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_SITE_URL=https://dgistdrop.com` 을 넣습니다. **anon 키만** 넣습니다.
-3. 새 DB 패치가 있으면 Supabase SQL Editor에서 번호 순으로 실행합니다. **라이브에 넣을 것:** `supabase/033_club_roster.sql` → `supabase/034_roles_occupancy_attendance.sql` → `supabase/035_prune_push_tokens.sql` → `supabase/036_attendance_seoul_date.sql` → `supabase/037_web_push_one_per_user.sql` → `supabase/038_friend_request_unique.sql` → `supabase/039_clear_at_gym_after_activity.sql`. 039는 활동이 끝나면 체육관 표시를 전원 해제합니다.
+3. 새 DB 패치가 있으면 Supabase SQL Editor에서 번호 순으로 실행합니다. **라이브에 넣을 것:** … → `039_clear_at_gym_after_activity.sql` → `040_schedule_activity_notify_cron.sql`(자동 알림 Cron). 040은 service_role을 Vault에 넣은 뒤 실행합니다.
 4. 프로필을 SQL로 직접 고칠 때 `guard_profile_columns`에 막히면, 같은 세션에서 먼저 `select set_config('app.allow_sensitive_profile_write', 'on', true);` 를 실행합니다. 이 `on`은 그 문장에만 해당합니다.
 5. 자세한 배포: [docs/DEPLOY_CLOUDFLARE.md](docs/DEPLOY_CLOUDFLARE.md) · SQL 목록: [docs/SUPABASE_MIGRATION.md](docs/SUPABASE_MIGRATION.md)
 

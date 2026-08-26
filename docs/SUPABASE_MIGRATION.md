@@ -70,6 +70,7 @@ Table Editor에서 `profiles`, `courts` 등 생성 여부를 확인한다.
 | `037_web_push_one_per_user.sql` | 웹 푸시 구독은 사람당 최근 1개만 유지하도록 `rpc_prune_push_tokens` 갱신 |
 | `038_friend_request_unique.sql` | 친구 신청 `(from, to)` 유니크, 수락 시 반대 pending 자동 삭제 |
 | `039_clear_at_gym_after_activity.sql` | 활동 종료 후 `is_at_gym` 일괄 해제 RPC |
+| `040_schedule_activity_notify_cron.sql` | 5분마다 `scheduled-activity-notify` 호출하는 pg_cron Job |
 
 라이브 DB에는 SQL Editor에서 **033 → 034 → 035** 순으로 실행한다. 034를 안 넣으면 정회원 변경 시 운영자가 빠지거나 현황 모드 RPC가 없다.
 
