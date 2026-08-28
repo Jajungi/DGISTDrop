@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Image,
   Platform,
@@ -74,17 +74,12 @@ export function PwaInstallSteps({
   imageSize = 'card',
 }: PwaInstallStepsProps) {
   const { width } = useWindowDimensions();
-  const columns = useMemo(() => {
-    const n = guide.steps.length;
-    if (compact) return n <= 2 ? n : 2;
-    if (n === 4) return 2;
-    if (n === 3 && width >= 480) return 3;
-    return 2;
-  }, [compact, guide.steps.length, width]);
+  const stepCount = guide.steps.length;
+  /** 2단계 이상이면 항상 2열(4단계 → 2×2). 좁은 화면에서도 1×N으로 떨어지지 않게 함 */
+  const twoColumns = stepCount >= 2;
+  const tight = compact || width < 360;
 
   const posterMaxHeight = compact ? 200 : imageSize === 'guide' ? 520 : 400;
-  const itemWidth =
-    columns === 3 ? '31.5%' : columns === 2 ? '48.5%' : '100%';
 
   return (
     <View style={styles.wrap}>
@@ -96,17 +91,32 @@ export function PwaInstallSteps({
       </View>
 
       <Text style={styles.stepsHeading}>순서</Text>
-      <View style={[styles.grid, { gap: spacing.sm }]}>
+      <View
+        style={[
+          styles.grid,
+          twoColumns && Platform.OS === 'web'
+            ? ({ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' } as object)
+            : null,
+        ]}
+      >
         {guide.steps.map((step, index) => (
           <View
             key={`${step.title}-${index}`}
-            style={[styles.gridItem, { width: itemWidth as `${number}%` }]}
+            style={[
+              styles.gridItem,
+              tight && styles.gridItemTight,
+              twoColumns
+                ? Platform.OS === 'web'
+                  ? styles.gridItemWebCol
+                  : styles.gridItemTwoCol
+                : styles.gridItemFull,
+            ]}
           >
-            <View style={styles.stepBadge}>
+            <View style={[styles.stepBadge, tight && styles.stepBadgeTight]}>
               <Text style={styles.stepBadgeText}>{index + 1}</Text>
             </View>
-            <Text style={styles.stepTitle}>{step.title}</Text>
-            <Text style={styles.stepBody}>{step.description}</Text>
+            <Text style={[styles.stepTitle, tight && styles.stepTitleTight]}>{step.title}</Text>
+            <Text style={[styles.stepBody, tight && styles.stepBodyTight]}>{step.description}</Text>
           </View>
         ))}
       </View>
@@ -138,6 +148,10 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: spacing.sm,
+    columnGap: spacing.xs,
+    width: '100%',
   },
   gridItem: {
     backgroundColor: colors.surfaceAlt,
@@ -148,6 +162,23 @@ const styles = StyleSheet.create({
     gap: 4,
     minWidth: 0,
   },
+  gridItemTight: {
+    padding: spacing.xs,
+    gap: 2,
+  },
+  gridItemTwoCol: {
+    width: '49%',
+    flexGrow: 0,
+    flexShrink: 1,
+    maxWidth: '49%',
+  },
+  gridItemWebCol: {
+    width: 'auto',
+    maxWidth: 'none',
+  },
+  gridItemFull: {
+    width: '100%',
+  },
   stepBadge: {
     width: 22,
     height: 22,
@@ -157,8 +188,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
+  stepBadgeTight: { width: 20, height: 20, borderRadius: 10 },
   stepTitle: { ...typography.bodyBold, color: colors.text, fontSize: 12 },
+  stepTitleTight: { fontSize: 11 },
   stepBody: { ...typography.caption, color: colors.textSecondary, lineHeight: 17, fontSize: 11 },
+  stepBodyTight: { fontSize: 10, lineHeight: 15 },
   hint: {
     ...typography.caption,
     color: colors.textMuted,
