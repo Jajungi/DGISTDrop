@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { detectClientDevice, detectPwaInstallContext, isStandalonePwa } from '@/src/utils/clientDevice';
+import { PWA_SERVICE_WORKER_URL } from '@/src/constants/pwa';
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -10,7 +11,7 @@ let deferredPrompt: BeforeInstallPromptEvent | null = null;
 let listenersReady = false;
 const changeListeners = new Set<() => void>();
 
-const SW_URL = '/sw.js?v=20260824-attendance';
+const SW_URL = PWA_SERVICE_WORKER_URL;
 
 function notify() {
   changeListeners.forEach((fn) => fn());

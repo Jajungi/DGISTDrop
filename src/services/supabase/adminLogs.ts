@@ -2,6 +2,17 @@ import { getSupabase } from '@/src/lib/supabase';
 import type { AdminLogEntry, AdminLogCategory } from '@/src/types';
 import { DATA_RETENTION } from '@/src/constants/dataRetention';
 
+export async function clearAdminLogsRemote(): Promise<void> {
+  const supabase = getSupabase();
+  const { error: rpcError } = await supabase.rpc('rpc_clear_admin_logs');
+  if (!rpcError) return;
+
+  const { error: deleteError } = await supabase.from('admin_logs').delete().not('id', 'is', null);
+  if (!deleteError) return;
+
+  throw deleteError ?? rpcError;
+}
+
 type DbAdminLog = {
   id: string;
   category: string;
@@ -55,9 +66,4 @@ export async function fetchAdminLogs(): Promise<AdminLogEntry[]> {
     .limit(DATA_RETENTION.adminLogsDisplay);
   if (error) throw error;
   return (data as DbAdminLog[]).map(mapAdminLogRow);
-}
-
-export async function clearAdminLogsRemote(): Promise<void> {
-  const { error } = await getSupabase().rpc('rpc_clear_admin_logs');
-  if (error) throw error;
 }

@@ -6,6 +6,7 @@ import {
   isStandalonePwa,
 } from '@/src/utils/clientDevice';
 import { classifyPushToken } from '@/src/services/supabase/pushSettings';
+import { PWA_SERVICE_WORKER_URL } from '@/src/constants/pwa';
 
 const VAPID_PUBLIC_KEY = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY ?? '';
 
@@ -51,7 +52,7 @@ export async function registerWebPushForUser(userId: string): Promise<boolean> {
     }
     if (permission !== 'granted') return false;
 
-    const reg = await navigator.serviceWorker.register('/sw.js?v=20260824-cancel');
+    const reg = await navigator.serviceWorker.register(PWA_SERVICE_WORKER_URL);
     await navigator.serviceWorker.ready;
 
     let subscription = await reg.pushManager.getSubscription();
