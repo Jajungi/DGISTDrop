@@ -119,6 +119,16 @@ export async function resetPeakReservationsRemote(): Promise<void> {
   if (error) throw error;
 }
 
+/** 활동일이 아니게 된 날짜의 참석·도착 의사를 로컬에서 지움 */
+export async function clearAttendanceIntentsForDateRemote(dateISO: string): Promise<number> {
+  if (!isSupabaseEnabled()) return 0;
+  const { data, error } = await getSupabase().rpc('rpc_clear_attendance_intents_for_date', {
+    p_date: dateISO,
+  });
+  if (error) throw error;
+  return typeof data === 'number' ? data : 0;
+}
+
 /** 활동 시간 종료 후 전원 is_at_gym 해제 (보안 컬럼 → RPC) */
 export async function clearAtGymAfterActivityRemote(): Promise<number> {
   if (!isSupabaseEnabled()) return 0;

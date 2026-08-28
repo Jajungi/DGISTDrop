@@ -119,6 +119,15 @@ export async function initSupabaseApp(): Promise<boolean> {
   }
 
   try {
+    const { reconcileTodayAttendanceIntent } = await import(
+      '@/src/services/attendanceIntentCleanup'
+    );
+    reconcileTodayAttendanceIntent();
+  } catch {
+    /* ignore */
+  }
+
+  try {
     const expiry = await fetchLobbyExpiry();
     if (expiry) useLobbyExpiryStore.getState().setLocal(expiry);
   } catch {
@@ -218,6 +227,10 @@ export async function initSupabaseApp(): Promise<boolean> {
         flags.setEloFeaturesEnabledLocal(eloOn);
         if (schedule?.length) useActivityScheduleStore.getState().setScheduleLocal(schedule);
         if (events) useClubEventStore.getState().setLocal(events);
+        const { reconcileTodayAttendanceIntent } = await import(
+          '@/src/services/attendanceIntentCleanup'
+        );
+        reconcileTodayAttendanceIntent();
       } catch {
         /* ignore */
       }

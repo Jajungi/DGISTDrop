@@ -5,6 +5,7 @@ import {
   cloneSchedule,
   normalizeSchedule,
 } from '@/src/utils/activitySchedule';
+import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 
 interface ActivityScheduleState {
@@ -23,7 +24,12 @@ export const useActivityScheduleStore = create<ActivityScheduleState>((set, get)
   schedule: cloneSchedule(DEFAULT_ACTIVITY_SCHEDULE),
   cancelledDate: null,
 
-  setCancelledDate: (date) => set({ cancelledDate: date }),
+  setCancelledDate: (date) => {
+    set({ cancelledDate: date });
+    void import('@/src/services/attendanceIntentCleanup').then(({ reconcileTodayAttendanceIntent }) =>
+      reconcileTodayAttendanceIntent()
+    );
+  },
 
   setScheduleLocal: (sessions) => {
     set({ schedule: normalizeSchedule(sessions) });
@@ -48,6 +54,11 @@ export const useActivityScheduleStore = create<ActivityScheduleState>((set, get)
         };
       }
     }
+    const { reconcileTodayAttendanceIntent, clearRemoteAttendanceIntentsIfInactive } = await import(
+      '@/src/services/attendanceIntentCleanup'
+    );
+    reconcileTodayAttendanceIntent();
+    await clearRemoteAttendanceIntentsIfInactive(getSeoulTodayKey());
     return { success: true, message: '활동 시간을 저장했어요.' };
   },
 

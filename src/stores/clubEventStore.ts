@@ -32,6 +32,18 @@ export const useClubEventStore = create<ClubEventState>((set, get) => ({
         };
       }
     }
+    const {
+      reconcileAttendanceIntentsAfterClubEventsChange,
+      clearRemoteAttendanceIntentsIfInactive,
+    } = await import('@/src/services/attendanceIntentCleanup');
+    reconcileAttendanceIntentsAfterClubEventsChange(prev, next);
+    const dates = new Set<string>();
+    for (const e of [...prev, ...next]) {
+      if (e.kind === 'closure' || e.kind === 'extra') dates.add(e.dateStart);
+    }
+    await Promise.all(
+      [...dates].map((d) => clearRemoteAttendanceIntentsIfInactive(d))
+    );
     return { success: true, message: '휴관·배너 일정을 저장했어요.' };
   },
 

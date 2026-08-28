@@ -21,8 +21,8 @@ import {
 } from '@/src/services/supabase/auth';
 import { fetchAllProfiles, uploadAvatar, removeAvatar } from '@/src/services/supabase/profiles';
 import { clearSavedLogin, loadSavedLogin, saveSavedLogin } from '@/src/services/quickLogin';
-import { isActivityDay } from '@/src/services/activityTime';
-import { getSeoulTodayKey, normalizeHHMM } from '@/src/utils/dateFormat';
+import { isActivityDay, isActivityTime } from '@/src/services/activityTime';
+import { getSeoulTodayKey, isScheduleForToday, normalizeHHMM } from '@/src/utils/dateFormat';
 import { INFINITE_DEV_POINTS } from '@/src/utils/responsive';
 import {
   createLocalGuestUser,
@@ -161,6 +161,8 @@ interface AuthState {
     userId: string,
     intent: 'going' | 'not_going' | null
   ) => { success: boolean; message: string };
+  /** 휴관·일정 변경 등으로 활동일이 아닌 날짜의 참석·도착 의사 제거 */
+  clearAttendanceIntentsForDate: (dateISO: string) => void;
   adminAdjustPoints: (
     userId: string,
     delta: number,
@@ -783,6 +785,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   attendanceRecords: isSupabaseEnabled() ? [] : MOCK_ATTENDANCE,
 
   checkIn: (userId, options) => {
+    if (!isActivityTime()) {
+      return {
+        success: false,
+        message: '지금은 활동 시간이 아니라 출석이 취소됐어요.',
+      };
+    }
     if (!options?.skipGeoFence && !useAppStore.getState().checkGeoFence()) {
       return {
         success: false,
@@ -953,6 +961,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   updateUserSchedule: (userId, arrivalTime, endTime) => {
+    if (!isActivityDay()) {
+      return {
+        success: false,
+        message: '오늘은 활동일이 아니에요. 참석·도착 시간을 저장하지 않았어요.',
+      };
+    }
     const start = normalizeHHMM(arrivalTime.trim());
     if (!start) {
       return { success: false, message: '도착 시간을 HH:MM 형식으로 입력해 주세요. (예: 18:30)' };
@@ -1522,6 +1536,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       message:
         intent === 'going' ? '참석으로 표시했어요.' : intent === 'not_going' ? '불참으로 표시했어요.' : '참석 의사를 지웠어요.',
     };
+  },
+
+  clearAttendanceIntentsForDate: (dateISO) => {
+    set((state) => {
+      let changed = false;
+      const users = state.users.map((u) => {
+        const onDate =
+          u.attendanceIntentDate === dateISO ||
+          (u.scheduleDate != null && isScheduleForToday(u.scheduleDate, dateISO));
+        if (!onDate) return u;
+        changed = true;
+        return {
+          ...u,
+          attendanceIntent: null,
+          attendanceIntentDate: undefined,
+          ...(u.scheduleDate != null && isScheduleForToday(u.scheduleDate, dateISO)
+            ? { scheduleDate: undefined, scheduledStart: undefined, scheduledEnd: undefined }
+            : {}),
+        };
+      });
+      if (!changed) return state;
+      const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
+      return { users, currentUser };
+    });
+    persistAppState();
   },
 
   adminSetOperator: (userId, enabled) => {

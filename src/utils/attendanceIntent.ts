@@ -1,5 +1,5 @@
 import type { User } from '@/src/types';
-import { isActivityCancelledToday } from '@/src/stores/activityScheduleStore';
+import { isActivityDayOn } from '@/src/services/activityTime';
 import { getSeoulTodayKey, isScheduleForToday, normalizeHHMM } from '@/src/utils/dateFormat';
 
 export function todayAttendanceIntent(
@@ -15,11 +15,9 @@ export function isGoingToday(
   today = getSeoulTodayKey()
 ): boolean {
   if (user?.memberStatus !== 'approved') return false;
-  if (todayAttendanceIntent(user, today) !== 'going') return false;
-  if (isActivityCancelledToday(today)) return false;
-  return true;
+  if (!isActivityDayOn(today)) return false;
+  return todayAttendanceIntent(user, today) === 'going';
 }
-
 /** 오늘 도착·퇴장 시각이 저장돼 있는지 */
 export function hasArrivalTimeToday(
   user: Pick<User, 'scheduleDate' | 'scheduledStart'> | null | undefined,

@@ -19,6 +19,7 @@ import { PageContainer } from '@/src/components/layout/PageContainer';
 import { SiteOverlayHost } from '@/src/components/site/SiteOverlayHost';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
+import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { isGoingToday } from '@/src/utils/attendanceIntent';
 import { isStaffUser } from '@/src/utils/staffAccess';
 import { colors } from '@/src/theme';
@@ -59,9 +60,11 @@ export default function CourtsScreen() {
   const isStaff = isStaffUser(currentUser);
 
   const cancelledDate = useActivityScheduleStore((s) => s.cancelledDate);
+  const schedule = useActivityScheduleStore((s) => s.schedule);
+  const clubEvents = useClubEventStore((s) => s.events);
   const goingPeople = useMemo(
     () => (authHydrated ? users.filter((u) => isGoingToday(u)) : []),
-    [authHydrated, users, cancelledDate]
+    [authHydrated, users, cancelledDate, schedule, clubEvents]
   );
   const goingCount = authHydrated ? goingPeople.length : undefined;
   const atGymPeople = useMemo(

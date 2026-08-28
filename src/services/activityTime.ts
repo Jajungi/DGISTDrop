@@ -41,11 +41,16 @@ function hasExtraActivityOn(dateISO: string): boolean {
 }
 
 export function isActivityDay(now: Date = new Date()): boolean {
-  const dateISO = getSeoulTodayKey(now);
+  return isActivityDayOn(getSeoulTodayKey(now), now);
+}
+
+/** 특정 한국 날짜(YYYY-MM-DD)가 활동일인지 */
+export function isActivityDayOn(dateISO: string, now: Date = new Date()): boolean {
   if (isActivityCancelledToday(dateISO)) return false;
   if (isClosedOn(dateISO)) return false;
   if (hasExtraActivityOn(dateISO)) return true;
-  const day = getSeoulWeekday(now);
+  const midday = seoulDateTime(dateISO, 12, 0);
+  const day = getSeoulWeekday(midday);
   return schedule().some((s) => s.day === day);
 }
 
