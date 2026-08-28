@@ -394,6 +394,8 @@ export function AdminClosureCalendar({ onToast }: Props) {
                   const isActivity = !isPast && activityDays.has(date.getDay());
                   const marked = eventsByDate.get(iso);
                   const isHoliday = !!(holidays[iso] ?? getKoreanHolidayName(iso));
+                  const markedKind =
+                    marked?.kind === 'closure' || marked?.kind === 'extra' ? marked.kind : null;
 
                   return (
                     <Pressable
@@ -405,19 +407,30 @@ export function AdminClosureCalendar({ onToast }: Props) {
                         isPast && styles.cellPast,
                         !isPast && inFocus && styles.cellFocusMonth,
                         !isPast && !inFocus && styles.cellOtherMonth,
-                        isActivity && !marked && inFocus && !isPast && styles.cellActivity,
-                        marked?.kind === 'closure' && !isPast && styles.cellClosure,
-                        marked?.kind === 'extra' && !isPast && styles.cellExtra,
-                        isToday && styles.cellToday,
+                        isActivity && !markedKind && inFocus && !isPast && styles.cellActivity,
+                        markedKind === 'closure' && !isPast && styles.cellClosure,
+                        markedKind === 'extra' && !isPast && styles.cellExtra,
                       ]}
                     >
+                      {isToday && !isPast && <View style={styles.todayRing} pointerEvents="none" />}
+                      {markedKind && !isPast && (
+                        <View
+                          style={[
+                            styles.markDot,
+                            markedKind === 'closure' ? styles.markDotClosure : styles.markDotExtra,
+                          ]}
+                          pointerEvents="none"
+                        />
+                      )}
                       <Text
                         style={[
                           styles.cellNum,
                           isPast && styles.cellNumPast,
                           !isPast && !inFocus && styles.cellNumFaded,
                           isHoliday && !isPast && inFocus && styles.cellNumHoliday,
-                          marked?.kind === 'closure' && !isPast && styles.cellNumClosure,
+                          markedKind === 'closure' && !isPast && styles.cellNumClosure,
+                          markedKind === 'extra' && !isPast && styles.cellNumExtra,
+                          isToday && !isPast && styles.cellNumToday,
                         ]}
                       >
                         {date.getDate()}
@@ -584,10 +597,10 @@ const styles = StyleSheet.create({
   },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 10, height: 10, borderRadius: 1 },
+  legendDot: { width: 12, height: 12, borderRadius: 3 },
   legendActivity: { backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primary },
-  legendClosure: { backgroundColor: withAlpha(colors.error, 0.45) },
-  legendExtra: { backgroundColor: withAlpha(colors.primary, 0.45) },
+  legendClosure: { backgroundColor: withAlpha(colors.error, 0.55) },
+  legendExtra: { backgroundColor: withAlpha(colors.primary, 0.55) },
   legendText: { ...typography.small, color: colors.textMuted, fontSize: 11 },
   grid: {
     borderWidth: 1,
@@ -642,17 +655,36 @@ const styles = StyleSheet.create({
   },
   cellActivity: {
     backgroundColor: colors.primaryLight,
+    borderColor: withAlpha(colors.primary, 0.35),
   },
   cellClosure: {
-    backgroundColor: withAlpha(colors.error, 0.16),
+    backgroundColor: withAlpha(colors.error, 0.28),
+    borderColor: withAlpha(colors.error, 0.45),
   },
   cellExtra: {
-    backgroundColor: withAlpha(colors.primary, 0.18),
+    backgroundColor: withAlpha(colors.primary, 0.3),
+    borderColor: withAlpha(colors.primary, 0.45),
   },
-  cellToday: {
+  todayRing: {
+    position: 'absolute',
+    top: 2,
+    left: 2,
+    right: 2,
+    bottom: 2,
     borderWidth: 2,
-    borderColor: colors.text,
+    borderColor: colors.primary,
+    borderRadius: 2,
   },
+  markDot: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  markDotClosure: { backgroundColor: colors.error },
+  markDotExtra: { backgroundColor: colors.primary },
   cellNum: {
     fontSize: 11,
     fontWeight: '600',
@@ -663,6 +695,8 @@ const styles = StyleSheet.create({
   cellNumFaded: { color: colors.text, opacity: 0.28 },
   cellNumHoliday: { color: colors.error, fontWeight: '800' },
   cellNumClosure: { color: colors.error, fontWeight: '800' },
+  cellNumExtra: { color: colors.primary, fontWeight: '800' },
+  cellNumToday: { fontWeight: '800', color: colors.primary },
   listItem: {
     flexDirection: 'row',
     gap: spacing.sm,

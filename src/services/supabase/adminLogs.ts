@@ -56,3 +56,8 @@ export async function fetchAdminLogs(): Promise<AdminLogEntry[]> {
   if (error) throw error;
   return (data as DbAdminLog[]).map(mapAdminLogRow);
 }
+
+export async function clearAdminLogsRemote(): Promise<void> {
+  const { error } = await getSupabase().rpc('rpc_clear_admin_logs');
+  if (error) throw error;
+}

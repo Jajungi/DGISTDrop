@@ -1,12 +1,13 @@
 import { Platform } from 'react-native';
 import { useAppWindowSize } from '@/src/hooks/useAppWindowSize';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffectiveSafeAreaInsets } from '@/src/hooks/useEffectiveSafeAreaInsets';
 import { getCourtHeight, COURT_ASPECT, GYM_COURT_ROWS } from '@/src/constants/court';
 import { WEB_BREAKPOINT } from '@/src/constants/nav';
 import { spacing } from '@/src/theme';
 import { useActivityStatus } from '@/src/hooks/useActivityStatus';
 import { getResponsiveMetrics, getScaledBorderRadius } from '@/src/utils/responsive';
 import { isPhoneLikeWeb } from '@/src/utils/clientDevice';
+import { getTabBarHeight, shouldShowTabBarLabels } from '@/src/utils/safeArea';
 import {
   buildGymGridLayout,
   GYM_ROW_ENTRANCE_GAP,
@@ -15,7 +16,6 @@ import {
 const GRID_BOTTOM_BUFFER = 12;
 const SHADOW_BLEED = 14;
 const MOBILE_SCROLL_BUFFER = 8;
-const MOBILE_TAB_BAR_BASE = 56;
 const MOBILE_HEADER_BASE = 52;
 const COACHING_LINK_HEIGHT = 44;
 const MOBILE_MIN_COURT = 96;
@@ -23,7 +23,7 @@ const DESKTOP_MIN_COURT = 40;
 
 export function useLayoutMode() {
   const { width: rawWidth, height: rawHeight, cssLandscape } = useAppWindowSize();
-  const insets = useSafeAreaInsets();
+  const insets = useEffectiveSafeAreaInsets();
   const { isActive } = useActivityStatus();
 
   const width = Number.isFinite(rawWidth) && rawWidth > 0 ? rawWidth : 390;
@@ -58,7 +58,15 @@ export function useLayoutMode() {
   const floorContentTop = floorStageH + floorHeaderH;
   const aisleH = Math.max(6, Math.round(courtGap * 0.85));
 
-  const tabBarHeight = isDesktop ? 0 : isLandscape ? 48 + insets.bottom : MOBILE_TAB_BAR_BASE + insets.bottom;
+  const showTabLabels = shouldShowTabBarLabels({
+    isLandscape,
+    isCompact,
+    isNarrow,
+    tabCount: 6,
+    width,
+    height,
+  });
+  const tabBarHeight = isDesktop ? 0 : getTabBarHeight(insets, isLandscape, showTabLabels);
   const headerHeight = isDesktop ? 72 : isLandscape ? 40 : isCompact ? 48 : MOBILE_HEADER_BASE;
   const sectionHeaderHeight = isDesktop
     ? 112

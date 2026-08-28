@@ -96,7 +96,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
   const adminDismissFriendRequest = useFriendStore((s) => s.adminDismissFriendRequest);
   const lobbyRooms = useLobbyStore((s) => s.rooms);
   const adminLogs = useAdminLogStore((s) => s.logs);
-  const clearAdminLogs = useAdminLogStore((s) => s.clear);
+  const clearAdminLogs = useAdminLogStore((s) => s.clearAll);
   const infinitePoints = useAppStore((s) => s.infinitePoints);
   const setInfinitePoints = useAppStore((s) => s.setInfinitePoints);
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
@@ -313,9 +313,17 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
               filter={logFilter}
               onFilterChange={setLogFilter}
               onClear={() => {
-                clearAdminLogs();
-                persistAppState();
-                showToast({ type: 'info', title: '', message: '활동 로그를 비웠어요.' });
+                void (async () => {
+                  const r = await clearAdminLogs();
+                  if (r.success) {
+                    persistAppState();
+                  }
+                  showToast({
+                    type: r.success ? 'info' : 'warning',
+                    title: '',
+                    message: r.message,
+                  });
+                })();
               }}
             />
           </Card>

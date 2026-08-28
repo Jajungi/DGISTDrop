@@ -48,7 +48,7 @@ export function FriendSearchPanel() {
                 <View style={styles.info}>
                   <View style={styles.nameRow}>
                     <Text style={styles.nickname}>{user.name}</Text>
-                    <RankBadge rank={user.rank} size="sm" />
+                    {eloOn ? <RankBadge rank={user.rank} size="sm" /> : null}
                   </View>
                   <Text style={styles.arrival}>
                     {formatArrivalLabel(user) ?? '일정 미등록'}

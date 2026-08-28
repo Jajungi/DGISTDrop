@@ -2,8 +2,14 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { View, Text, Platform, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffectiveSafeAreaInsets } from '@/src/hooks/useEffectiveSafeAreaInsets';
 import { WebShell } from '@/src/components/layout/WebShell';
+import { useAppWindowSize } from '@/src/hooks/useAppWindowSize';
+import {
+  getTabBarHeight,
+  getTabBarPaddingBottom,
+  shouldShowTabBarLabels,
+} from '@/src/utils/safeArea';
 import { MobileShell } from '@/src/components/layout/MobileShell';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { useAuthGuard } from '@/src/hooks/useAuthGuard';
@@ -87,19 +93,31 @@ const TAB_SCREENS = [
 ];
 
 export default function TabLayout() {
-  const { isDesktop, scale, isCompact, isLandscape } = useLayoutMode();
-  const insets = useSafeAreaInsets();
+  const { isDesktop, scale, isCompact, isLandscape, isNarrow } = useLayoutMode();
+  const { width, height } = useAppWindowSize();
+  const insets = useEffectiveSafeAreaInsets();
   const isStaff = isStaffUser(useAuthStore((s) => s.currentUser));
   const isGuest = useAuthStore((s) => s.isGuestSession);
+  const tabCount = TAB_SCREENS.length + (isStaff ? 1 : 0) - (isGuest ? 1 : 0);
+  const showTabLabels = shouldShowTabBarLabels({
+    isLandscape,
+    isCompact,
+    isNarrow,
+    tabCount,
+    width,
+    height,
+  });
   const tourHref = useTabTourStore((s) =>
     s.activeIndex === null ? null : TAB_TOUR_STEPS[s.activeIndex]?.href ?? null
   );
   useAuthGuard();
   useActivityClock();
 
-  const tabBarHeight = (isLandscape ? 44 : 56) + insets.bottom;
-  const tabIconSize = Math.round(24 * scale);
-  const tabLabelSize = isCompact ? 10 : Math.max(10, Math.round(11 * scale));
+  const tabBarHeight = getTabBarHeight(insets, isLandscape, showTabLabels);
+  const tabIconSize = Math.round((showTabLabels ? 24 : 26) * scale);
+  const tabLabelSize = Math.max(10, Math.round(11 * scale));
+  const tabPaddingBottom = getTabBarPaddingBottom(insets);
+  const tabPaddingTop = showTabLabels ? (isLandscape ? 4 : 6) : 8;
 
   const tabs = (
     <Tabs
@@ -111,10 +129,14 @@ export default function TabLayout() {
           : {
               ...styles.tabBar,
               height: tabBarHeight,
-              paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 8 : 4),
-              paddingTop: isLandscape ? 4 : 8,
+              paddingBottom: tabPaddingBottom,
+              paddingTop: tabPaddingTop,
             },
-        tabBarLabelStyle: [styles.tabLabel, { fontSize: tabLabelSize }],
+        tabBarShowLabel: showTabLabels,
+        tabBarLabelStyle: [
+          styles.tabLabel,
+          { fontSize: tabLabelSize, lineHeight: tabLabelSize + 2 },
+        ],
         tabBarItemStyle: styles.tabItem,
         headerShown: false,
         animation: Platform.OS === 'ios' ? 'shift' : 'fade',
@@ -204,10 +226,12 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontFamily: 'DMSans_500Medium',
     fontSize: 10,
-    marginTop: 1,
+    lineHeight: 12,
+    marginTop: 0,
   },
   tabItem: {
-    paddingTop: 2,
+    paddingTop: 0,
+    justifyContent: 'center',
   },
   tabItemTour: {
     backgroundColor: colors.primaryLight,

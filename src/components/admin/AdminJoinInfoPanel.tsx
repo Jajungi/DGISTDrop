@@ -178,8 +178,7 @@ export function AdminJoinInfoPanel({ adminId, onToast }: Props) {
       <Card style={styles.block}>
         <Text style={styles.blockTitle}>동아리 명단 (학번 + 실명)</Text>
         <Text style={styles.hint}>
-          한 줄에 학번과 이름 (예: 202410001 홍길동). 지금은 저장만 되고, 아래 제한이 꺼져 있으면
-          가입은 지금과 같습니다.
+          한 줄에 학번과 이름 (예: 202410001 홍길동). 「명단 제한」을 켜면 목록에 있는 사람만 즉시 가입되고, 없으면 승인 대기·관리자 알림으로 남습니다.
         </Text>
         {rosterError ? <Text style={styles.warn}>{rosterError}</Text> : null}
         <TextInput

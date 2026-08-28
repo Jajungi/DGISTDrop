@@ -14,6 +14,8 @@ import { useCourtStore } from '@/src/stores/courtStore';
 import { useLobbyStore } from '@/src/stores/lobbyStore';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
+import { useAppWindowSize } from '@/src/hooks/useAppWindowSize';
+import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import type { AppNotification } from '@/src/types';
 import { colors, spacing, typography, borderRadius, shadows } from '@/src/theme';
 import { formatLessonEtaLabel } from '@/src/utils/lessonEta';
@@ -43,6 +45,8 @@ const TYPE_ICON: Record<AppNotification['type'], keyof typeof Ionicons.glyphMap>
 
 interface NotificationPanelProps {
   onClose: () => void;
+  /** 모달로 띄울 때 상·하단 여백을 더 둠 */
+  layout?: 'dropdown' | 'modal';
 }
 
 function resolveJoinRequestId(item: AppNotification, courts: ReturnType<typeof useCourtStore.getState>['courts']) {
@@ -60,7 +64,9 @@ function resolveJoinRequestId(item: AppNotification, courts: ReturnType<typeof u
   return undefined;
 }
 
-export function NotificationPanel({ onClose }: NotificationPanelProps) {
+export function NotificationPanel({ onClose, layout = 'dropdown' }: NotificationPanelProps) {
+  const { width: screenW, height: screenH } = useAppWindowSize();
+  const { headerHeight, tabBarHeight } = useLayoutMode();
   const inboxAll = useNotificationStore((s) => s.inbox);
   const markRead = useNotificationStore((s) => s.markNotificationRead);
   const markAllRead = useNotificationStore((s) => s.markAllNotificationsRead);
@@ -186,6 +192,20 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
   const visible = expanded ? all : all.slice(0, INITIAL_VISIBLE);
   const hasMore = all.length > INITIAL_VISIBLE;
 
+  const panelWidth =
+    layout === 'modal'
+      ? screenW - 16
+      : Math.min(320, Math.max(260, screenW - 16));
+  const chromeReserve = layout === 'modal' ? 48 : headerHeight + 16;
+  const panelMaxHeight = Math.min(
+    520,
+    Math.max(200, screenH - chromeReserve - (layout === 'modal' ? 24 : tabBarHeight))
+  );
+  const listMaxHeight = Math.min(
+    expanded ? LIST_EXPANDED_MAX : LIST_COLLAPSED_MAX,
+    Math.max(120, panelMaxHeight - 88)
+  );
+
   const handleAttendance = (intent: 'going' | 'not_going') => {
     if (!currentUser) return;
     const result = setAttendanceIntent(currentUser.id, intent);
@@ -264,7 +284,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
   };
 
   return (
-    <View style={styles.panel}>
+    <View style={[styles.panel, { width: panelWidth, maxHeight: panelMaxHeight }]}>
       <View style={styles.header}>
         <Text style={styles.title}>알림</Text>
         <View style={styles.headerActions}>
@@ -280,7 +300,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
       </View>
 
       <ScrollView
-        style={[styles.list, { maxHeight: expanded ? LIST_EXPANDED_MAX : LIST_COLLAPSED_MAX }]}
+        style={[styles.list, { maxHeight: listMaxHeight }]}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled
       >
@@ -316,8 +336,12 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
                     <Ionicons name={TYPE_ICON[item.type]} size={18} color={colors.primary} />
                   </View>
                   <View style={styles.body}>
-                    <Text style={styles.rowTitle}>{item.title}</Text>
-                    <Text style={styles.rowMsg}>{item.message}</Text>
+                    <Text style={styles.rowTitle} numberOfLines={2}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.rowMsg} numberOfLines={3}>
+                      {item.message}
+                    </Text>
                     <Text style={styles.rowTime}>{formatTime(item.createdAt)}</Text>
                   </View>
                 </Pressable>
@@ -400,8 +424,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
 
 const styles = StyleSheet.create({
   panel: {
-    width: 320,
-    maxHeight: 520,
+    maxWidth: '100%',
     backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     overflow: 'hidden',
@@ -455,12 +478,13 @@ const styles = StyleSheet.create({
   icon_coach: { backgroundColor: '#E8F0FF' },
   icon_system: { backgroundColor: colors.surfaceAlt },
   icon_friend: { backgroundColor: colors.primaryLight },
-  body: { flex: 1, gap: 2 },
-  rowTitle: { ...typography.bodyBold, color: colors.text, fontSize: 14 },
-  rowMsg: { ...typography.caption, color: colors.textSecondary },
+  body: { flex: 1, gap: 2, minWidth: 0 },
+  rowTitle: { ...typography.bodyBold, color: colors.text, fontSize: 14, flexShrink: 1 },
+  rowMsg: { ...typography.caption, color: colors.textSecondary, flexShrink: 1 },
   rowTime: { ...typography.small, color: colors.textMuted, marginTop: 2 },
   actions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     paddingLeft: 44,
   },

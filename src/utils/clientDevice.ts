@@ -2,12 +2,83 @@ import { Platform } from 'react-native';
 
 export type ClientDevice = 'ios' | 'android' | 'desktop' | 'native';
 
+/** Chrome·Safari 등 브라우저 구분 (웹 전용) */
+export type WebBrowser = 'safari' | 'chrome' | 'samsung' | 'firefox' | 'edge' | 'other';
+
+/**
+ * 지금 이 탭이 홈 화면 웹앱으로 열렸는지.
+ * Android minimal-ui·fullscreen, iOS navigator.standalone 포함.
+ */
 export function isStandalonePwa(): boolean {
   if (typeof window === 'undefined') return false;
   const nav = window.navigator as Navigator & { standalone?: boolean };
-  return (
-    window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true
+  if (nav.standalone === true) return true;
+  return ['standalone', 'fullscreen', 'minimal-ui'].some((mode) =>
+    window.matchMedia(`(display-mode: ${mode})`).matches
   );
+}
+
+export function detectWebBrowser(): WebBrowser {
+  if (typeof navigator === 'undefined') return 'other';
+  const ua = navigator.userAgent;
+  if (/Edg\//i.test(ua)) return 'edge';
+  if (/SamsungBrowser/i.test(ua)) return 'samsung';
+  if (/Firefox|FxiOS/i.test(ua)) return 'firefox';
+  if (/CriOS|Chrome/i.test(ua)) return 'chrome';
+  if (/Safari/i.test(ua)) return 'safari';
+  return 'other';
+}
+
+/** 설치 안내를 어떤 경로로 보여 줄지. 웹앱·네이티브면 null */
+export type PwaInstallContext =
+  | 'ios-safari'
+  | 'ios-other'
+  | 'android-chrome'
+  | 'android-browser'
+  | 'desktop-chrome'
+  | 'desktop-edge'
+  | 'desktop-other';
+
+export function detectPwaInstallContext(): PwaInstallContext | null {
+  if (Platform.OS !== 'web') return null;
+  if (isStandalonePwa()) return null;
+
+  const device = detectClientDevice();
+  const browser = detectWebBrowser();
+
+  if (device === 'ios') {
+    return browser === 'safari' ? 'ios-safari' : 'ios-other';
+  }
+  if (device === 'android') {
+    return browser === 'chrome' ? 'android-chrome' : 'android-browser';
+  }
+  if (device === 'desktop') {
+    if (browser === 'chrome') return 'desktop-chrome';
+    if (browser === 'edge') return 'desktop-edge';
+    return 'desktop-other';
+  }
+  return null;
+}
+
+export function getPwaInstallContextLabel(ctx: PwaInstallContext): string {
+  switch (ctx) {
+    case 'ios-safari':
+      return 'iPhone · Safari';
+    case 'ios-other':
+      return 'iPhone · Safari 필요';
+    case 'android-chrome':
+      return 'Android · Chrome';
+    case 'android-browser':
+      return 'Android · 브라우저';
+    case 'desktop-chrome':
+      return 'PC · Chrome';
+    case 'desktop-edge':
+      return 'PC · Edge';
+    case 'desktop-other':
+      return 'PC · 브라우저';
+    default:
+      return '';
+  }
 }
 
 export type WebPushClass = 'desktop' | 'android' | 'ios';
@@ -30,9 +101,17 @@ export function detectClientDevice(): ClientDevice {
   if (Platform.OS !== 'web') return 'native';
   if (typeof navigator === 'undefined') return 'desktop';
   const ua = navigator.userAgent;
+
   if (/iPad|iPhone|iPod/.test(ua)) return 'ios';
   if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) return 'ios';
   if (/Android/i.test(ua)) return 'android';
+
+  // Chrome·Safari 「데스크톱 사이트」 등으로 UA만 PC처럼 바뀐 터치 기기
+  if (isTouchPrimaryWeb()) {
+    if (/Macintosh|Mac OS X/i.test(ua) && navigator.maxTouchPoints > 0) return 'ios';
+    return 'android';
+  }
+
   return 'desktop';
 }
 
@@ -41,6 +120,11 @@ export function isPhoneLikeWeb(): boolean {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
   const device = detectClientDevice();
   if (device === 'ios' || device === 'android') return true;
+  return isTouchPrimaryWeb();
+}
+
+function isTouchPrimaryWeb(): boolean {
+  if (typeof window === 'undefined') return false;
   return window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 }
 
@@ -86,21 +170,33 @@ export function getPushGuideCopy(device = detectClientDevice()): PushGuideCopy {
   }
 
   if (device === 'ios') {
-    const canRequest = Platform.OS === 'web' && isStandalonePwa();
+    const standalone = isStandalonePwa();
+    const canRequest = Platform.OS === 'web' && standalone;
+    const needsHomeScreen = Platform.OS === 'web' && !standalone;
     return {
       device,
       deviceLabel: 'iPhone',
       summary: canRequest
         ? '알림을 허용하면 활동일·레슨·공지를 받을 수 있어요.'
-        : '이 환경에서는 알림을 켤 수 없어요.',
+        : 'iPhone은 Safari 탭이 아니라 홈 화면에 추가한 Drop 아이콘에서만 알림을 켤 수 있어요.',
       guideBody: canRequest
         ? '설정에서 [알림 켜기]를 누르면 푸시를 받을 수 있습니다.'
-        : '이 환경에서는 알림을 지원하지 않습니다.',
-      howToTitle: '알림',
-      steps: ['설정에서 [알림 켜기]를 누르고 허용하세요.'],
-      ...NOTIFY_GATE,
+        : 'Safari에서 [공유 → 홈 화면에 추가]한 뒤, 생긴 Drop 아이콘으로 여세요. 그 다음 설정에서 [알림 켜기]를 누르세요.',
+      howToTitle: needsHomeScreen ? '홈 화면에 추가 후 알림 켜기' : '알림',
+      steps: needsHomeScreen
+        ? [
+            'Safari로 Drop 사이트를 엽니다.',
+            '하단 [공유] → [홈 화면에 추가]를 누릅니다.',
+            '생긴 Drop 아이콘으로 다시 엽니다.',
+            '설정에서 [알림 켜기]를 누르고 허용합니다.',
+          ]
+        : ['설정에서 [알림 켜기]를 누르고 허용하세요.'],
+      gateTitle: needsHomeScreen ? '홈 화면에 추가해 주세요' : NOTIFY_GATE.gateTitle,
+      gateBody: needsHomeScreen
+        ? 'iPhone에서는 Safari 탭 안에서는 푸시가 오지 않습니다. 홈 화면에 추가한 Drop 아이콘으로 열면 활동일·레슨·공지 알림을 받을 수 있어요.'
+        : NOTIFY_GATE.gateBody,
       canRequestPermission: canRequest,
-      needsHomeScreen: false,
+      needsHomeScreen,
     };
   }
 

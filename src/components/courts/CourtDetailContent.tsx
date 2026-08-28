@@ -13,6 +13,7 @@ import { RankBadge } from '@/src/components/ui/RankBadge';
 import { Button } from '@/src/components/ui/Button';
 import { TouchGuard } from '@/src/components/ui/TouchGuard';
 import { useAuthStore } from '@/src/stores/authStore';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { useLessonStore } from '@/src/stores/lessonStore';
 import { CoachingScreenContent } from '@/src/components/coaching/CoachingScreenContent';
 import { colors, borderRadius, spacing, typography } from '@/src/theme';
@@ -97,6 +98,7 @@ export function CourtDetailContent({
   }, [court.id]);
 
   const currentUserId = useAuthStore((s) => s.currentUser?.id);
+  const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
   const canReserveCoachCourt = useLessonStore((s) => s.canReserveCoachCourt);
   // 코치 코트는 기본 예약 불가 — 레슨 권한·차례가 된 사용자만 예약 가능
   const coachReservable = court.isCoachCourt
@@ -428,7 +430,7 @@ export function CourtDetailContent({
             <View key={p.userId} style={styles.playerRow}>
               <Avatar name={p.name} color={p.avatarColor} size={36} />
               <Text style={styles.playerName}>{p.name}</Text>
-              <RankBadge rank={p.rank} size="sm" />
+              {eloOn ? <RankBadge rank={p.rank} size="sm" /> : null}
             </View>
           ))}
         </View>

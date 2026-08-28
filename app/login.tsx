@@ -30,6 +30,7 @@ import { supabaseRestoreSession } from '@/src/services/supabase/auth';
 import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/theme';
 import { SiteOverlayHost } from '@/src/components/site/SiteOverlayHost';
 import { markPostLoginOverlay } from '@/src/components/site/SiteOverlayHost';
+import { PwaInstallCard } from '@/src/components/layout/PwaInstallCard';
 
 type Mode = 'login' | 'register' | 'guest';
 
@@ -423,6 +424,8 @@ export default function LoginScreen() {
             )}
           </View>
           )}
+
+          <PwaInstallCard placement="login" compact />
         </ScrollView>
       </KeyboardAvoidingView>
       <SiteOverlayHost surface="login" />

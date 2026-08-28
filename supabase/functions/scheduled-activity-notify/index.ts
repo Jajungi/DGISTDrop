@@ -130,11 +130,78 @@ function isActiveOn(ev: ClubEventRow, date: string): boolean {
   return ev.active !== false && ev.dateStart <= date && ev.dateEnd >= date;
 }
 
-Deno.serve(async (req) => {
-  const auth = req.headers.get('Authorization') ?? '';
-  if (auth !== `Bearer ${SERVICE_ROLE_KEY}`) {
-    return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
+function jwtRole(token: string): string | null {
+  try {
+    const part = token.split('.')[1];
+    if (!part) return null;
+    const json = atob(part.replace(/-/g, '+').replace(/_/g, '/'));
+    const payload = JSON.parse(json) as { role?: string };
+    return payload.role ?? null;
+  } catch {
+    return null;
   }
+}
+
+function isAuthorized(req: Request): { ok: boolean; detail: Record<string, unknown> } {
+  const expected = (SERVICE_ROLE_KEY ?? '').trim();
+  const rawAuth = (req.headers.get('Authorization') ?? '').trim();
+  const rawApiKey = (req.headers.get('apikey') ?? req.headers.get('ApiKey') ?? '').trim();
+  const token = rawAuth.replace(/^Bearer\s+/i, '').replace(/^Bearer\s+/i, '').trim();
+
+  const detail: Record<string, unknown> = {
+    has_authorization: Boolean(rawAuth),
+    has_apikey: Boolean(rawApiKey),
+    auth_role: token ? jwtRole(token) : null,
+    apikey_role: rawApiKey.includes('.') ? jwtRole(rawApiKey) : null,
+  };
+
+  if (!expected) {
+    return { ok: false, detail: { ...detail, reason: 'missing_service_role_env' } };
+  }
+  // 문자열 일치 (레거시 JWT / sb_secret 동일 값)
+  if (token && token === expected) return { ok: true, detail: { ...detail, via: 'authorization' } };
+  if (rawApiKey && rawApiKey === expected) return { ok: true, detail: { ...detail, via: 'apikey' } };
+  // Dashboard Cron·Vault에 넣은 JWT와 Edge 자동주입 키가 세대가 다르면 문자열이 다를 수 있음.
+  // payload role 이 service_role 이면 서비스 권한으로 본다.
+  if (jwtRole(token) === 'service_role') {
+    return { ok: true, detail: { ...detail, via: 'authorization_jwt_role' } };
+  }
+  if (jwtRole(rawApiKey) === 'service_role') {
+    return { ok: true, detail: { ...detail, via: 'apikey_jwt_role' } };
+  }
+  return {
+    ok: false,
+    detail: {
+      ...detail,
+      reason: 'key_mismatch',
+      hint:
+        detail.auth_role === 'anon' || detail.apikey_role === 'anon'
+          ? 'Cron is sending anon/publishable key. Use service_role (secret) in Authorization or apikey.'
+          : 'Use Settings → API → service_role JWT (role=service_role).',
+    },
+  };
+}
+
+Deno.serve(async (req) => {
+  // Boot만 보이면 게이트웨이 JWT 검사에서 막힌 것. 이 줄이 보이면 핸들러 도착.
+  console.log(
+    '[scheduled-activity-notify] handler_enter',
+    JSON.stringify({
+      method: req.method,
+      has_authorization: Boolean(req.headers.get('Authorization')),
+      has_apikey: Boolean(req.headers.get('apikey') ?? req.headers.get('ApiKey')),
+    })
+  );
+
+  const auth = isAuthorized(req);
+  if (!auth.ok) {
+    console.log('[scheduled-activity-notify] unauthorized', JSON.stringify(auth.detail));
+    return new Response(JSON.stringify({ error: 'unauthorized', ...auth.detail }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  console.log('[scheduled-activity-notify] authorized', JSON.stringify(auth.detail));
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const now = kstNow();

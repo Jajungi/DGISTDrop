@@ -87,7 +87,7 @@ export function TeamRoomCard({
             <View key={req.id} style={styles.requestRow}>
               <Avatar name={req.name} color={req.avatarColor} size={28} />
               <Text style={styles.requestName}>{req.name}</Text>
-              <RankBadge rank={req.rank} size="sm" />
+              {eloOn ? <RankBadge rank={req.rank} size="sm" /> : null}
               <View style={styles.requestActions}>
                 {onAcceptJoin && (
                   <Button title="수락" onPress={() => onAcceptJoin(req.id)} size="sm" />

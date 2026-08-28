@@ -8,6 +8,7 @@ import { isGuestUser } from '@/src/utils/guestAccess';
 import { InteractiveRulesCourt } from './InteractiveRulesCourt';
 import { GuidePointsTable } from './GuidePointsTable';
 import { TierDistribution } from './TierDistribution';
+import { GuidePwaInstallPanel } from './GuidePwaInstallPanel';
 import { colors, borderRadius, spacing, typography } from '@/src/theme';
 import { ExternalLink } from '@/components/ExternalLink';
 
@@ -73,6 +74,14 @@ export function GuideAccordion({ sections }: GuideAccordionProps) {
                         <Text style={styles.itemTitle}>{item.title}</Text>
                         <Text style={styles.itemContent}>{item.content}</Text>
                       </View>
+                      {section.pwaInstallGuide &&
+                      Platform.OS === 'web' &&
+                      item.title === '활동 알림 (푸시)' ? (
+                        <View style={styles.pwaGuide}>
+                          <Text style={styles.pwaGuideHeading}>웹앱 설치</Text>
+                          <GuidePwaInstallPanel />
+                        </View>
+                      ) : null}
                     </React.Fragment>
                   );
                 })}
@@ -152,6 +161,18 @@ const styles = StyleSheet.create({
   },
   itemTitle: { ...typography.bodyBold, color: colors.text, marginBottom: 6, fontSize: 14 },
   itemContent: { ...typography.caption, color: colors.textSecondary, lineHeight: 21 },
+  pwaGuide: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
+  pwaGuideHeading: {
+    ...typography.bodyBold,
+    color: colors.text,
+    fontSize: 15,
+    marginBottom: spacing.xs,
+  },
   historyLink: {
     alignSelf: 'center',
     paddingVertical: spacing.md,

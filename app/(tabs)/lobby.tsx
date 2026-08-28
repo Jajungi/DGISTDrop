@@ -27,6 +27,7 @@ import { Button } from '@/src/components/ui/Button';
 import { Toggle } from '@/src/components/ui/Toggle';
 import { RANK_ORDER, RANK_THRESHOLDS } from '@/src/constants';
 import { getRankIndex } from '@/src/services/elo';
+import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import type { RankTier } from '@/src/types';
 import { colors, spacing, typography, borderRadius, glass } from '@/src/theme';
 
@@ -47,11 +48,13 @@ export default function LobbyScreen() {
   const isGuest = useAuthStore((s) => s.isGuestSession);
   const checkGeoFence = useAppStore((s) => s.checkGeoFence);
   const showToast = useNotificationStore((s) => s.showToast);
+  const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
 
   const [showCreate, setShowCreate] = useState(false);
   const [roomTitle, setRoomTitle] = useState('');
   const [usePassword, setUsePassword] = useState(false);
   const [roomPassword, setRoomPassword] = useState('');
+  const [useRankLimit, setUseRankLimit] = useState(false);
   const [minRank, setMinRank] = useState<RankTier | null>(null);
   const [maxRank, setMaxRank] = useState<RankTier | null>(null);
 
@@ -126,6 +129,7 @@ export default function LobbyScreen() {
     setRoomTitle('');
     setRoomPassword('');
     setUsePassword(false);
+    setUseRankLimit(false);
     setMinRank(null);
     setMaxRank(null);
   };
@@ -136,7 +140,7 @@ export default function LobbyScreen() {
       showToast({ type: 'warning', title: '', message: '비밀번호는 4자 이상이어야 해요.' });
       return;
     }
-    if (minRank && maxRank && getRankIndex(minRank) > getRankIndex(maxRank)) {
+    if (eloOn && useRankLimit && minRank && maxRank && getRankIndex(minRank) > getRankIndex(maxRank)) {
       showToast({ type: 'warning', title: '', message: '최소 랭크가 최대 랭크보다 높을 수 없어요.' });
       return;
     }
@@ -146,8 +150,8 @@ export default function LobbyScreen() {
       hostRank: currentUser.rank,
       hostAvatarColor: currentUser.avatarColor,
       title: roomTitle.trim(),
-      minRank: minRank ?? undefined,
-      maxRank: maxRank ?? undefined,
+      minRank: eloOn && useRankLimit ? (minRank ?? undefined) : undefined,
+      maxRank: eloOn && useRankLimit ? (maxRank ?? undefined) : undefined,
       password: usePassword ? roomPassword : undefined,
     });
     if (!result.success) {
@@ -280,13 +284,35 @@ export default function LobbyScreen() {
                   onChangeText={setRoomTitle}
                 />
 
-                <Text style={styles.fieldLabel}>최소 랭크</Text>
-                {renderRankChips(minRank, setMinRank)}
-                <Text style={styles.fieldLabel}>최대 랭크</Text>
-                {renderRankChips(maxRank, setMaxRank)}
-                <Text style={styles.rankHint}>
-                  비워 두면 제한 없음. 참여 시 랭크가 범위 밖이면 입장할 수 없어요.
-                </Text>
+                {eloOn && (
+                  <>
+                    <View style={styles.switchRow}>
+                      <Text style={styles.switchLabel}>랭크 제한</Text>
+                      <Toggle
+                        value={useRankLimit}
+                        onValueChange={(next) => {
+                          setUseRankLimit(next);
+                          if (!next) {
+                            setMinRank(null);
+                            setMaxRank(null);
+                          }
+                        }}
+                        accessibilityLabel="랭크 제한"
+                      />
+                    </View>
+                    {useRankLimit && (
+                      <>
+                        <Text style={styles.fieldLabel}>최소 랭크</Text>
+                        {renderRankChips(minRank, setMinRank)}
+                        <Text style={styles.fieldLabel}>최대 랭크</Text>
+                        {renderRankChips(maxRank, setMaxRank)}
+                        <Text style={styles.rankHint}>
+                          비워 두면 제한 없음. 참여 시 랭크가 범위 밖이면 입장할 수 없어요.
+                        </Text>
+                      </>
+                    )}
+                  </>
+                )}
 
                 <View style={styles.switchRow}>
                   <Text style={styles.switchLabel}>비밀번호 설정</Text>

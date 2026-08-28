@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, Platform, Modal } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore, useAppStore } from '@/src/stores/authStore';
@@ -21,7 +21,7 @@ import { colors, spacing, typography, shadows } from '@/src/theme';
 import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 
 export function AppHeader() {
-  const { isDesktop, isMobile, scale, isCompact, scaledTypography } = useLayoutMode();
+  const { isDesktop, isMobile, scale, isCompact, scaledTypography, headerHeight } = useLayoutMode();
   const currentUser = useAuthStore((s) => s.currentUser);
   const attendanceRecords = useAuthStore((s) => s.attendanceRecords);
   const checkIn = useAuthStore((s) => s.checkIn);
@@ -214,12 +214,28 @@ export function AppHeader() {
               </View>
             )}
           </Pressable>
-          {notifOpen && (
+          {notifOpen && !isMobile && (
             <View style={styles.notifDropdown}>
               <NotificationPanel onClose={() => setNotifOpen(false)} />
             </View>
           )}
         </View>
+
+        <Modal
+          visible={isMobile && notifOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setNotifOpen(false)}
+        >
+          <Pressable style={[styles.notifModalBackdrop, { paddingTop: headerHeight + 8 }]} onPress={() => setNotifOpen(false)}>
+            <Pressable
+              style={styles.notifModalPanel}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <NotificationPanel layout="modal" onClose={() => setNotifOpen(false)} />
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         {currentUser && (
           <Pressable
@@ -385,6 +401,19 @@ const styles = StyleSheet.create({
     right: 0,
     paddingTop: 8,
     zIndex: 200,
+    maxWidth: '100vw' as unknown as number,
+  },
+  notifModalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  notifModalPanel: {
+    width: '100%',
+    maxWidth: '100%',
   },
   iconBtn: {
     width: 36,

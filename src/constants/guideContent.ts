@@ -23,6 +23,8 @@ export interface GuideSection {
   pointsTable?: boolean;
   /** 랭크 섹션: 티어(Elo 구간) 분포 바 */
   tierDistribution?: boolean;
+  /** 웹앱 설치: 기기별 단계·이미지 안내 */
+  pwaInstallGuide?: boolean;
 }
 
 const GYM_NAME = GYM_LOCATION.name;
@@ -35,6 +37,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     icon: '📱',
     intro:
       'Drop은 S1 체육관 현장 활동용입니다. 홈에서 코트 현황을 보고, 활동일에는 참석 여부를 남기고, 친구·모집·출석을 씁니다.',
+    pwaInstallGuide: true,
     items: [
       {
         title: '코트 현황',
@@ -87,7 +90,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       {
         title: '활동 알림 (푸시)',
         content:
-          '프로필 → 설정에서 알림을 켜고, 종류별로 받을지 고를 수 있습니다.',
+          '프로필 → 설정에서 알림을 켜고, 종류별로 받을지 고를 수 있습니다. iPhone은 홈 화면에 추가한 뒤에만 알림을 켤 수 있습니다. 바로 아래 「웹앱 설치」에서 그림과 순서를 볼 수 있습니다.',
       },
       {
         title: 'PC에서 알림 켜기',

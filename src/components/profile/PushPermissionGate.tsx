@@ -43,8 +43,14 @@ export function PushPermissionGate() {
 
       if (Platform.OS === 'web') {
         const guide = getPushGuideCopy();
-        if (!guide.canRequestPermission) return;
-        if (typeof Notification !== 'undefined' && Notification.permission === 'denied') return;
+        if (!guide.canRequestPermission && !guide.needsHomeScreen) return;
+        if (
+          guide.canRequestPermission &&
+          typeof Notification !== 'undefined' &&
+          Notification.permission === 'denied'
+        ) {
+          return;
+        }
       }
       setVisible(true);
     })();

@@ -9,7 +9,9 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffectiveSafeAreaInsets } from '@/src/hooks/useEffectiveSafeAreaInsets';
+import { getTabBarHeight, shouldShowTabBarLabels } from '@/src/utils/safeArea';
+import { useAppWindowSize } from '@/src/hooks/useAppWindowSize';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useTabTourStore } from '@/src/stores/tabTourStore';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
@@ -47,9 +49,10 @@ function cardStyleFor(rect: TourRect | null, isDesktop: boolean, win: { width: n
 export function TabTourHost() {
   const router = useRouter();
   const pathname = usePathname();
-  const insets = useSafeAreaInsets();
+  const insets = useEffectiveSafeAreaInsets();
   const win = useWindowDimensions();
-  const { isDesktop, isLandscape } = useLayoutMode();
+  const { isDesktop, isLandscape, isCompact, isNarrow } = useLayoutMode();
+  const { width, height } = useAppWindowSize();
   const currentUser = useAuthStore((s) => s.currentUser);
   const isGuestSession = useAuthStore((s) => s.isGuestSession);
   const authHydrated = useAuthStore((s) => s.authHydrated);
@@ -103,7 +106,15 @@ export function TabTourHost() {
   if (!step) return null;
 
   const last = activeIndex === TAB_TOUR_STEPS.length - 1;
-  const tabBarH = isDesktop ? 0 : (isLandscape ? 44 : 56) + insets.bottom;
+  const showTabLabels = shouldShowTabBarLabels({
+    isLandscape,
+    isCompact,
+    isNarrow,
+    tabCount: 6,
+    width,
+    height,
+  });
+  const tabBarH = isDesktop ? 0 : getTabBarHeight(insets, isLandscape, showTabLabels);
   const sidebarW = isDesktop ? 64 : 0;
   const pos = cardStyleFor(rect, isDesktop, win);
 

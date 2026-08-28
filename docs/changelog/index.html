@@ -179,8 +179,8 @@
         <tr><th>문서 분류</th><td>내부용 (배포 제한)</td></tr>
         <tr><th>작성 주체</th><td>DGIST 배드민턴 동아리 Drop</td></tr>
         <tr><th>열람 대상</th><td>동아리 운영진</td></tr>
-        <tr><th>개정일</th><td>2026-08-26</td></tr>
-        <tr><th>대상 범위</th><td>v0.1 ~ v1.13 (Git 저장소 및 미푸시 반영분 포함)</td></tr>
+        <tr><th>개정일</th><td>2026-08-28</td></tr>
+        <tr><th>대상 범위</th><td>v0.1 ~ v1.14 (Git 저장소 및 미푸시 반영분 포함)</td></tr>
         <tr><th>근거 저장소</th><td>https://github.com/Jajungi/DGISTDrop</td></tr>
       </table>
     </div>
@@ -211,7 +211,7 @@
       <tbody>
         <tr><td class="toc-no">1</td><td>개요</td><td>—</td><td></td></tr>
         <tr><td class="toc-no">2</td><td>목차</td><td>—</td><td></td></tr>
-        <tr><td class="toc-no">3</td><td>버전별 변경 내역</td><td>v0.1–v1.13</td><td></td></tr>
+        <tr><td class="toc-no">3</td><td>버전별 변경 내역</td><td>v0.1–v1.14</td><td></td></tr>
         
       <tr>
         <td class="toc-no">3.1</td>
@@ -350,6 +350,12 @@
         <td>v1.13 활동 자동 알림·잔여 시간</td>
         <td class="toc-date">2026-08-26</td>
         <td class="toc-page"><a href="#v1.13">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.24</td>
+        <td>v1.14 모집방·달력·로그·가입 제한</td>
+        <td class="toc-date">2026-08-28</td>
+        <td class="toc-page"><a href="#v1.14">이동</a></td>
       </tr>
       </tbody>
     </table>
@@ -1186,6 +1192,85 @@
         <tr>
           <td class="col-no">2</td>
           <td class="col-what">활동 종료 직전·직후 「잔여」가 -1시간 -1분으로 나오던 표시를 고침. 끝나면 잔여를 숨김.</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v1.14">
+        <h2 class="h2">3.24　v1.14　모집방·달력·로그·가입 제한</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-08-28</td><th>항목 수</th><td>15</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>파트너 모집에서 랭크를 끌 수 있게 하고, 관리자 달력·활동 로그·명단 가입 제한을 맞춤.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">파트너 모집 방 만들 때 「랭크 제한」 스위치로 켜기 전에는 최소·최대 랭크를 보이지 않음. Elo 기능이 꺼져 있으면 랭크 UI 전체 숨김.</td>
+        </tr>
+        <tr>
+          <td class="col-no">2</td>
+          <td class="col-what">관리자 일정 달력에서 휴관·추가 활동일 배경색과 점 표시를 더 뚜렷하게 함. 오늘 날짜는 테두리 링으로 표시.</td>
+        </tr>
+        <tr>
+          <td class="col-no">3</td>
+          <td class="col-what">활동 로그 전체 삭제 시 서버 DB에서도 지워 새로고침 후 다시 안 나옴. Supabase에 041_admin_logs_roster_signup.sql 적용 필요.</td>
+        </tr>
+        <tr>
+          <td class="col-no">4</td>
+          <td class="col-what">명단 제한 ON일 때 명단에 없는 학번·이름으로 가입하면 승인 대기로 두고 관리자 활동 로그·알림에 남김. 관리 → 가입·참고에서 명단 붙여넣기·제한 스위치 사용.</td>
+        </tr>
+        <tr>
+          <td class="col-no">5</td>
+          <td class="col-what">iPhone·PWA에서 하단 탭 글자가 잘리던 문제 수정. CSS safe-area와 탭 바 높이를 맞춤.</td>
+        </tr>
+        <tr>
+          <td class="col-no">6</td>
+          <td class="col-what">iPhone·iPod 세로(웹앱·Safari·앱)에서는 하단 탭을 아이콘만 표시. 가로·Android·PC는 기존 규칙 유지.</td>
+        </tr>
+        <tr>
+          <td class="col-no">7</td>
+          <td class="col-what">좁은 화면에서 알림 패널이 화면 밖으로 나가거나 잘리던 문제 수정. 모바일은 모달로 띄우고 높이·너비를 화면에 맞춤.</td>
+        </tr>
+        <tr>
+          <td class="col-no">8</td>
+          <td class="col-what">브라우저 탭으로 열었을 때 로그인·설정에 웹앱 설치 안내 카드를 다시 표시. 홈 화면 Drop 아이콘(웹앱)이나 Play 앱에서는 숨김. 이용 안내에 언제 보이는지·기기별 추가 방법 항목 추가.</td>
+        </tr>
+        <tr>
+          <td class="col-no">9</td>
+          <td class="col-what">iPhone Safari 탭에서는 알림 카드·첫 로그인 안내에 홈 화면 추가 단계를 펼쳐 보여 줌. PWA로 열면 알림 켜기 버튼만 표시.</td>
+        </tr>
+        <tr>
+          <td class="col-no">10</td>
+          <td class="col-what">이용 안내 「웹앱 설치」에 언제 카드가 보이는지(브라우저 탭 O / 홈 화면·Play 앱 X)와 iPhone·Android·PC 단계별 그림 안내 추가.</td>
+        </tr>
+        <tr>
+          <td class="col-no">11</td>
+          <td class="col-what">설치 안내를 지금 브라우저·기기만 표시(iPhone Safari / Android Chrome·기타 브라우저 / PC Chrome·Edge). 단계는 2~3열 그리드. 홈 화면 웹앱으로 열면 로그인·설정·이용 안내에서 숨김.</td>
+        </tr>
+        <tr>
+          <td class="col-no">12</td>
+          <td class="col-what">설치 안내를 기기별 한 장 그림 + 순서 설명으로 표시. 「언제 보이나요」에 지금 환경·보이는/안 보이는 경우를 구분해 표시.</td>
+        </tr>
+        <tr>
+          <td class="col-no">13</td>
+          <td class="col-what">이용 안내에서 웹앱 설치를 활동 알림 항목 바로 아래로 옮김. 단계는 그림 번호와 맞춰 2열 배치. Android·PC 안내 그림 파일명 정리.</td>
+        </tr>
+        <tr>
+          <td class="col-no">14</td>
+          <td class="col-what">웹앱(홈 화면 아이콘)이 아닌 브라우저 탭이면 iPhone·Android는 로그인·설정·이용 안내에 설치 안내 표시. PC는 이용 안내만. 웹앱·Play 앱이면 전부 숨김.</td>
+        </tr>
+        <tr>
+          <td class="col-no">15</td>
+          <td class="col-what">모바일에서 「데스크톱 사이트」로 UA만 PC처럼 보여도 터치 기기면 iPhone·Android로 분류해 모바일 레이아웃·설치 안내를 유지.</td>
         </tr></tbody>
         </table>
       </section>
