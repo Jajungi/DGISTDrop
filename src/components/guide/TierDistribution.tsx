@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform, type TextStyle } from 'react-native';
 import { RANK_THRESHOLDS, RANK_ORDER } from '@/src/constants';
 import { colors, borderRadius, spacing, typography } from '@/src/theme';
 
@@ -92,8 +92,11 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     fontWeight: '700',
     fontSize: 10,
-    textShadow: '0 1px 2px rgba(0,0,0,0.35)',
-  },
+    ...Platform.select({
+      web: { textShadow: '0 1px 2px rgba(0,0,0,0.35)' } as TextStyle,
+      default: {},
+    }),
+  } as TextStyle,
   legendGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

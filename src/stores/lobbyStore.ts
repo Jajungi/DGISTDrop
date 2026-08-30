@@ -21,7 +21,9 @@ function remoteRoom(
     () => useLobbyStore.getState().rooms.find((r) => r.id === roomId)?.id ?? roomId,
     (remoteId) =>
       import('@/src/services/supabase/social')
-        .then((m) => fn(remoteId, m))
+        .then(async (m) => {
+          await fn(remoteId, m);
+        })
         .catch((err) => console.warn('[lobby] sync failed', err))
   );
 }

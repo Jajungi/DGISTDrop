@@ -23,7 +23,9 @@ function remoteFriendRequest(
       useFriendStore.getState().friendRequests.find((r) => r.id === requestId)?.id ?? requestId,
     (remoteId) =>
       import('@/src/services/supabase/social')
-        .then((m) => fn(remoteId, m))
+        .then(async (m) => {
+          await fn(remoteId, m);
+        })
         .catch((err) => console.warn('[friend] sync failed', err))
   );
 }

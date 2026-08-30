@@ -21,7 +21,9 @@ function remoteQueueEntry(
     () => useLessonStore.getState().lessonQueue.find((e) => e.id === entryId)?.id ?? entryId,
     (remoteId) =>
       import('@/src/services/supabase/social')
-        .then((m) => fn(remoteId, m))
+        .then(async (m) => {
+          await fn(remoteId, m);
+        })
         .catch((err) => console.warn('[lesson] sync failed', err))
   );
 }

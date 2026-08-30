@@ -211,13 +211,11 @@ export function LightShadowView({
     <View
       ref={ref}
       onLayout={onLayout}
-      // @ts-expect-error RN web className
       className={SHADOW_CLASS}
       style={[styles.cardRoot, { borderRadius }, style]}
     >
       <View
         ref={clipRef}
-        // @ts-expect-error RN web className
         className={CARD_CLASS}
         // @ts-expect-error RN web dataSet
         dataSet={{ courtCard: '1' }}
@@ -279,7 +277,6 @@ export function LightShadowCapture({ children }: { children: React.ReactNode }) 
     <View
       ref={wrapRef}
       collapsable={false}
-      // @ts-expect-error RN web className
       className={GYM_CLASS}
       style={styles.capture}
     >

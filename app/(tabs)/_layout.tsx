@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, Platform, StyleSheet, Pressable } from 'react-native';
+import { View, Text, Platform, StyleSheet, Pressable, type PressableProps } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffectiveSafeAreaInsets } from '@/src/hooks/useEffectiveSafeAreaInsets';
 import { WebShell } from '@/src/components/layout/WebShell';
@@ -33,18 +33,16 @@ function SpaTabButton({
   style,
   children,
   ...rest
-}: {
-  href?: string;
-  onPress?: (e: unknown) => void;
-  style?: object;
-  children?: React.ReactNode;
-  [key: string]: unknown;
-}) {
+}: PressableProps & { href?: string | null }) {
   return (
     <Pressable
       {...rest}
       accessibilityRole="button"
-      style={[style, { flex: 1 }, Platform.select({ web: { cursor: 'pointer' as const } })]}
+      style={(state) => [
+        typeof style === 'function' ? style(state) : style,
+        { flex: 1 },
+        Platform.select({ web: { cursor: 'pointer' as const } }),
+      ]}
       onPress={(e) => {
         e?.preventDefault?.();
         onPress?.(e);

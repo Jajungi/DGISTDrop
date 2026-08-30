@@ -6,6 +6,8 @@ import {
   Text,
   View,
   useWindowDimensions,
+  type TextStyle,
+  type ViewStyle,
 } from 'react-native';
 import type { PwaInstallGuide } from '@/src/constants/pwaInstallGuide';
 import { colors, borderRadius, spacing, typography } from '@/src/theme';
@@ -127,9 +129,9 @@ export function PwaInstallSteps({
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: spacing.sm },
-  guideTitle: { ...typography.bodyBold, color: colors.text, fontSize: 14 },
-  intro: { ...typography.caption, color: colors.textSecondary, lineHeight: 20 },
+  wrap: { gap: spacing.sm } as ViewStyle,
+  guideTitle: { ...typography.bodyBold, color: colors.text, fontSize: 14 } as TextStyle,
+  intro: { ...typography.caption, color: colors.textSecondary, lineHeight: 20 } as TextStyle,
   posterWrap: {
     borderRadius: borderRadius.md,
     borderWidth: 1,
@@ -138,13 +140,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: spacing.xs,
     marginTop: spacing.xs,
-  },
+  } as ViewStyle,
   stepsHeading: {
     ...typography.small,
     color: colors.textMuted,
     fontWeight: '700',
     marginTop: spacing.xs,
-  },
+  } as TextStyle,
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -152,7 +154,7 @@ const styles = StyleSheet.create({
     rowGap: spacing.sm,
     columnGap: spacing.xs,
     width: '100%',
-  },
+  } as ViewStyle,
   gridItem: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: borderRadius.md,
@@ -161,24 +163,23 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     gap: 4,
     minWidth: 0,
-  },
+  } as ViewStyle,
   gridItemTight: {
     padding: spacing.xs,
     gap: 2,
-  },
+  } as ViewStyle,
   gridItemTwoCol: {
     width: '49%',
     flexGrow: 0,
     flexShrink: 1,
     maxWidth: '49%',
-  },
+  } as ViewStyle,
   gridItemWebCol: {
     width: 'auto',
-    maxWidth: 'none',
-  },
+  } as ViewStyle,
   gridItemFull: {
     width: '100%',
-  },
+  } as ViewStyle,
   stepBadge: {
     width: 22,
     height: 22,
@@ -186,17 +187,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  stepBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
-  stepBadgeTight: { width: 20, height: 20, borderRadius: 10 },
-  stepTitle: { ...typography.bodyBold, color: colors.text, fontSize: 12 },
-  stepTitleTight: { fontSize: 11 },
-  stepBody: { ...typography.caption, color: colors.textSecondary, lineHeight: 17, fontSize: 11 },
-  stepBodyTight: { fontSize: 10, lineHeight: 15 },
+  } as ViewStyle,
+  stepBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '800' } as TextStyle,
+  stepBadgeTight: { width: 20, height: 20, borderRadius: 10 } as ViewStyle,
+  stepTitle: { ...typography.bodyBold, color: colors.text, fontSize: 12 } as TextStyle,
+  stepTitleTight: { fontSize: 11 } as TextStyle,
+  stepBody: { ...typography.caption, color: colors.textSecondary, lineHeight: 17, fontSize: 11 } as TextStyle,
+  stepBodyTight: { fontSize: 10, lineHeight: 15 } as TextStyle,
   hint: {
     ...typography.caption,
     color: colors.textMuted,
     lineHeight: 18,
     marginTop: spacing.xs,
-  },
+  } as TextStyle,
 });

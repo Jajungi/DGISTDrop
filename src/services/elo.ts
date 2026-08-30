@@ -1,4 +1,5 @@
 import { isEloFeaturesEnabled } from '@/src/stores/featureFlagsStore';
+import { RANK_ORDER } from '@/src/constants';
 import type { RankTier } from '@/src/types';
 
 const K_FACTOR = 32;
