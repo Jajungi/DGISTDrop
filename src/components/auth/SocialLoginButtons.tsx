@@ -9,9 +9,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '@/src/theme';
-import { SOCIAL_PROVIDER_LABELS, SOCIAL_LOGIN_PROVIDERS, type SocialProvider } from '@/src/constants/socialAuth';
+import { ACTIVE_SOCIAL_PROVIDERS, SOCIAL_PROVIDER_LABELS, type SocialProvider } from '@/src/constants/socialAuth';
 import { isSocialAuthAvailable } from '@/src/services/supabase/socialAuth';
-import { GoogleBrandIcon, NaverBrandIcon } from '@/src/components/auth/SocialBrandIcons';
+import { AppleBrandIcon, GoogleBrandIcon } from '@/src/components/auth/SocialBrandIcons';
 
 interface SocialLoginButtonsProps {
   onPress: (provider: SocialProvider) => void;
@@ -33,11 +33,15 @@ function SocialProviderIcon({ provider }: { provider: SocialProvider }) {
     );
   }
 
-  return (
-    <View style={[styles.iconCircle, styles.naverCircle]}>
-      <NaverBrandIcon size={LOGO_SIZE} />
-    </View>
-  );
+  if (provider === 'apple') {
+    return (
+      <View style={[styles.iconCircle, styles.appleCircle]}>
+        <AppleBrandIcon size={LOGO_SIZE} />
+      </View>
+    );
+  }
+
+  return null;
 }
 
 export function SocialLoginButtons({
@@ -48,6 +52,8 @@ export function SocialLoginButtons({
   linked = [],
 }: SocialLoginButtonsProps) {
   if (!isSocialAuthAvailable()) return null;
+
+  const providers = ACTIVE_SOCIAL_PROVIDERS;
 
   return (
     <View style={styles.wrap}>
@@ -68,7 +74,7 @@ export function SocialLoginButtons({
       )}
 
       <View style={styles.iconRow}>
-        {SOCIAL_LOGIN_PROVIDERS.map((provider) => {
+        {providers.map((provider) => {
           const isLinked = linked.includes(provider);
           const loading = busy && busyProvider === provider;
           return (
@@ -116,11 +122,11 @@ export function SocialLoginButtons({
 
       {mode === 'login' ? (
         <Text style={styles.hint}>
-          설정에서 Google·네이버를 연동한 계정만 간편 로그인할 수 있어요.
+          설정에서 Google·Apple을 연동한 계정만 간편 로그인할 수 있어요.
         </Text>
       ) : mode === 'signup' ? (
         <Text style={styles.hint}>
-          Google·네이버 인증 후 학번·비밀번호를 설정해 가입을 마쳐요.
+          Google·Apple 인증 후 학번·비밀번호를 설정해 가입을 마쳐요.
         </Text>
       ) : null}
     </View>
@@ -184,8 +190,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  naverCircle: {
-    backgroundColor: '#03C75A',
+  appleCircle: {
+    backgroundColor: '#000000',
   },
   loadingCircle: {
     backgroundColor: colors.surfaceAlt,

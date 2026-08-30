@@ -46,24 +46,33 @@ badmin://auth/callback
 
 ---
 
-## 3. Supabase Dashboard — Google
+## 3. Supabase Dashboard — Google · Apple
 
-**Authentication** → **Providers** → **Google**
+**Authentication** → **Providers**
+
+### Google
 
 1. **Enable Google** 켜기
 2. [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → **Credentials**
-3. **Create Credentials** → **OAuth client ID**
-   - Application type: **Web application**
-   - Authorized redirect URIs: Supabase 화면에 표시된 주소  
-     (형식: `https://<프로젝트-ref>.supabase.co/auth/v1/callback`)
-4. 생성된 **Client ID** / **Client Secret**을 Supabase Google 설정에 붙여넣기
-5. **Save**
+3. **Create Credentials** → **OAuth client ID** (Web)
+   - Authorized redirect URIs: Supabase Callback URL  
+     (`https://<프로젝트-ref>.supabase.co/auth/v1/callback`)
+4. Client ID / Secret을 Supabase에 붙여넣기
 
-Android 앱에서도 쓰려면 같은 GCP 프로젝트에 **Android** OAuth 클라이언트를 추가하고 패키지명 `kr.ac.dgist.badmin`, SHA-1을 등록합니다.
+### Apple
+
+1. **Enable Apple** 켜기
+2. [Apple Developer](https://developer.apple.com/) → Certificates, Identifiers & Profiles → **Services ID**
+3. Sign in with Apple 설정 후 Supabase Callback URL 등록
+4. Services ID, Team ID, Key ID, Secret(.p8)을 Supabase Apple 설정에 입력
+
+Android 앱에서도 Google을 쓰려면 GCP에 **Android** OAuth 클라이언트를 추가합니다.
 
 ---
 
-## 4. Supabase Dashboard — 네이버 (Custom OIDC)
+## 4. Supabase Dashboard — 네이버 (Custom OIDC, 검수 후)
+
+네이버는 앱 검수 통과 후 `src/constants/socialAuth.ts`의 `ACTIVE_SOCIAL_PROVIDERS`에 `naver`를 추가하세요.
 
 Supabase에 **네이버 기본 버튼이 없어서** Custom OIDC로 등록합니다.
 

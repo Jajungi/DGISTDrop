@@ -21,6 +21,7 @@ import {
   supabaseResumeRememberedSession,
   supabaseResolveSession,
   supabaseCompleteSocialSignup,
+  supabaseAbandonIncompleteSignup,
 } from '@/src/services/supabase/auth';
 import { signInWithSocialProvider } from '@/src/services/supabase/socialAuth';
 import { consumeSocialAuthIntent, clearSocialSignupInProgress, setSocialSignupInProgress } from '@/src/services/supabase/socialAuthIntent';
@@ -594,7 +595,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       await clearSocialSignupInProgress();
-      await supabaseLogout();
+      await supabaseAbandonIncompleteSignup();
       set({
         currentUser: null,
         isAuthenticated: false,
@@ -604,7 +605,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return {
         success: false,
         message:
-          'Google·네이버 연동이 되어 있지 않아요. 설정에서 연동하거나 회원가입 탭에서 간편 회원가입을 이용하세요.',
+          'Google·Apple 연동이 되어 있지 않아요. 설정에서 연동하거나 회원가입 탭에서 간편 회원가입을 이용하세요.',
       };
     }
 
@@ -613,7 +614,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     if (!isAppReadyMember(user)) {
       await clearSocialSignupInProgress();
-      await supabaseLogout();
+      await supabaseAbandonIncompleteSignup();
       set({
         currentUser: null,
         isAuthenticated: false,
@@ -623,7 +624,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return {
         success: false,
         message:
-          'Google·네이버 연동이 되어 있지 않아요. 설정에서 연동하거나 회원가입 탭에서 간편 회원가입을 이용하세요.',
+          'Google·Apple 연동이 되어 있지 않아요. 설정에서 연동하거나 회원가입 탭에서 간편 회원가입을 이용하세요.',
       };
     }
 

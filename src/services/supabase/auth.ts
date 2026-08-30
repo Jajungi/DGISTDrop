@@ -168,6 +168,18 @@ export async function supabaseRegister(input: {
   };
 }
 
+export async function supabaseAbandonIncompleteSignup(): Promise<void> {
+  if (!isSupabaseEnabled()) return;
+  const { data } = await getSupabase().auth.getSession();
+  if (!data.session?.user) return;
+  try {
+    await getSupabase().rpc('rpc_delete_account', { p_target_id: null });
+  } catch {
+    /* 프로필만 남은 경우에도 로그아웃은 진행 */
+  }
+  await supabaseLogout();
+}
+
 /** 본인 또는 관리자가 계정 삭제 (학번 재가입 가능) */
 export async function supabaseDeleteAccount(targetUserId?: string): Promise<AuthResult> {
   if (!isSupabaseEnabled()) {

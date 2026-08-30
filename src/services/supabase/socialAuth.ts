@@ -103,6 +103,7 @@ export async function getOAuthProfileName(): Promise<string> {
 
 function normalizeSocialProvider(id: string): SocialProvider | null {
   if (id === 'google') return 'google';
+  if (id === 'apple') return 'apple';
   if (id === 'naver' || id === 'custom:naver') return 'naver';
   return null;
 }
