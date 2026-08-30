@@ -11,8 +11,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { Card } from '@/src/components/ui/Card';
-import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { spacing, typography, borderRadius } from '@/src/theme';
+import { useAppTheme } from '@/src/theme/ThemeProvider';
 import { GoogleBrandIcon } from '@/src/components/auth/SocialBrandIcons';
+import { googleAuthButtonStyles } from '@/src/components/auth/googleButtonStyles';
 import {
   ACTIVE_SOCIAL_PROVIDERS,
   SOCIAL_PROVIDER_LABELS,
@@ -40,15 +42,17 @@ interface AccountLinkCardProps {
 function GoogleIconCircle({
   size = ICON_SIZE,
   logoSize = LOGO_SIZE,
+  circleStyle,
 }: {
   size?: number;
   logoSize?: number;
+  circleStyle: { backgroundColor: string; borderColor: string };
 }) {
   return (
     <View
       style={[
         styles.iconCircle,
-        styles.googleCircle,
+        circleStyle,
         { width: size, height: size, borderRadius: size / 2 },
       ]}
     >
@@ -58,6 +62,8 @@ function GoogleIconCircle({
 }
 
 export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
+  const { colors: theme } = useAppTheme();
+  const googleStyles = googleAuthButtonStyles(theme);
   const { width: windowWidth } = useWindowDimensions();
   const wideLayout = windowWidth >= WIDE_LAYOUT_MIN_WIDTH;
   const [linked, setLinked] = useState<SocialProvider[]>([]);
@@ -115,7 +121,7 @@ export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
       return (
         <ActivityIndicator
           size="small"
-          color={colors.primary}
+          color={theme.primary}
           style={wideLayout ? styles.wideLoading : styles.iconSlot}
         />
       );
@@ -131,18 +137,23 @@ export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
           accessibilityLabel={actionLabel}
           style={({ pressed }) => [
             styles.wideButton,
-            isLinked && styles.wideButtonLinked,
+            googleStyles.wide,
+            isLinked && googleStyles.wideLinked,
             pressed && busy === null && styles.iconPressed,
           ]}
         >
           {loadingIcon ? (
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color={theme.primary} />
           ) : (
             <>
-              <GoogleIconCircle size={WIDE_ICON_SIZE} logoSize={WIDE_LOGO_SIZE} />
-              <Text style={styles.wideLabel}>{actionLabel}</Text>
+              <GoogleIconCircle
+                size={WIDE_ICON_SIZE}
+                logoSize={WIDE_LOGO_SIZE}
+                circleStyle={googleStyles.iconCircle}
+              />
+              <Text style={[styles.wideLabel, googleStyles.label]}>{actionLabel}</Text>
               {isLinked ? (
-                <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+                <Ionicons name="checkmark-circle" size={18} color={theme.success} />
               ) : null}
             </>
           )}
@@ -162,14 +173,14 @@ export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
         ]}
       >
         {loadingIcon ? (
-          <View style={[styles.iconCircle, styles.loadingCircle]}>
-            <ActivityIndicator size="small" color={colors.primary} />
+          <View style={[styles.iconCircle, googleStyles.loadingCircle]}>
+            <ActivityIndicator size="small" color={theme.primary} />
           </View>
         ) : (
-          <GoogleIconCircle />
+          <GoogleIconCircle circleStyle={googleStyles.iconCircle} />
         )}
         {isLinked ? (
-          <View style={styles.linkedBadge}>
+          <View style={[styles.linkedBadge, { borderColor: theme.surface, backgroundColor: theme.success }]}>
             <Ionicons name="checkmark" size={10} color="#FFF" />
           </View>
         ) : null}
@@ -182,31 +193,31 @@ export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
       {wideLayout ? (
         <View style={styles.wideWrap}>
           <View style={styles.headerRow}>
-            <Ionicons name="link-outline" size={18} color={colors.primary} />
-            <Text style={styles.title}>간편 로그인</Text>
+            <Ionicons name="link-outline" size={18} color={theme.primary} />
+            <Text style={[styles.title, { color: theme.text }]}>간편 로그인</Text>
             {isLinked ? (
-              <View style={styles.badge}>
+              <View style={[styles.badge, { backgroundColor: theme.success }]}>
                 <Text style={styles.badgeText}>ON</Text>
               </View>
             ) : null}
           </View>
-          <Text style={styles.wideHint}>
+          <Text style={[styles.wideHint, { color: theme.textMuted }]}>
             Google을 연동하면 로그인 탭에서 간편 로그인을 쓸 수 있어요.
           </Text>
           {renderProviderControl()}
         </View>
       ) : (
         <View style={styles.row}>
-          <Ionicons name="link-outline" size={18} color={colors.primary} />
-          <Text style={styles.title} numberOfLines={1}>
+          <Ionicons name="link-outline" size={18} color={theme.primary} />
+          <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
             간편 로그인
           </Text>
           {isLinked ? (
-            <View style={styles.badge}>
+            <View style={[styles.badge, { backgroundColor: theme.success }]}>
               <Text style={styles.badgeText}>ON</Text>
             </View>
           ) : null}
-          <Text style={styles.hint} numberOfLines={1}>
+          <Text style={[styles.hint, { color: theme.textMuted }]} numberOfLines={1}>
             Google을 연동하면 로그인 탭에서 간편 로그인을 쓸 수 있어요.
           </Text>
           {renderProviderControl()}
@@ -241,11 +252,9 @@ const styles = StyleSheet.create({
   title: {
     ...typography.bodyBold,
     fontSize: 14,
-    color: colors.text,
     flexShrink: 0,
   },
   badge: {
-    backgroundColor: colors.success,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -254,7 +263,6 @@ const styles = StyleSheet.create({
   badgeText: { color: '#FFF', fontSize: 9, fontWeight: '800' },
   hint: {
     ...typography.caption,
-    color: colors.textMuted,
     flex: 1,
     flexShrink: 1,
     minWidth: 0,
@@ -262,7 +270,6 @@ const styles = StyleSheet.create({
   },
   wideHint: {
     ...typography.caption,
-    color: colors.textMuted,
     lineHeight: 18,
   },
   iconSlot: { flexShrink: 0 },
@@ -282,37 +289,19 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: colors.border,
     ...Platform.select({ web: { cursor: 'pointer' as const } }),
-  },
-  wideButtonLinked: {
-    backgroundColor: colors.surfaceAlt,
   },
   wideLabel: {
     ...typography.bodyBold,
     fontSize: 15,
-    color: colors.text,
   },
   iconPressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   iconCircle: {
-    width: ICON_SIZE,
-    height: ICON_SIZE,
-    borderRadius: ICON_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-  },
-  googleCircle: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: colors.border,
-  },
-  loadingCircle: {
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   linkedBadge: {
     position: 'absolute',
@@ -321,10 +310,8 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: colors.success,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: colors.surface,
   },
 });

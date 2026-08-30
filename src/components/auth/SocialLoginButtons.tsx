@@ -8,10 +8,12 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native';
-import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { spacing, typography, borderRadius } from '@/src/theme';
+import { useAppTheme } from '@/src/theme/ThemeProvider';
 import { ACTIVE_SOCIAL_PROVIDERS, SOCIAL_PROVIDER_LABELS, type SocialProvider } from '@/src/constants/socialAuth';
 import { isSocialAuthAvailable } from '@/src/services/supabase/socialAuth';
 import { GoogleBrandIcon } from '@/src/components/auth/SocialBrandIcons';
+import { googleAuthButtonStyles } from '@/src/components/auth/googleButtonStyles';
 
 interface SocialLoginButtonsProps {
   onPress: (provider: SocialProvider) => void;
@@ -27,19 +29,13 @@ const WIDE_LOGO_SIZE = 18;
 /** 좁은 세로 화면은 원형 아이콘, 넓은 화면·PC는 가로 전체 버튼 */
 const WIDE_LAYOUT_MIN_WIDTH = 420;
 
-function SocialProviderIcon({ size = ICON_SIZE, logoSize = LOGO_SIZE }: { size?: number; logoSize?: number }) {
-  return (
-    <View style={[styles.iconCircle, styles.googleCircle, { width: size, height: size, borderRadius: size / 2 }]}>
-      <GoogleBrandIcon size={logoSize} />
-    </View>
-  );
-}
-
 export function SocialLoginButtons({
   onPress,
   busy = false,
   busyProvider = null,
 }: SocialLoginButtonsProps) {
+  const { colors: theme } = useAppTheme();
+  const googleStyles = googleAuthButtonStyles(theme);
   const { width: windowWidth } = useWindowDimensions();
   const wideLayout = windowWidth >= WIDE_LAYOUT_MIN_WIDTH;
 
@@ -47,12 +43,24 @@ export function SocialLoginButtons({
 
   const providers = ACTIVE_SOCIAL_PROVIDERS;
 
+  const renderIconCircle = (size: number, logoSize: number) => (
+    <View
+      style={[
+        styles.iconCircle,
+        googleStyles.iconCircle,
+        { width: size, height: size, borderRadius: size / 2 },
+      ]}
+    >
+      <GoogleBrandIcon size={logoSize} />
+    </View>
+  );
+
   return (
     <View style={styles.wrap}>
       <View style={styles.dividerRow}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>간편 로그인</Text>
-        <View style={styles.dividerLine} />
+        <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+        <Text style={[styles.dividerText, { color: theme.textMuted }]}>간편 로그인</Text>
+        <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
       </View>
 
       <View style={[styles.iconRow, wideLayout && styles.iconRowWide]}>
@@ -70,15 +78,16 @@ export function SocialLoginButtons({
                 accessibilityLabel={label}
                 style={({ pressed }) => [
                   styles.wideButton,
+                  googleStyles.wide,
                   pressed && !busy && styles.iconPressed,
                 ]}
               >
                 {loading ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
+                  <ActivityIndicator size="small" color={theme.primary} />
                 ) : (
                   <>
-                    <SocialProviderIcon size={WIDE_ICON_SIZE} logoSize={WIDE_LOGO_SIZE} />
-                    <Text style={styles.wideLabel}>{label}</Text>
+                    {renderIconCircle(WIDE_ICON_SIZE, WIDE_LOGO_SIZE)}
+                    <Text style={[styles.wideLabel, googleStyles.label]}>{label}</Text>
                   </>
                 )}
               </Pressable>
@@ -98,18 +107,18 @@ export function SocialLoginButtons({
               ]}
             >
               {loading ? (
-                <View style={[styles.iconCircle, styles.loadingCircle]}>
-                  <ActivityIndicator size="small" color={colors.primary} />
+                <View style={[styles.iconCircle, googleStyles.loadingCircle]}>
+                  <ActivityIndicator size="small" color={theme.primary} />
                 </View>
               ) : (
-                <SocialProviderIcon />
+                renderIconCircle(ICON_SIZE, LOGO_SIZE)
               )}
             </Pressable>
           );
         })}
       </View>
 
-      <Text style={[styles.hint, wideLayout && styles.hintWide]}>
+      <Text style={[styles.hint, wideLayout && styles.hintWide, { color: theme.textMuted }]}>
         설정에서 Google을 연동한 계정만 간편 로그인할 수 있어요.
       </Text>
     </View>
@@ -134,11 +143,9 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
   },
   dividerText: {
     ...typography.caption,
-    color: colors.textMuted,
   },
   iconRow: {
     flexDirection: 'row',
@@ -168,38 +175,22 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: colors.border,
     ...Platform.select({ web: { cursor: 'pointer' as const } }),
   },
   wideLabel: {
     ...typography.bodyBold,
     fontSize: 15,
-    color: colors.text,
   },
   iconPressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   iconCircle: {
-    width: ICON_SIZE,
-    height: ICON_SIZE,
-    borderRadius: ICON_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-  },
-  googleCircle: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: colors.border,
-  },
-  loadingCircle: {
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   hint: {
     ...typography.caption,
-    color: colors.textMuted,
     lineHeight: 18,
     textAlign: 'center',
     maxWidth: 320,
