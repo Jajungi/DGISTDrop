@@ -255,7 +255,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
         <ScrollView contentContainerStyle={styles.detailScroll} showsVerticalScrollIndicator={false}>
           <Card style={styles.profileCard}>
             <View style={styles.profileHeader}>
-              <Avatar name={selected.name} color={selected.avatarColor} size={56} />
+              <Avatar name={selected.name} color={selected.avatarColor} size={56} imageUri={selected.avatarUri} />
               <View style={styles.profileMeta}>
                 <View style={styles.nameRow}>
                   <Text style={styles.profileName}>{selected.name}</Text>
@@ -717,7 +717,7 @@ function MemberRow({ user, onPress, showPoints }: { user: User; onPress: () => v
   return (
     <Pressable onPress={onPress} style={styles.memberRow}>
       <View style={styles.avatarWrap}>
-        <Avatar name={user.name} color={user.avatarColor} size={40} />
+        <Avatar name={user.name} color={user.avatarColor} size={40} imageUri={user.avatarUri} />
         {user.isAtGym && <View style={styles.onlineIndicator} />}
       </View>
       <View style={styles.memberBody}>

@@ -446,7 +446,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
               return (
                 <View key={record.id} style={styles.itemCard}>
                   <View style={styles.itemRow}>
-                    <Avatar name={user.name} color={user.avatarColor} size={36} />
+                    <Avatar name={user.name} color={user.avatarColor} size={36} imageUri={user.avatarUri} />
                     <View style={styles.itemBody}>
                       <Text style={styles.itemTitle}>{user.name}</Text>
                       <Text style={styles.itemSub}>
@@ -489,7 +489,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
             {notCheckedInToday.slice(0, 12).map((user) => (
               <View key={user.id} style={styles.itemCard}>
                 <View style={styles.itemRow}>
-                  <Avatar name={user.name} color={user.avatarColor} size={32} />
+                  <Avatar name={user.name} color={user.avatarColor} size={32} imageUri={user.avatarUri} />
                   <View style={styles.itemBody}>
                     <Text style={styles.itemTitle}>{user.name}</Text>
                     <Text style={styles.itemSub}>{user.studentId}</Text>
@@ -1066,7 +1066,7 @@ function MemberCard({
   return (
     <Pressable onPress={onToggle} style={styles.itemCard}>
       <View style={styles.itemRow}>
-        <Avatar name={user.name} color={user.avatarColor} size={40} />
+        <Avatar name={user.name} color={user.avatarColor} size={40} imageUri={user.avatarUri} />
         <View style={styles.itemBody}>
           <View style={styles.itemTitleRow}>
             <Text style={styles.itemTitle}>{user.name}</Text>

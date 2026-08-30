@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { TeamRoom } from '@/src/types';
-import { Avatar } from '@/src/components/ui/Avatar';
+import { UserAvatar } from '@/src/components/ui/UserAvatar';
 import { RankBadge } from '@/src/components/ui/RankBadge';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
@@ -75,7 +75,7 @@ export function TeamRoomCard({
 
       <View style={styles.members}>
         {room.members.map((m) => (
-          <Avatar key={m.userId} name={m.name} color={m.avatarColor} size={32} />
+          <UserAvatar key={m.userId} userId={m.userId} name={m.name} color={m.avatarColor} size={32} />
         ))}
         {Array.from({ length: room.maxMembers - room.members.length }, (_, i) => (
           <View key={`empty-${i}`} style={styles.emptySlot} />
@@ -89,7 +89,7 @@ export function TeamRoomCard({
           </Text>
           {joinRequests.map((req) => (
             <View key={req.id} style={styles.requestRow}>
-              <Avatar name={req.name} color={req.avatarColor} size={28} />
+              <UserAvatar userId={req.userId} name={req.name} color={req.avatarColor} size={28} />
               <Text style={styles.requestName}>{req.name}</Text>
               {eloOn ? <RankBadge rank={req.rank} size="sm" /> : null}
               <View style={styles.requestActions}>

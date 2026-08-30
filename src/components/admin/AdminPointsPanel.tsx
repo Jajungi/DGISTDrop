@@ -169,7 +169,7 @@ export function AdminPointsPanel({ adminId, onToast }: AdminPointsPanelProps) {
               onPress={() => setSelectedUserId(u.id === selectedUserId ? null : u.id)}
               style={[styles.userChip, selectedUserId === u.id && styles.userChipActive]}
             >
-              <Avatar name={u.name} color={u.avatarColor} size={28} />
+              <Avatar name={u.name} color={u.avatarColor} size={28} imageUri={u.avatarUri} />
               <View>
                 <Text style={styles.userChipName}>{u.name}</Text>
                 <Text style={styles.userChipPts}>{u.points}P</Text>
@@ -259,7 +259,7 @@ export function AdminPointsPanel({ adminId, onToast }: AdminPointsPanelProps) {
             style={styles.itemCard}
           >
             <Text style={styles.rankNum}>{i + 1}</Text>
-            <Avatar name={user.name} color={user.avatarColor} size={32} />
+            <Avatar name={user.name} color={user.avatarColor} size={32} imageUri={user.avatarUri} />
             <View style={styles.itemBody}>
               <Text style={styles.itemTitle}>{user.name}</Text>
               <Text style={styles.itemSub}>{TIER_SHORT[user.membershipTier]}</Text>

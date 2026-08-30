@@ -57,7 +57,7 @@ export function EloRankingSheet({ visible, currentUserId, onClose }: EloRankingS
                       <Text style={styles.rankNum}>{i + 1}</Text>
                     )}
                   </View>
-                  <Avatar name={u.name} color={u.avatarColor} size={32} />
+                  <Avatar name={u.name} color={u.avatarColor} size={32} imageUri={u.avatarUri} />
                   <View style={styles.nameCol}>
                     <Text style={styles.name} numberOfLines={1}>
                       {u.name}

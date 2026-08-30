@@ -136,7 +136,7 @@ export function FriendSchedulePanel({
             ) : (
               atSlot.map((f) => (
                 <View key={f.id} style={styles.slotPerson}>
-                  <Avatar name={f.name} color={f.avatarColor} size={28} showOnline={f.isAtGym} />
+                  <Avatar name={f.name} color={f.avatarColor} size={28} showOnline={f.isAtGym} imageUri={f.avatarUri} />
                   <Text style={styles.slotPersonName}>{f.name}</Text>
                   <Text style={styles.slotPersonTime}>
                     {getEffectiveSchedule(f).start}
@@ -157,6 +157,7 @@ export function FriendSchedulePanel({
                   color={friend.avatarColor}
                   size={28}
                   showOnline={friend.isAtGym}
+                  imageUri={friend.avatarUri}
                 />
                 <Text style={styles.slotPersonName}>{friend.name}</Text>
                 <Text style={styles.overlapMins}>{t('friends.overlapMins', { mins })}</Text>
@@ -180,6 +181,7 @@ export function FriendSchedulePanel({
                 color={currentUser.avatarColor}
                 size={32}
                 showOnline={currentUser.isAtGym}
+                imageUri={currentUser.avatarUri}
               />
               <View style={styles.nameCol}>
                 <Text style={[styles.friendName, styles.meLabel]}>{t('common.me')}</Text>
@@ -218,6 +220,7 @@ export function FriendSchedulePanel({
                   color={friend.avatarColor}
                   size={32}
                   showOnline={friend.isAtGym}
+                  imageUri={friend.avatarUri}
                 />
                 <View style={styles.nameCol}>
                   <Text style={styles.friendName}>{friend.name}</Text>

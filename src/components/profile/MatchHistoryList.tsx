@@ -64,7 +64,7 @@ export function MatchHistoryList({ userId }: { userId: string }) {
           <View key={match.id} style={styles.row}>
             <View style={styles.avatars}>
               {oppUsers.slice(0, 2).map((u) => (
-                <Avatar key={u!.id} name={u!.name} color={u!.avatarColor} size={28} />
+                <Avatar key={u!.id} name={u!.name} color={u!.avatarColor} size={28} imageUri={u!.avatarUri} />
               ))}
             </View>
             <View style={styles.info}>

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import type { CourtPlayer } from '@/src/types';
 import { getPlayerSlotPosition } from '@/src/constants/court';
-import { Avatar } from '@/src/components/ui/Avatar';
+import { UserAvatar } from '@/src/components/ui/UserAvatar';
 import { typography } from '@/src/theme';
 
 const SIDE_LABEL = ['상', '하', '상', '하'] as const;
@@ -56,7 +56,12 @@ export function CourtPlayerProfiles({
                 },
               ]}
             >
-              <Avatar name={player.name} color={player.avatarColor} size={avatarSize} />
+              <UserAvatar
+                userId={player.userId}
+                name={player.name}
+                color={player.avatarColor}
+                size={avatarSize}
+              />
             </View>
             {showName && (
               <Text style={[styles.nickname, { maxWidth: labelW, fontSize: compact ? 6 : 7 }]} numberOfLines={1}>

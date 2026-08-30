@@ -50,6 +50,7 @@ export function FriendScheduleBar({ friends, activityStart, activityEnd }: Frien
                   color={friend.avatarColor}
                   size={28}
                   showOnline={friend.isAtGym}
+                  imageUri={friend.avatarUri}
                 />
                 <Text style={styles.friendName}>{friend.name}</Text>
               </View>

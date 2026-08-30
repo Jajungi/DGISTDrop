@@ -13,7 +13,7 @@ import {
 import { GameCountPicker } from './GameCountPicker';
 import { GameModePicker } from './GameModePicker';
 import { GameModeBadge } from './GameModeBadge';
-import { Avatar } from '@/src/components/ui/Avatar';
+import { UserAvatar } from '@/src/components/ui/UserAvatar';
 import { RankBadge } from '@/src/components/ui/RankBadge';
 import { Button } from '@/src/components/ui/Button';
 import { TouchGuard } from '@/src/components/ui/TouchGuard';
@@ -506,7 +506,7 @@ export function CourtDetailContent({
           <Text style={styles.sectionTitle}>참가자 {court.players.length}/4</Text>
           {court.players.map((p) => (
             <View key={p.userId} style={styles.playerRow}>
-              <Avatar name={p.name} color={p.avatarColor} size={36} />
+              <UserAvatar userId={p.userId} name={p.name} color={p.avatarColor} size={36} />
               <Text style={styles.playerName}>{p.name}</Text>
               {eloOn ? <RankBadge rank={p.rank} size="sm" /> : null}
             </View>
@@ -519,6 +519,7 @@ export function CourtDetailContent({
           <Text style={styles.sectionTitle}>합류 신청</Text>
           {court.joinRequests.map((req) => (
             <View key={req.id} style={styles.requestRow}>
+              <UserAvatar userId={req.userId} name={req.userName} color={colors.primary} size={32} />
               <Text style={styles.playerName}>{req.userName}</Text>
               <View style={styles.requestActions}>
                 {guard(<Button title="수락" onPress={() => onAcceptJoin(req.id)} size="sm" />)}
@@ -536,6 +537,7 @@ export function CourtDetailContent({
           <Text style={styles.sectionTitle}>다음 이용 대기 {waitQueue.length}명</Text>
           {waitQueue.map((w, i) => (
             <View key={w.id} style={styles.requestRow}>
+              <UserAvatar userId={w.userId} name={w.userName} color={colors.primary} size={28} />
               <Text style={styles.playerName}>
                 {i + 1}. {w.userName}
                 {w.userId === currentUserId ? ' (나)' : ''}
@@ -664,6 +666,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.sm,
     marginBottom: spacing.sm,
     paddingVertical: spacing.sm,
   },

@@ -53,7 +53,7 @@ export function PersonSearchResults({ query, onSelect }: PersonSearchResultsProp
               onPress={() => onSelect?.(user)}
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
             >
-              <Avatar name={user.name} color={user.avatarColor} size={40} showOnline={user.isAtGym} />
+              <Avatar name={user.name} color={user.avatarColor} size={40} showOnline={user.isAtGym} imageUri={user.avatarUri} />
               <View style={styles.info}>
                 <View style={styles.nameRow}>
                   <Text style={styles.displayName}>{user.name}</Text>
