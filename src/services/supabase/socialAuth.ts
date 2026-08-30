@@ -5,7 +5,7 @@ import { makeRedirectUri } from 'expo-auth-session';
 import type { Provider } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseEnabled } from '@/src/lib/supabase';
 import type { SocialProvider } from '@/src/constants/socialAuth';
-import { setSocialAuthIntent, type SocialAuthIntent } from '@/src/services/supabase/socialAuthIntent';
+import { setSocialAuthIntent, type SocialAuthIntent, setSocialSignupInProgress } from '@/src/services/supabase/socialAuthIntent';
 
 export type SocialAuthResult = { success: boolean; message: string };
 
@@ -48,6 +48,9 @@ export async function createSessionFromOAuthUrl(url: string): Promise<void> {
     if (error) throw error;
     return;
   }
+
+  const { data } = await getSupabase().auth.getSession();
+  if (data.session?.user) return;
 
   throw new Error('로그인 응답에 코드가 없어요.');
 }
@@ -109,6 +112,9 @@ export async function signInWithSocialProvider(
   intent: SocialAuthIntent = 'login'
 ): Promise<SocialAuthResult> {
   await setSocialAuthIntent(intent);
+  if (intent === 'signup') {
+    await setSocialSignupInProgress();
+  }
   return runOAuthFlow(async (redirectTo) => {
     const { data, error } = await getSupabase().auth.signInWithOAuth({
       provider: asAuthProvider(provider),

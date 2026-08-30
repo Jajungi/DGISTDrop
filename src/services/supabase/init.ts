@@ -25,7 +25,7 @@ import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
 import { useFriendPrefsStore } from '@/src/stores/friendPrefsStore';
 import { afterSupabaseAuth } from '@/src/services/supabase/authBridge';
 import { isAppReadyMember, isIncompleteSocialSignup } from '@/src/utils/socialSignup';
-import { isSocialSignupInProgress } from '@/src/services/supabase/socialAuthIntent';
+import { isSocialSignupInProgress, peekSocialAuthIntent, isOAuthCallbackPath } from '@/src/services/supabase/socialAuthIntent';
 
 let courtsUnsub: (() => void) | null = null;
 let profilesUnsub: (() => void) | null = null;
@@ -154,9 +154,13 @@ export async function initSupabaseApp(): Promise<boolean> {
       : null;
 
   let signupInProgress = false;
+  const oauthCallback = isOAuthCallbackPath();
+  const pendingOAuthIntent = await peekSocialAuthIntent();
   if (currentUser && isIncompleteSocialSignup(currentUser)) {
     signupInProgress = await isSocialSignupInProgress();
-    if (!signupInProgress) {
+    const deferIncompleteCleanup =
+      oauthCallback || pendingOAuthIntent === 'login' || pendingOAuthIntent === 'signup' || pendingOAuthIntent === 'link';
+    if (!signupInProgress && !deferIncompleteCleanup) {
       await supabaseLogout();
       currentUser = null;
     }

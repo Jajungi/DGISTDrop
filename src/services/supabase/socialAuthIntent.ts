@@ -41,6 +41,18 @@ export async function consumeSocialAuthIntent(): Promise<SocialAuthIntent> {
   return 'login';
 }
 
+/** OAuth 복귀 전 intent 확인 (소비하지 않음) */
+export async function peekSocialAuthIntent(): Promise<SocialAuthIntent | null> {
+  const raw = await read(INTENT_KEY);
+  if (raw === 'signup' || raw === 'link' || raw === 'login') return raw;
+  return null;
+}
+
+export function isOAuthCallbackPath(): boolean {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  return /\/auth\/callback\/?$/i.test(window.location.pathname);
+}
+
 export async function setSocialSignupInProgress(): Promise<void> {
   await write(SIGNUP_PROGRESS_KEY, '1');
 }

@@ -110,6 +110,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (tab === 'register') setMode('register');
+    else if (tab === 'login') setMode('login');
   }, [tab]);
 
   useEffect(() => {
@@ -213,6 +214,9 @@ export default function LoginScreen() {
     setSocialBusy(provider);
     void (async () => {
       const result = await loginWithSocial(provider, intent);
+      if (result.oauthRedirect) {
+        return;
+      }
       setBusy(false);
       setSocialBusy(null);
       if (!result.success) {

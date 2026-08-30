@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { Platform } from 'react-native';
 import type { GeoLocation, User, AttendanceRecord, MembershipTier, MemberStatus, LessonAccessStatus, RankTier } from '@/src/types';
 import { MOCK_USERS, MOCK_ATTENDANCE } from '@/src/services/mockData';
 import { AVATAR_COLORS, GYM_LOCATION, RANK_THRESHOLDS } from '@/src/constants';
@@ -92,7 +93,7 @@ interface AuthState {
   loginWithSocial: (
     provider: SocialProvider,
     intent?: SocialAuthIntent
-  ) => Promise<{ success: boolean; message: string; needsSignup?: boolean }>;
+  ) => Promise<{ success: boolean; message: string; needsSignup?: boolean; oauthRedirect?: boolean }>;
   applySocialSession: () => Promise<{ success: boolean; message: string; needsSignup?: boolean }>;
   completeSocialSignup: (
     studentId: string,
@@ -563,7 +564,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { success: false, message: 'Supabase가 설정되지 않았어요.' };
     }
     const intent = await consumeSocialAuthIntent();
-    const result = await supabaseResolveSession();
+    let result = await supabaseResolveSession();
+    if (!result.success && result.message.includes('로그인 세션이 없어요')) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      result = await supabaseResolveSession();
+    }
     if (!result.success || !result.userId) {
       return { success: false, message: result.message };
     }
@@ -645,6 +650,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     const oauth = await signInWithSocialProvider(provider, intent);
     if (!oauth.success) return oauth;
+    if (Platform.OS === 'web') {
+      return { success: true, message: '', oauthRedirect: true };
+    }
     return get().applySocialSession();
   },
 

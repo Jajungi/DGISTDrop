@@ -19,7 +19,7 @@ async function finishCallback(url: string, applySocialSession: () => Promise<{
     return;
   }
   await setSocialAuthFlash(result.message);
-  router.replace('/login');
+  router.replace('/login?tab=login');
 }
 
 export default function AuthCallbackScreen() {
