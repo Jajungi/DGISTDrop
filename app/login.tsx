@@ -92,7 +92,7 @@ export default function LoginScreen() {
     }
     setSavedAccount(account);
     setShowSavedPrompt(quick);
-    if (quick && account.kind === 'guest') {
+    if (quick && account?.kind === 'guest') {
       setMode('guest');
       setGuestName(account.name);
     } else if (account?.studentId) {

@@ -268,6 +268,9 @@ function canDeleteUser(
   target: User,
   _actorId?: string
 ): { allowed: boolean; message?: string } {
+  if (isOwnerStudentId(target.studentId)) {
+    return { allowed: false, message: '마스터 운영자 계정은 삭제할 수 없어요.' };
+  }
   if (target.membershipTier === 'admin') {
     const adminCount = users.filter(
       (u) => u.membershipTier === 'admin' && u.memberStatus === 'approved'
@@ -614,7 +617,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const users = await fetchAllProfiles();
     const user = users.find((u) => u.id === result.userId) ?? null;
 
-    if (!isAppReadyMember(user)) {
+    if (!user || !isAppReadyMember(user)) {
       await supabaseAbandonIncompleteSignup();
       set({
         currentUser: null,
@@ -632,7 +635,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({
       users,
       currentUser: user,
-      isAuthenticated: Boolean(user),
+      isAuthenticated: true,
       isGuestSession: false,
       credentials: {},
     });

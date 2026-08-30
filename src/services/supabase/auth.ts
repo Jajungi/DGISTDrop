@@ -7,6 +7,7 @@ import {
 import { fetchAllProfiles, fetchProfileById } from '@/src/services/supabase/profiles';
 import { validateStudentId } from '@/src/utils/studentId';
 import { isIncompleteSocialSignup } from '@/src/utils/socialSignup';
+import { isOwnerStudentId } from '@/src/constants/roles';
 
 export type AuthResult = { success: boolean; message: string };
 
@@ -172,6 +173,17 @@ export async function supabaseAbandonIncompleteSignup(): Promise<void> {
   if (!isSupabaseEnabled()) return;
   const { data } = await getSupabase().auth.getSession();
   if (!data.session?.user) return;
+
+  const profile = await fetchProfileById(data.session.user.id).catch(() => null);
+  if (!profile || !isIncompleteSocialSignup(profile)) {
+    await supabaseLogout();
+    return;
+  }
+  if (isOwnerStudentId(profile.studentId)) {
+    await supabaseLogout();
+    return;
+  }
+
   try {
     await getSupabase().rpc('rpc_delete_account', { p_target_id: null });
   } catch {
@@ -186,6 +198,15 @@ export async function supabaseDeleteAccount(targetUserId?: string): Promise<Auth
     return { success: false, message: 'Supabase가 설정되지 않았어요.' };
   }
 
+  const { data: sessionData } = await getSupabase().auth.getSession();
+  const targetId = targetUserId ?? sessionData.session?.user?.id ?? null;
+  if (targetId) {
+    const profile = await fetchProfileById(targetId).catch(() => null);
+    if (profile && isOwnerStudentId(profile.studentId)) {
+      return { success: false, message: '마스터 운영자 계정은 삭제할 수 없어요.' };
+    }
+  }
+
   const { error } = await getSupabase().rpc('rpc_delete_account', {
     p_target_id: targetUserId ?? null,
   });
@@ -195,6 +216,9 @@ export async function supabaseDeleteAccount(targetUserId?: string): Promise<Auth
     if (__DEV__) console.warn('[supabase delete account]', error.message);
     if (msg.includes('cannot delete last admin')) {
       return { success: false, message: '마지막 관리자 계정은 삭제할 수 없어요.' };
+    }
+    if (msg.includes('cannot delete owner')) {
+      return { success: false, message: '마스터 운영자 계정은 삭제할 수 없어요.' };
     }
     if (msg.includes('forbidden')) {
       return { success: false, message: '권한이 없어요.' };
@@ -233,6 +257,14 @@ export async function supabaseResumeRememberedSession(): Promise<AuthResult & { 
   const profile = await fetchProfileById(data.session.user.id);
   if (!profile) {
     return { success: false, message: '프로필을 불러오지 못했어요.' };
+  }
+
+  if (isIncompleteSocialSignup(profile)) {
+    await getSupabase().auth.signOut();
+    return {
+      success: false,
+      message: '연동되지 않은 Google 계정이에요. 학번으로 가입한 뒤 설정에서 연동해 주세요.',
+    };
   }
 
   const blocked = memberStatusMessage(profile.memberStatus, profile.suspendedReason);

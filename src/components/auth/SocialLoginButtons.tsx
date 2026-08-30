@@ -6,8 +6,9 @@ import {
   Pressable,
   ActivityIndicator,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
-import { colors, spacing, typography } from '@/src/theme';
+import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import { ACTIVE_SOCIAL_PROVIDERS, SOCIAL_PROVIDER_LABELS, type SocialProvider } from '@/src/constants/socialAuth';
 import { isSocialAuthAvailable } from '@/src/services/supabase/socialAuth';
 import { GoogleBrandIcon } from '@/src/components/auth/SocialBrandIcons';
@@ -19,12 +20,17 @@ interface SocialLoginButtonsProps {
 }
 
 const ICON_SIZE = 56;
+const WIDE_ICON_SIZE = 22;
 const LOGO_SIZE = 26;
+const WIDE_LOGO_SIZE = 18;
 
-function SocialProviderIcon() {
+/** 좁은 세로 화면은 원형 아이콘, 넓은 화면·PC는 가로 전체 버튼 */
+const WIDE_LAYOUT_MIN_WIDTH = 420;
+
+function SocialProviderIcon({ size = ICON_SIZE, logoSize = LOGO_SIZE }: { size?: number; logoSize?: number }) {
   return (
-    <View style={[styles.iconCircle, styles.googleCircle]}>
-      <GoogleBrandIcon size={LOGO_SIZE} />
+    <View style={[styles.iconCircle, styles.googleCircle, { width: size, height: size, borderRadius: size / 2 }]}>
+      <GoogleBrandIcon size={logoSize} />
     </View>
   );
 }
@@ -34,6 +40,9 @@ export function SocialLoginButtons({
   busy = false,
   busyProvider = null,
 }: SocialLoginButtonsProps) {
+  const { width: windowWidth } = useWindowDimensions();
+  const wideLayout = windowWidth >= WIDE_LAYOUT_MIN_WIDTH;
+
   if (!isSocialAuthAvailable()) return null;
 
   const providers = ACTIVE_SOCIAL_PROVIDERS;
@@ -46,16 +55,43 @@ export function SocialLoginButtons({
         <View style={styles.dividerLine} />
       </View>
 
-      <View style={styles.iconRow}>
+      <View style={[styles.iconRow, wideLayout && styles.iconRowWide]}>
         {providers.map((provider) => {
           const loading = busy && busyProvider === provider;
+          const label = `${SOCIAL_PROVIDER_LABELS[provider]}로 로그인`;
+
+          if (wideLayout) {
+            return (
+              <Pressable
+                key={provider}
+                onPress={() => onPress(provider)}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                style={({ pressed }) => [
+                  styles.wideButton,
+                  pressed && !busy && styles.iconPressed,
+                ]}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <>
+                    <SocialProviderIcon size={WIDE_ICON_SIZE} logoSize={WIDE_LOGO_SIZE} />
+                    <Text style={styles.wideLabel}>{label}</Text>
+                  </>
+                )}
+              </Pressable>
+            );
+          }
+
           return (
             <Pressable
               key={provider}
               onPress={() => onPress(provider)}
               disabled={busy}
               accessibilityRole="button"
-              accessibilityLabel={`${SOCIAL_PROVIDER_LABELS[provider]}로 로그인`}
+              accessibilityLabel={label}
               style={({ pressed }) => [
                 styles.iconPressable,
                 pressed && !busy && styles.iconPressed,
@@ -73,7 +109,7 @@ export function SocialLoginButtons({
         })}
       </View>
 
-      <Text style={styles.hint}>
+      <Text style={[styles.hint, wideLayout && styles.hintWide]}>
         설정에서 Google을 연동한 계정만 간편 로그인할 수 있어요.
       </Text>
     </View>
@@ -111,13 +147,38 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: spacing.xl,
   },
+  iconRowWide: {
+    alignSelf: 'stretch',
+    width: '100%',
+  },
   iconPressable: {
     position: 'relative',
     alignItems: 'center',
     gap: 6,
     ...Platform.select({ web: { cursor: 'pointer' as const } }),
   },
-  iconPressed: { opacity: 0.85, transform: [{ scale: 0.96 }] },
+  wideButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    width: '100%',
+    minHeight: 48,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...Platform.select({ web: { cursor: 'pointer' as const } }),
+  },
+  wideLabel: {
+    ...typography.bodyBold,
+    fontSize: 15,
+    color: colors.text,
+  },
+  iconPressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   iconCircle: {
     width: ICON_SIZE,
     height: ICON_SIZE,
@@ -142,5 +203,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     textAlign: 'center',
     maxWidth: 320,
+  },
+  hintWide: {
+    maxWidth: undefined,
+    width: '100%',
   },
 });

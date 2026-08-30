@@ -180,7 +180,7 @@
         <tr><th>작성 주체</th><td>DGIST 배드민턴 동아리 Drop</td></tr>
         <tr><th>열람 대상</th><td>동아리 운영진</td></tr>
         <tr><th>개정일</th><td>2026-08-30</td></tr>
-        <tr><th>대상 범위</th><td>v0.1 ~ v1.14 (Git 저장소 및 미푸시 반영분 포함)</td></tr>
+        <tr><th>대상 범위</th><td>v0.1 ~ v2.0 (Git 저장소 및 미푸시 반영분 포함)</td></tr>
         <tr><th>근거 저장소</th><td>https://github.com/Jajungi/DGISTDrop</td></tr>
       </table>
     </div>
@@ -211,7 +211,7 @@
       <tbody>
         <tr><td class="toc-no">1</td><td>개요</td><td>—</td><td></td></tr>
         <tr><td class="toc-no">2</td><td>목차</td><td>—</td><td></td></tr>
-        <tr><td class="toc-no">3</td><td>버전별 변경 내역</td><td>v0.1–v1.14</td><td></td></tr>
+        <tr><td class="toc-no">3</td><td>버전별 변경 내역</td><td>v0.1–v2.0</td><td></td></tr>
         
       <tr>
         <td class="toc-no">3.1</td>
@@ -356,6 +356,12 @@
         <td>v1.14 모집방·달력·로그·가입 제한</td>
         <td class="toc-date">2026-08-28</td>
         <td class="toc-page"><a href="#v1.14">이동</a></td>
+      </tr>
+      <tr>
+        <td class="toc-no">3.25</td>
+        <td>v2.0 Google 간편 로그인 정식 배포</td>
+        <td class="toc-date">2026-08-30</td>
+        <td class="toc-page"><a href="#v2.0">이동</a></td>
       </tr>
       </tbody>
     </table>
@@ -1198,7 +1204,7 @@
       <section class="release" id="v1.14">
         <h2 class="h2">3.24　v1.14　모집방·달력·로그·가입 제한</h2>
         <table class="meta-table tight">
-          <tr><th>기간</th><td>2026-08-28</td><th>항목 수</th><td>24</td></tr>
+          <tr><th>기간</th><td>2026-08-28</td><th>항목 수</th><td>18</td></tr>
         </table>
         <div class="purpose">
           <div class="purpose-label">이 구간</div>
@@ -1283,30 +1289,73 @@
         <tr>
           <td class="col-no">18</td>
           <td class="col-what">활동 로그 전체 삭제가 RPC 미적용 DB에서도 동작하도록 폴백 추가. 웹 푸시·PWA 설치가 같은 service worker URL을 쓰도록 통일.</td>
+        </tr></tbody>
+        </table>
+      </section>
+      <section class="release" id="v2.0">
+        <h2 class="h2">3.25　v2.0　Google 간편 로그인 정식 배포</h2>
+        <table class="meta-table tight">
+          <tr><th>기간</th><td>2026-08-30</td><th>항목 수</th><td>12</td></tr>
+        </table>
+        <div class="purpose">
+          <div class="purpose-label">이 구간</div>
+          <p>학번 가입·로그인에 Google 간편 로그인(이미 연동한 계정만)을 붙이고, 미연동 가입·마스터 계정 삭제·DB 로그 오류를 막음.</p>
+        </div>
+        <table class="chg">
+          <thead>
+            <tr>
+              <th class="col-no">연번</th>
+              <th>변경 내용</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td class="col-no">1</td>
+          <td class="col-what">회원가입은 학번·비밀번호·이름만. Google로 신규 가입은 하지 않음.</td>
         </tr>
         <tr>
-          <td class="col-no">19</td>
-          <td class="col-what">회원가입 탭에서 간편 회원가입(Google)을 학번·비밀번호 폼 아래로 이동.</td>
+          <td class="col-no">2</td>
+          <td class="col-what">로그인 탭에 Google 간편 로그인 추가. 설정에서 Google을 연동한 계정만 사용 가능.</td>
         </tr>
         <tr>
-          <td class="col-no">20</td>
-          <td class="col-what">설정에서 Google 간편 로그인 연동 OAuth 복귀 시 설정 화면으로 돌아오고 연동 상태를 갱신함. Supabase Manual Linking 안내 추가.</td>
+          <td class="col-no">3</td>
+          <td class="col-what">설정에서 Google 연동(linkIdentity). OAuth 복귀 시 설정 화면으로 돌아오고 연동 상태를 갱신함. Supabase Authentication → Enable Manual Linking ON 필요.</td>
         </tr>
         <tr>
-          <td class="col-no">21</td>
-          <td class="col-what">설정에서 「기기 알림」과 「간편 로그인 연동」 카드를 좌우로 나란히 배치. 안내 문구와 Google 아이콘도 한 줄로 유지.</td>
+          <td class="col-no">4</td>
+          <td class="col-what">미연동 Google로 로그인하면 pending 계정을 정리하고 학번 가입·설정 연동 안내. 완성된 프로필은 삭제하지 않음.</td>
         </tr>
         <tr>
-          <td class="col-no">22</td>
-          <td class="col-what">회원가입 탭 간편 회원가입(Google) 제거. 가입은 학번·비밀번호만. 설정 간편 로그인 연동 UI 축소.</td>
+          <td class="col-no">5</td>
+          <td class="col-what">Google 로그인 성공 시 학번 로그인과 같이 이 기기에 계정을 저장해, 로그아웃 후 「기존 계정으로 로그인」 확인이 뜸.</td>
         </tr>
         <tr>
-          <td class="col-no">23</td>
-          <td class="col-what">Google 간편 로그인 성공 시에도 학번 로그인과 같이 이 기기에 계정을 저장해, 로그아웃 후 「기존 계정으로 로그인」 확인이 뜨도록 함.</td>
+          <td class="col-no">6</td>
+          <td class="col-what">로그인 Google 버튼: 좁은 화면(420px 미만)은 원형 아이콘, 넓은 화면·PC는 가로 전체 「Google로 로그인」 버튼.</td>
         </tr>
         <tr>
-          <td class="col-no">24</td>
-          <td class="col-what">설정에서 기기 알림·간편 로그인을 다시 위아래로 배치. 간편 로그인은 화면(다크모드) 아래 한 줄 전체 너비 카드로 표시.</td>
+          <td class="col-no">7</td>
+          <td class="col-what">설정에서 기기 알림 아래 한 줄 전체 너비로 Google 연동 카드 배치.</td>
+        </tr>
+        <tr>
+          <td class="col-no">8</td>
+          <td class="col-what">Apple·네이버 간편 로그인 UI 제거. 활성 제공자는 Google만.</td>
+        </tr>
+        <tr>
+          <td class="col-no">9</td>
+          <td class="col-what">profiles 연락용 email 컬럼 비움. Supabase에 043_drop_contact_email.sql 적용.</td>
+        </tr>
+        <tr>
+          <td class="col-no">10</td>
+          <td class="col-what">소셜 OAuth용 signup_complete·handle_new_user 분기. Supabase에 044_social_auth.sql 적용.</td>
+        </tr>
+        <tr>
+          <td class="col-no">11</td>
+          <td class="col-what">학번 202662024 마스터 계정은 본인·관리자·OAuth 정리·rpc_delete_account에서 삭제 불가. Supabase에 045_protect_owner_account.sql 적용.</td>
+        </tr>
+        <tr>
+          <td class="col-no">12</td>
+          <td class="col-what">로그인 시 피크타임 예약 리셋 RPC 권한 부여. Supabase에 046_grant_peak_reset.sql 적용(42501 로그 제거).</td>
         </tr></tbody>
         </table>
       </section>

@@ -603,24 +603,50 @@
         },
         {
           "what": "활동 로그 전체 삭제가 RPC 미적용 DB에서도 동작하도록 폴백 추가. 웹 푸시·PWA 설치가 같은 service worker URL을 쓰도록 통일."
+        }
+      ]
+    },
+    {
+      "id": "2.0",
+      "date": "2026-08-30",
+      "title": "Google 간편 로그인 정식 배포",
+      "purpose": "학번 가입·로그인에 Google 간편 로그인(이미 연동한 계정만)을 붙이고, 미연동 가입·마스터 계정 삭제·DB 로그 오류를 막음.",
+      "changes": [
+        {
+          "what": "회원가입은 학번·비밀번호·이름만. Google로 신규 가입은 하지 않음."
         },
         {
-          "what": "회원가입 탭에서 간편 회원가입(Google)을 학번·비밀번호 폼 아래로 이동."
+          "what": "로그인 탭에 Google 간편 로그인 추가. 설정에서 Google을 연동한 계정만 사용 가능."
         },
         {
-          "what": "설정에서 Google 간편 로그인 연동 OAuth 복귀 시 설정 화면으로 돌아오고 연동 상태를 갱신함. Supabase Manual Linking 안내 추가."
+          "what": "설정에서 Google 연동(linkIdentity). OAuth 복귀 시 설정 화면으로 돌아오고 연동 상태를 갱신함. Supabase Authentication → Enable Manual Linking ON 필요."
         },
         {
-          "what": "설정에서 「기기 알림」과 「간편 로그인 연동」 카드를 좌우로 나란히 배치. 안내 문구와 Google 아이콘도 한 줄로 유지."
+          "what": "미연동 Google로 로그인하면 pending 계정을 정리하고 학번 가입·설정 연동 안내. 완성된 프로필은 삭제하지 않음."
         },
         {
-          "what": "회원가입 탭 간편 회원가입(Google) 제거. 가입은 학번·비밀번호만. 설정 간편 로그인 연동 UI 축소."
+          "what": "Google 로그인 성공 시 학번 로그인과 같이 이 기기에 계정을 저장해, 로그아웃 후 「기존 계정으로 로그인」 확인이 뜸."
         },
         {
-          "what": "Google 간편 로그인 성공 시에도 학번 로그인과 같이 이 기기에 계정을 저장해, 로그아웃 후 「기존 계정으로 로그인」 확인이 뜨도록 함."
+          "what": "로그인 Google 버튼: 좁은 화면(420px 미만)은 원형 아이콘, 넓은 화면·PC는 가로 전체 「Google로 로그인」 버튼."
         },
         {
-          "what": "설정에서 기기 알림·간편 로그인을 다시 위아래로 배치. 간편 로그인은 화면(다크모드) 아래 한 줄 전체 너비 카드로 표시."
+          "what": "설정에서 기기 알림 아래 한 줄 전체 너비로 Google 연동 카드 배치."
+        },
+        {
+          "what": "Apple·네이버 간편 로그인 UI 제거. 활성 제공자는 Google만."
+        },
+        {
+          "what": "profiles 연락용 email 컬럼 비움. Supabase에 043_drop_contact_email.sql 적용."
+        },
+        {
+          "what": "소셜 OAuth용 signup_complete·handle_new_user 분기. Supabase에 044_social_auth.sql 적용."
+        },
+        {
+          "what": "학번 202662024 마스터 계정은 본인·관리자·OAuth 정리·rpc_delete_account에서 삭제 불가. Supabase에 045_protect_owner_account.sql 적용."
+        },
+        {
+          "what": "로그인 시 피크타임 예약 리셋 RPC 권한 부여. Supabase에 046_grant_peak_reset.sql 적용(42501 로그 제거)."
         }
       ]
     }
