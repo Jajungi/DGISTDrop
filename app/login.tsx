@@ -33,6 +33,7 @@ import { markPostLoginOverlay } from '@/src/components/site/SiteOverlayHost';
 import { PwaInstallCard } from '@/src/components/layout/PwaInstallCard';
 import { SocialLoginButtons } from '@/src/components/auth/SocialLoginButtons';
 import { consumeSocialAuthFlash } from '@/src/services/supabase/socialAuthIntent';
+import { fetchRosterSignupPolicy } from '@/src/services/supabase/roster';
 import type { SocialProvider } from '@/src/constants/socialAuth';
 
 type Mode = 'login' | 'register' | 'guest';
@@ -83,6 +84,7 @@ export default function LoginScreen() {
   const [showSavedPrompt, setShowSavedPrompt] = useState(false);
   const [busy, setBusy] = useState(false);
   const [socialBusy, setSocialBusy] = useState<SocialProvider | null>(null);
+  const [rosterEnforcement, setRosterEnforcement] = useState(false);
 
   const refreshSavedLogin = useCallback(async () => {
     const account = await loadSavedLogin();
@@ -111,6 +113,16 @@ export default function LoginScreen() {
     if (tab === 'register') setMode('register');
     else if (tab === 'login') setMode('login');
   }, [tab]);
+
+  useEffect(() => {
+    if (mode !== 'register' || !isSupabaseEnabled()) {
+      setRosterEnforcement(false);
+      return;
+    }
+    void fetchRosterSignupPolicy().then(({ enforcement }) => {
+      setRosterEnforcement(enforcement);
+    });
+  }, [mode]);
 
   useEffect(() => {
     void consumeSocialAuthFlash().then((message) => {
@@ -399,6 +411,15 @@ export default function LoginScreen() {
 
             {mode === 'register' && (
               <>
+                {rosterEnforcement ? (
+                  <View style={styles.rosterNotice}>
+                    <Text style={styles.rosterNoticeTitle}>동아리 명단과 동일하게 입력</Text>
+                    <Text style={styles.rosterNoticeBody}>
+                      명단 제한이 켜져 있어요. 운영진이 올린 학번·실명을 띄어쓰기까지 같게 적어 주세요.
+                      이름이 다르면 가입되지 않아요.
+                    </Text>
+                  </View>
+                ) : null}
                 <Text style={styles.label}>비밀번호 확인</Text>
                 <TextInput
                   style={styles.input}
@@ -443,7 +464,9 @@ export default function LoginScreen() {
 
             {mode === 'register' && (
               <Text style={styles.hint}>
-                학번당 계정 1개만 만들 수 있어요. 가입 후 바로 로그인할 수 있습니다.
+                {rosterEnforcement
+                  ? '명단에 있는 학번·이름이면 바로 가입돼요. 명단에 없는 학번은 운영진 승인 후 로그인할 수 있어요.'
+                  : '학번당 계정 1개만 만들 수 있어요. 가입 후 바로 로그인할 수 있습니다.'}
               </Text>
             )}
               </>
@@ -564,6 +587,18 @@ const styles = StyleSheet.create({
   },
   savedBtn: { flex: 1 },
   form: { gap: spacing.xs },
+  rosterNotice: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: withAlpha(colors.warning, 0.12),
+    borderWidth: 1,
+    borderColor: withAlpha(colors.warning, 0.35),
+    gap: 4,
+  },
+  rosterNoticeTitle: { ...typography.caption, fontWeight: '700', color: colors.text },
+  rosterNoticeBody: { ...typography.caption, color: colors.textSecondary, lineHeight: 18 },
   label: {
     ...typography.small,
     color: colors.textSecondary,

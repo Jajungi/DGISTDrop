@@ -8,6 +8,7 @@ import { fetchAllProfiles, fetchProfileById } from '@/src/services/supabase/prof
 import { validateStudentId } from '@/src/utils/studentId';
 import { isIncompleteSocialSignup } from '@/src/utils/socialSignup';
 import { isOwnerStudentId } from '@/src/constants/roles';
+import { checkRosterSignup } from '@/src/services/supabase/roster';
 
 export type AuthResult = { success: boolean; message: string };
 
@@ -134,6 +135,15 @@ export async function supabaseRegister(input: {
 
   const normalizedId = idCheck.normalized;
   const authEmail = studentIdToAuthEmail(normalizedId);
+
+  const rosterCheck = await checkRosterSignup(normalizedId, trimmedName);
+  if (rosterCheck === 'name_mismatch') {
+    return {
+      success: false,
+      message: '명단에 등록된 이름과 달라요. 동아리 명단과 같은 실명으로 입력해 주세요.',
+    };
+  }
+
   const { data, error } = await getSupabase().auth.signUp({
     email: authEmail,
     password: input.password,
@@ -149,6 +159,13 @@ export async function supabaseRegister(input: {
     if (__DEV__) {
       console.warn('[supabase signup]', { email: authEmail, code: error.code, message: error.message });
     }
+    const em = (error.message ?? '').toLowerCase();
+    if (em.includes('roster name mismatch')) {
+      return {
+        success: false,
+        message: '명단에 등록된 이름과 달라요. 동아리 명단과 같은 실명으로 입력해 주세요.',
+      };
+    }
     return { success: false, message: formatAuthError(error) };
   }
 
@@ -156,9 +173,13 @@ export async function supabaseRegister(input: {
     const profile = await fetchProfileById(data.user.id).catch(() => null);
     await getSupabase().auth.signOut();
     if (profile?.memberStatus === 'pending') {
+      const pendingMessage =
+        rosterCheck === 'not_on_roster'
+          ? '명단에 없는 학번이에요. 운영진 확인 후 승인되면 로그인할 수 있어요.'
+          : '회원가입이 접수됐어요. 운영진 승인 후 로그인할 수 있어요.';
       return {
         success: true,
-        message: '회원가입이 접수됐어요. 운영진 승인 후 로그인할 수 있어요.',
+        message: pendingMessage,
       };
     }
   }
