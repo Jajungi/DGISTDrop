@@ -85,22 +85,10 @@ export default function SettingsScreen() {
             onToast={(type, message) => showToast({ type, title: '', message })}
           />
 
-          <View style={styles.deviceRow}>
-            <View style={styles.deviceCol}>
-              <PushNotificationCard
-                userId={currentUser.id}
-                onToast={(type, message) => showToast({ type, title: '', message })}
-              />
-            </View>
-
-            {showAccountLink ? (
-              <View style={styles.deviceCol}>
-                <AccountLinkCard
-                  onToast={(type, message) => showToast({ type, title: '', message })}
-                />
-              </View>
-            ) : null}
-          </View>
+          <PushNotificationCard
+            userId={currentUser.id}
+            onToast={(type, message) => showToast({ type, title: '', message })}
+          />
 
           <Card style={styles.card}>
             <Text style={styles.sectionTitle}>화면</Text>
@@ -131,6 +119,12 @@ export default function SettingsScreen() {
               })}
             </View>
           </Card>
+
+          {showAccountLink ? (
+            <AccountLinkCard
+              onToast={(type, message) => showToast({ type, title: '', message })}
+            />
+          ) : null}
 
           <Card style={styles.card}>
             <Text style={styles.sectionTitle}>받을 알림</Text>
@@ -241,17 +235,6 @@ function PrefRow({
 
 const styles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  deviceRow: {
-    flexDirection: 'row',
-    flexWrap: 'nowrap',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  deviceCol: {
-    flex: 1,
-    minWidth: 0,
-    flexShrink: 1,
-  },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { ...typography.caption, color: colors.textMuted, lineHeight: 18 },
   card: { gap: spacing.sm },

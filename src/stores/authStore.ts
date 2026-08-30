@@ -638,6 +638,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
     await afterSupabaseAuth(user);
     get().resetPeakReservationsIfNewDay();
+    await persistRememberedAccount(true, {
+      kind: 'member',
+      name: user.name,
+      studentId: user.studentId,
+    });
     return {
       success: true,
       message: result.message,

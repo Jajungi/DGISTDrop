@@ -147,7 +147,7 @@ function GuideStep({ n, text }: { n: number; text: string }) {
 }
 
 const styles = StyleSheet.create({
-  card: { flex: 1, gap: spacing.sm, minWidth: 0 },
+  card: { gap: spacing.sm },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   title: { ...typography.bodyBold, color: colors.text, flex: 1 },
   badge: { backgroundColor: colors.success, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },

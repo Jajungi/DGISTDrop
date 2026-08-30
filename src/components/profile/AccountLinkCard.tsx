@@ -24,8 +24,8 @@ import {
   isSocialAuthAvailable,
 } from '@/src/services/supabase/socialAuth';
 
-const ICON_SIZE = 34;
-const LOGO_SIZE = 16;
+const ICON_SIZE = 32;
+const LOGO_SIZE = 15;
 
 interface AccountLinkCardProps {
   onToast: (type: 'success' | 'info' | 'warning', message: string) => void;
@@ -83,7 +83,7 @@ export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
   return (
     <Card style={styles.card}>
       <View style={styles.row}>
-        <Ionicons name="link-outline" size={16} color={colors.primary} />
+        <Ionicons name="link-outline" size={18} color={colors.primary} />
         <Text style={styles.title} numberOfLines={1}>
           간편 로그인
         </Text>
@@ -92,8 +92,8 @@ export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
             <Text style={styles.badgeText}>ON</Text>
           </View>
         ) : null}
-        <Text style={styles.hint} numberOfLines={2}>
-          Google 연동
+        <Text style={styles.hint} numberOfLines={1}>
+          Google을 연동하면 로그인 탭에서 간편 로그인을 쓸 수 있어요.
         </Text>
 
         {loading ? (
@@ -136,40 +136,38 @@ export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    flex: 1,
-    minWidth: 0,
-    alignSelf: 'flex-start',
+    width: '100%',
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   row: {
     flexDirection: 'row',
     flexWrap: 'nowrap',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.sm,
+    width: '100%',
   },
   title: {
-    ...typography.caption,
-    fontWeight: '700',
+    ...typography.bodyBold,
+    fontSize: 14,
     color: colors.text,
     flexShrink: 0,
   },
   badge: {
     backgroundColor: colors.success,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 4,
     flexShrink: 0,
   },
   badgeText: { color: '#FFF', fontSize: 9, fontWeight: '800' },
   hint: {
     ...typography.caption,
-    fontSize: 11,
     color: colors.textMuted,
     flex: 1,
     flexShrink: 1,
     minWidth: 0,
-    lineHeight: 14,
+    lineHeight: 16,
   },
   iconSlot: { flexShrink: 0 },
   iconPressable: {
