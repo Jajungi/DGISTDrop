@@ -65,7 +65,7 @@ export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
         <Text style={styles.title}>간편 로그인 연동</Text>
       </View>
       <Text style={styles.hint}>
-        아이콘을 눌러 Google·Apple을 연동하세요. 연동 후 로그인 탭에서 간편 로그인을 쓸 수 있어요.
+        아이콘을 눌러 Google을 연동하세요. 연동 후 로그인 탭에서 간편 로그인을 쓸 수 있어요.
       </Text>
 
       {loading ? (

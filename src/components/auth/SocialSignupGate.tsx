@@ -64,7 +64,7 @@ export function SocialSignupGate() {
         <View style={styles.card}>
           <Text style={styles.title}>간편 회원가입</Text>
           <Text style={styles.body}>
-            Google·Apple에서 가져온 이름을 확인하고, 학번과 비밀번호를 설정해 주세요.
+            Google에서 가져온 이름을 확인하고, 학번과 비밀번호를 설정해 주세요.
           </Text>
           <Text style={styles.label}>이름</Text>
           <TextInput

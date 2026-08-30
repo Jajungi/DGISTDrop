@@ -46,11 +46,9 @@ badmin://auth/callback
 
 ---
 
-## 3. Supabase Dashboard — Google · Apple
+## 3. Supabase Dashboard — Google
 
-**Authentication** → **Providers**
-
-### Google
+**Authentication** → **Providers** → **Google**
 
 1. **Enable Google** 켜기
 2. [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → **Credentials**
@@ -58,13 +56,6 @@ badmin://auth/callback
    - Authorized redirect URIs: Supabase Callback URL  
      (`https://<프로젝트-ref>.supabase.co/auth/v1/callback`)
 4. Client ID / Secret을 Supabase에 붙여넣기
-
-### Apple
-
-1. **Enable Apple** 켜기
-2. [Apple Developer](https://developer.apple.com/) → Certificates, Identifiers & Profiles → **Services ID**
-3. Sign in with Apple 설정 후 Supabase Callback URL 등록
-4. Services ID, Team ID, Key ID, Secret(.p8)을 Supabase Apple 설정에 입력
 
 Android 앱에서도 Google을 쓰려면 GCP에 **Android** OAuth 클라이언트를 추가합니다.
 

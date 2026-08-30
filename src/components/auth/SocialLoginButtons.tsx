@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '@/src/theme';
 import { ACTIVE_SOCIAL_PROVIDERS, SOCIAL_PROVIDER_LABELS, type SocialProvider } from '@/src/constants/socialAuth';
 import { isSocialAuthAvailable } from '@/src/services/supabase/socialAuth';
-import { AppleBrandIcon, GoogleBrandIcon } from '@/src/components/auth/SocialBrandIcons';
+import { GoogleBrandIcon } from '@/src/components/auth/SocialBrandIcons';
 
 interface SocialLoginButtonsProps {
   onPress: (provider: SocialProvider) => void;
@@ -24,24 +24,12 @@ interface SocialLoginButtonsProps {
 const ICON_SIZE = 56;
 const LOGO_SIZE = 26;
 
-function SocialProviderIcon({ provider }: { provider: SocialProvider }) {
-  if (provider === 'google') {
-    return (
-      <View style={[styles.iconCircle, styles.googleCircle]}>
-        <GoogleBrandIcon size={LOGO_SIZE} />
-      </View>
-    );
-  }
-
-  if (provider === 'apple') {
-    return (
-      <View style={[styles.iconCircle, styles.appleCircle]}>
-        <AppleBrandIcon size={LOGO_SIZE} />
-      </View>
-    );
-  }
-
-  return null;
+function SocialProviderIcon() {
+  return (
+    <View style={[styles.iconCircle, styles.googleCircle]}>
+      <GoogleBrandIcon size={LOGO_SIZE} />
+    </View>
+  );
 }
 
 export function SocialLoginButtons({
@@ -103,7 +91,7 @@ export function SocialLoginButtons({
                   <ActivityIndicator size="small" color={colors.primary} />
                 </View>
               ) : (
-                <SocialProviderIcon provider={provider} />
+                <SocialProviderIcon />
               )}
               {isLinked && mode === 'link' ? (
                 <View style={styles.linkedBadge}>
@@ -122,11 +110,11 @@ export function SocialLoginButtons({
 
       {mode === 'login' ? (
         <Text style={styles.hint}>
-          설정에서 Google·Apple을 연동한 계정만 간편 로그인할 수 있어요.
+          설정에서 Google을 연동한 계정만 간편 로그인할 수 있어요.
         </Text>
       ) : mode === 'signup' ? (
         <Text style={styles.hint}>
-          Google·Apple 인증 후 학번·비밀번호를 설정해 가입을 마쳐요.
+          Google 인증 후 학번·비밀번호를 설정해 가입을 마쳐요.
         </Text>
       ) : null}
     </View>
@@ -189,9 +177,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  appleCircle: {
-    backgroundColor: '#000000',
   },
   loadingCircle: {
     backgroundColor: colors.surfaceAlt,

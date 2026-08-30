@@ -26,27 +26,3 @@ export function GoogleBrandIcon({ size = 24 }: IconProps) {
     </Svg>
   );
 }
-
-/** Apple brand mark */
-export function AppleBrandIcon({ size = 24 }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityRole="image">
-      <Path
-        fill="#FFFFFF"
-        d="M16.365 12.67c.02 2.12 1.88 2.83 1.91 2.84-.02.06-.3 1.03-1 2.04-.6.87-1.22 1.74-2.2 1.76-.96.02-1.27-.57-2.37-.57-1.1 0-1.44.55-2.35.59-.95.04-1.67-.96-2.27-1.83-1.24-1.79-2.18-5.05-.91-7.26.63-1.09 1.76-1.78 2.99-1.8.93-.02 1.81.62 2.38.62.56 0 1.62-.77 2.73-.66.46.02 1.76.19 2.59 1.43-.07.04-1.55.9-1.53 2.69.03 2.18 1.9 2.9 1.93 2.92-.01.05-.31 1.05-.98 2.08zM13.9 4.4c.5-.61 1.2-1.02 1.9-1.06.09.74-.21 1.48-.68 2.06-.45.56-1.19.99-1.92 1.05-.08-.69.19-1.4.7-2.05z"
-      />
-    </Svg>
-  );
-}
-
-/** Naver brand "N" mark (검수 후 ACTIVE_SOCIAL_PROVIDERS에 추가) */
-export function NaverBrandIcon({ size = 24 }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityRole="image">
-      <Path
-        fill="#FFFFFF"
-        d="M16.273 12.845L7.376 0H0v24h7.727V11.156L16.624 24H24V0h-7.727v12.845z"
-      />
-    </Svg>
-  );
-}

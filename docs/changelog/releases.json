@@ -605,7 +605,7 @@
           "what": "활동 로그 전체 삭제가 RPC 미적용 DB에서도 동작하도록 폴백 추가. 웹 푸시·PWA 설치가 같은 service worker URL을 쓰도록 통일."
         },
         {
-          "what": "로그인 탭 간편 로그인(미연동) 시 pending 계정 자동 삭제. 네이버 버튼 숨김, Apple 간편 로그인·회원가입 추가."
+          "what": "Apple 간편 로그인 UI 제거(유료 Developer Program 필요). 현재 간편 로그인·회원가입은 Google만 표시."
         }
       ]
     }

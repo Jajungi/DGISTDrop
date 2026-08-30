@@ -7,8 +7,8 @@ export const SOCIAL_PROVIDER_LABELS: Record<SocialProvider, string> = {
   naver: '네이버',
 };
 
-/** 화면에 노출할 Provider (네이버는 검수 전까지 숨김) */
-export const ACTIVE_SOCIAL_PROVIDERS: SocialProvider[] = ['google', 'apple'];
+/** 화면에 노출할 Provider (네이버·Apple은 유료/검수 전까지 숨김) */
+export const ACTIVE_SOCIAL_PROVIDERS: SocialProvider[] = ['google'];
 
 /** @deprecated ACTIVE_SOCIAL_PROVIDERS 사용 */
 export const SOCIAL_LOGIN_PROVIDERS = ACTIVE_SOCIAL_PROVIDERS;
