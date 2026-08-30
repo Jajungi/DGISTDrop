@@ -368,23 +368,6 @@ export default function LoginScreen() {
               </>
             ) : (
               <>
-            {mode === 'register' && !promptAccount ? (
-              <SocialLoginButtons
-                mode="signup"
-                busy={busy}
-                busyProvider={socialBusy}
-                onPress={(provider) => handleSocialAuth(provider, 'signup')}
-              />
-            ) : null}
-
-            {mode === 'register' ? (
-              <View style={styles.sectionDivider}>
-                <View style={styles.sectionDividerLine} />
-                <Text style={styles.sectionDividerText}>학번·비밀번호 가입</Text>
-                <View style={styles.sectionDividerLine} />
-              </View>
-            ) : null}
-
             <Text style={styles.label}>학번</Text>
             <TextInput
               style={styles.input}
@@ -468,6 +451,15 @@ export default function LoginScreen() {
                 학번당 계정 1개만 만들 수 있어요. 가입 후 바로 로그인할 수 있습니다.
               </Text>
             )}
+
+            {mode === 'register' && !promptAccount ? (
+              <SocialLoginButtons
+                mode="signup"
+                busy={busy}
+                busyProvider={socialBusy}
+                onPress={(provider) => handleSocialAuth(provider, 'signup')}
+              />
+            ) : null}
               </>
             )}
           </View>
@@ -642,21 +634,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.md,
     lineHeight: 20,
-  },
-  sectionDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  sectionDividerLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-  },
-  sectionDividerText: {
-    ...typography.caption,
-    color: colors.textMuted,
   },
 });
