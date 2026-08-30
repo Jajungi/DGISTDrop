@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { PwaInstallGuide } from '@/src/constants/pwaInstallGuide';
+import { useEffectiveSafeAreaInsets } from '@/src/hooks/useEffectiveSafeAreaInsets';
 import { useI18n } from '@/src/i18n/useI18n';
 import { useAppTheme } from '@/src/theme/ThemeProvider';
 import { borderRadius, spacing, typography } from '@/src/theme';
@@ -93,6 +94,7 @@ export function PwaInstallSteps({
   imageSize = 'card',
 }: PwaInstallStepsProps) {
   const { width, height } = useWindowDimensions();
+  const insets = useEffectiveSafeAreaInsets();
   const { t } = useI18n();
   const { colors: theme } = useAppTheme();
   const [zoomOpen, setZoomOpen] = useState(false);
@@ -101,7 +103,12 @@ export function PwaInstallSteps({
   const tight = compact || width < 360;
 
   const posterMaxHeight = compact ? 200 : imageSize === 'guide' ? 520 : 400;
-  const zoomMaxHeight = Math.round(Math.min(height * 0.82, width * 0.92));
+  const zoomEdge = 6;
+  const zoomChrome = 44;
+  const zoomMaxWidth = Math.round(width - insets.left - insets.right - zoomEdge * 2);
+  const zoomMaxHeight = Math.round(
+    height - insets.top - insets.bottom - zoomEdge * 2 - zoomChrome
+  );
   const uri = resolvePublicUrl(guide.posterSrc);
 
   return (
@@ -160,39 +167,42 @@ export function PwaInstallSteps({
       <Text style={[styles.hint, { color: theme.textMuted }]}>{guide.hint}</Text>
 
       <Modal visible={zoomOpen} transparent animationType="fade" onRequestClose={() => setZoomOpen(false)}>
-        <Pressable style={styles.zoomBackdrop} onPress={() => setZoomOpen(false)}>
-          <Pressable style={styles.zoomPanel} onPress={(e) => e.stopPropagation()}>
-            <Pressable
-              style={styles.zoomClose}
-              onPress={() => setZoomOpen(false)}
-              accessibilityRole="button"
-              accessibilityLabel={t('pwa.closeImage')}
-            >
-              <Ionicons name="close" size={24} color="#FFF" />
-            </Pressable>
-            {Platform.OS === 'web' ? (
-              <img
-                src={uri}
-                alt={guide.posterAlt}
-                style={{
-                  width: '100%',
-                  maxWidth: Math.min(width * 0.94, 720),
-                  maxHeight: zoomMaxHeight,
-                  objectFit: 'contain',
-                  display: 'block',
-                  borderRadius: 12,
-                }}
-              />
-            ) : (
-              <Image
-                source={{ uri }}
-                style={{ width: '100%', maxHeight: zoomMaxHeight }}
-                resizeMode="contain"
-                accessibilityLabel={guide.posterAlt}
-              />
-            )}
+        <View style={styles.zoomRoot}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setZoomOpen(false)} accessibilityLabel={t('pwa.closeImage')} />
+          <Pressable
+            style={[
+              styles.zoomClose,
+              { top: insets.top + zoomEdge, right: insets.right + zoomEdge },
+            ]}
+            onPress={() => setZoomOpen(false)}
+            accessibilityRole="button"
+            accessibilityLabel={t('pwa.closeImage')}
+          >
+            <Ionicons name="close" size={28} color="#FFF" />
           </Pressable>
-        </Pressable>
+          {Platform.OS === 'web' ? (
+            <img
+              src={uri}
+              alt={guide.posterAlt}
+              style={{
+                width: zoomMaxWidth,
+                height: zoomMaxHeight,
+                maxWidth: zoomMaxWidth,
+                maxHeight: zoomMaxHeight,
+                objectFit: 'contain',
+                display: 'block',
+                zIndex: 1,
+              }}
+            />
+          ) : (
+            <Image
+              source={{ uri }}
+              style={{ width: zoomMaxWidth, height: zoomMaxHeight, zIndex: 1 }}
+              resizeMode="contain"
+              accessibilityLabel={guide.posterAlt}
+            />
+          )}
+        </View>
       </Modal>
     </View>
   );
@@ -246,23 +256,14 @@ const styles = StyleSheet.create({
   stepBody: { ...typography.caption, lineHeight: 17, fontSize: 11 } as TextStyle,
   stepBodyTight: { fontSize: 10, lineHeight: 15 } as TextStyle,
   hint: { ...typography.caption, lineHeight: 18, marginTop: spacing.xs } as TextStyle,
-  zoomBackdrop: {
+  zoomRoot: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.88)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.md,
-  } as ViewStyle,
-  zoomPanel: {
-    width: '100%',
-    maxWidth: 760,
+    backgroundColor: 'rgba(0,0,0,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
   } as ViewStyle,
   zoomClose: {
     position: 'absolute',
-    top: -4,
-    right: 0,
     zIndex: 2,
     padding: 8,
     ...Platform.select({ web: { cursor: 'pointer' as const } }),
