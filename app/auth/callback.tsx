@@ -10,16 +10,21 @@ import { colors } from '@/src/theme';
 async function finishCallback(url: string, applySocialSession: () => Promise<{
   success: boolean;
   message: string;
-  needsSignup?: boolean;
+  redirectTo?: 'settings' | 'tabs';
 }>) {
   await createSessionFromOAuthUrl(url);
   const result = await applySocialSession();
   if (result.success) {
-    router.replace(result.needsSignup ? '/login?tab=register' : '/(tabs)');
+    if (result.redirectTo === 'settings') {
+      await setSocialAuthFlash(result.message);
+      router.replace('/settings');
+      return;
+    }
+    router.replace('/(tabs)');
     return;
   }
   await setSocialAuthFlash(result.message);
-  router.replace('/login?tab=login');
+  router.replace(result.redirectTo === 'settings' ? '/settings' : '/login?tab=login');
 }
 
 export default function AuthCallbackScreen() {

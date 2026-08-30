@@ -59,6 +59,16 @@ badmin://auth/callback
 
 Android 앱에서도 Google을 쓰려면 GCP에 **Android** OAuth 클라이언트를 추가합니다.
 
+### 설정 → Google 연동 (필수)
+
+**Authentication** → **Settings** (또는 **Configuration**)
+
+| 항목 | 값 |
+|------|-----|
+| **Enable Manual Linking** | **ON** |
+
+이 옵션이 꺼져 있으면 로그인한 뒤 설정에서 Google 연동이 되지 않습니다.
+
 ---
 
 ## 4. Supabase Dashboard — 네이버 (Custom OIDC, 검수 후)
@@ -110,9 +120,9 @@ Supabase에 **네이버 기본 버튼이 없어서** Custom OIDC로 등록합니
 
 ## 7. 배포 후 확인
 
-1. `https://dgistdrop.com/login` → 하단 **G / N** 원형 아이콘 표시
-2. Google 로그인 → (신규) 학번·이름 입력 → 홈 진입
-3. 학번 로그인 → 설정 → 간편 로그인 연동 → 아이콘 탭
+1. `https://dgistdrop.com/login` → 로그인 탭 하단 Google 아이콘 표시
+2. 학번 가입 → 로그인 → 설정 → 간편 로그인 → Google 연동
+3. 로그아웃 후 로그인 탭에서 Google 간편 로그인
 
 오류가 나면 브라우저 개발자 도구 Network에서 `/auth/v1/callback` 응답과 Supabase **Authentication → Logs**를 확인하세요.
 
@@ -122,6 +132,6 @@ Supabase에 **네이버 기본 버튼이 없어서** Custom OIDC로 등록합니
 
 | 경우 | 동작 |
 |------|------|
-| 학번 가입 | 기존과 동일 (이메일 입력 없음) |
-| 소셜 최초 로그인 | Google/네이버 → 학번·이름 입력 → 명단·승인 규칙 적용 |
-| 기존 계정 | 학번 로그인 후 **설정 → 간편 로그인 연동** |
+| 학번 가입 | 학번·비밀번호·이름 (이메일 입력 없음) |
+| 간편 로그인 | **학번 가입 후** 설정에서 Google 연동 → 로그인 탭에서 Google 사용 |
+| 연동 안 된 Google | 로그인 거부 (학번 가입 후 설정에서 연동) |

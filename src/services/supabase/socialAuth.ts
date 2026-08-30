@@ -5,9 +5,9 @@ import { makeRedirectUri } from 'expo-auth-session';
 import type { Provider } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseEnabled } from '@/src/lib/supabase';
 import type { SocialProvider } from '@/src/constants/socialAuth';
-import { setSocialAuthIntent, type SocialAuthIntent, setSocialSignupInProgress } from '@/src/services/supabase/socialAuthIntent';
+import { setSocialAuthIntent } from '@/src/services/supabase/socialAuthIntent';
 
-export type SocialAuthResult = { success: boolean; message: string };
+export type SocialAuthResult = { success: boolean; message: string; oauthRedirect?: boolean };
 
 function asAuthProvider(provider: SocialProvider): Provider {
   return provider as Provider;
@@ -71,7 +71,7 @@ async function runOAuthFlow(
     if (typeof window !== 'undefined') {
       window.location.assign(url);
     }
-    return { success: true, message: '' };
+    return { success: true, message: '', oauthRedirect: true };
   }
 
   const result = await WebBrowser.openAuthSessionAsync(url, redirectTo);
@@ -108,14 +108,8 @@ function normalizeSocialProvider(id: string): SocialProvider | null {
   return null;
 }
 
-export async function signInWithSocialProvider(
-  provider: SocialProvider,
-  intent: SocialAuthIntent = 'login'
-): Promise<SocialAuthResult> {
-  await setSocialAuthIntent(intent);
-  if (intent === 'signup') {
-    await setSocialSignupInProgress();
-  }
+export async function signInWithSocialProvider(provider: SocialProvider): Promise<SocialAuthResult> {
+  await setSocialAuthIntent('login');
   return runOAuthFlow(async (redirectTo) => {
     const { data, error } = await getSupabase().auth.signInWithOAuth({
       provider: asAuthProvider(provider),
@@ -166,6 +160,7 @@ export async function unlinkSocialProvider(provider: SocialProvider): Promise<So
 
 export async function getLinkedSocialProviders(): Promise<SocialProvider[]> {
   if (!isSupabaseEnabled()) return [];
+  await getSupabase().auth.refreshSession();
   const { data } = await getSupabase().auth.getUser();
   const linked = data.user?.identities?.map((row) => normalizeSocialProvider(row.provider)) ?? [];
   return linked.filter((p): p is SocialProvider => p !== null);

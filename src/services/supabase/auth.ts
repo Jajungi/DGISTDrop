@@ -321,7 +321,6 @@ export async function loadSupabaseAuthBundle(userId: string | null) {
 
 export type SessionResolveResult = AuthResult & {
   userId?: string;
-  needsSignup?: boolean;
 };
 
 /** OAuth·연동 후 현재 세션으로 프로필을 맞춤 */
@@ -342,10 +341,8 @@ export async function supabaseResolveSession(): Promise<SessionResolveResult> {
 
   if (isIncompleteSocialSignup(profile)) {
     return {
-      success: true,
-      userId: profile.id,
-      needsSignup: true,
-      message: '학번·비밀번호를 입력해 주세요.',
+      success: false,
+      message: '연동되지 않은 Google 계정이에요. 학번으로 가입한 뒤 설정에서 연동해 주세요.',
     };
   }
 
@@ -358,68 +355,6 @@ export async function supabaseResolveSession(): Promise<SessionResolveResult> {
   return {
     success: true,
     userId: profile.id,
-    needsSignup: false,
     message: `${profile.name}님, 환영합니다!`,
   };
-}
-
-export async function supabaseCompleteSocialSignup(
-  studentId: string,
-  name: string,
-  password: string
-): Promise<AuthResult> {
-  if (!isSupabaseEnabled()) {
-    return { success: false, message: 'Supabase가 설정되지 않았어요.' };
-  }
-
-  const idCheck = validateStudentId(studentId);
-  if (!idCheck.ok) {
-    return { success: false, message: idCheck.message };
-  }
-  const trimmedName = name.trim();
-  if (!trimmedName) {
-    return { success: false, message: '이름을 입력해 주세요.' };
-  }
-  if (password.trim().length < 6) {
-    return { success: false, message: '비밀번호는 6자 이상이어야 해요.' };
-  }
-
-  const { error } = await getSupabase().rpc('rpc_complete_social_signup', {
-    p_student_id: idCheck.normalized,
-    p_name: trimmedName,
-  });
-
-  if (error) {
-    const msg = (error.message ?? '').toLowerCase();
-    if (msg.includes('student id already taken')) {
-      return { success: false, message: '이미 등록된 학번이에요. 학번 로그인 후 설정에서 연동해 주세요.' };
-    }
-    if (msg.includes('invalid student id')) {
-      return { success: false, message: '학번 형식이 올바르지 않아요.' };
-    }
-    return { success: false, message: error.message || '가입 완료에 실패했어요.' };
-  }
-
-  const { error: credError } = await getSupabase().auth.updateUser({
-    email: studentIdToAuthEmail(idCheck.normalized),
-    password,
-    data: {
-      student_id: idCheck.normalized,
-      name: trimmedName,
-    },
-  });
-
-  if (credError) {
-    return { success: false, message: formatAuthError(credError) };
-  }
-
-  const profile = await fetchProfileById((await getSupabase().auth.getSession()).data.session?.user?.id ?? '');
-  if (profile?.memberStatus === 'pending') {
-    return {
-      success: true,
-      message: '가입이 접수됐어요. 운영진 승인 후 이용할 수 있어요.',
-    };
-  }
-
-  return { success: true, message: '가입이 완료됐어요.' };
 }

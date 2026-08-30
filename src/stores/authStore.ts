@@ -20,13 +20,11 @@ import {
   supabaseDeleteAccount,
   supabaseResumeRememberedSession,
   supabaseResolveSession,
-  supabaseCompleteSocialSignup,
   supabaseAbandonIncompleteSignup,
 } from '@/src/services/supabase/auth';
-import { signInWithSocialProvider } from '@/src/services/supabase/socialAuth';
-import { consumeSocialAuthIntent, clearSocialSignupInProgress, setSocialSignupInProgress } from '@/src/services/supabase/socialAuthIntent';
-import type { SocialAuthIntent } from '@/src/services/supabase/socialAuthIntent';
-import { isIncompleteSocialSignup, isAppReadyMember } from '@/src/utils/socialSignup';
+import { getLinkedSocialProviders, signInWithSocialProvider } from '@/src/services/supabase/socialAuth';
+import { consumeSocialAuthIntent } from '@/src/services/supabase/socialAuthIntent';
+import { isAppReadyMember } from '@/src/utils/socialSignup';
 import type { SocialProvider } from '@/src/constants/socialAuth';
 import { fetchAllProfiles, uploadAvatar, removeAvatar } from '@/src/services/supabase/profiles';
 import { clearSavedLogin, loadSavedLogin, saveSavedLogin } from '@/src/services/quickLogin';
@@ -92,15 +90,13 @@ interface AuthState {
     password: string;
   }) => Promise<{ success: boolean; message: string }>;
   loginWithSocial: (
-    provider: SocialProvider,
-    intent?: SocialAuthIntent
-  ) => Promise<{ success: boolean; message: string; needsSignup?: boolean; oauthRedirect?: boolean }>;
-  applySocialSession: () => Promise<{ success: boolean; message: string; needsSignup?: boolean }>;
-  completeSocialSignup: (
-    studentId: string,
-    name: string,
-    password: string
-  ) => Promise<{ success: boolean; message: string }>;
+    provider: SocialProvider
+  ) => Promise<{ success: boolean; message: string; oauthRedirect?: boolean }>;
+  applySocialSession: () => Promise<{
+    success: boolean;
+    message: string;
+    redirectTo?: 'settings' | 'tabs';
+  }>;
   hydrateAuth: (
     users: User[],
     attendanceRecords: AttendanceRecord[],
@@ -476,7 +472,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    await clearSocialSignupInProgress();
     const saved = await loadSavedLogin();
     const keepRemembered = Boolean(saved);
     if (keepRemembered) {
@@ -571,41 +566,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       result = await supabaseResolveSession();
     }
     if (!result.success || !result.userId) {
-      return { success: false, message: result.message };
-    }
-
-    if (result.needsSignup) {
-      if (intent === 'signup') {
-        await setSocialSignupInProgress();
-        const users = await fetchAllProfiles();
-        const user = users.find((u) => u.id === result.userId) ?? null;
-        await clearGuestSession();
+      if (intent === 'login') {
+        await supabaseAbandonIncompleteSignup();
         set({
-          users,
-          currentUser: user,
-          isAuthenticated: Boolean(user),
+          currentUser: null,
+          isAuthenticated: false,
           isGuestSession: false,
           credentials: {},
         });
+      }
+      return { success: false, message: result.message };
+    }
+
+    if (intent === 'link') {
+      const linked = await getLinkedSocialProviders();
+      if (!linked.length) {
         return {
-          success: true,
-          message: result.message,
-          needsSignup: true,
+          success: false,
+          message:
+            'Google 연동이 완료되지 않았어요. Supabase 대시보드에서 Manual Linking을 켜고 다시 시도해 주세요.',
         };
       }
 
-      await clearSocialSignupInProgress();
-      await supabaseAbandonIncompleteSignup();
+      const users = await fetchAllProfiles();
+      const user = users.find((u) => u.id === result.userId) ?? null;
+      if (!user || !isAppReadyMember(user)) {
+        return { success: false, message: '연동 후 프로필을 확인할 수 없어요.' };
+      }
+
+      await clearGuestSession();
       set({
-        currentUser: null,
-        isAuthenticated: false,
+        users,
+        currentUser: user,
+        isAuthenticated: true,
         isGuestSession: false,
         credentials: {},
       });
+      await afterSupabaseAuth(user);
+      get().resetPeakReservationsIfNewDay();
       return {
-        success: false,
-        message:
-          'Google 연동이 되어 있지 않아요. 설정에서 연동하거나 회원가입 탭에서 간편 회원가입을 이용하세요.',
+        success: true,
+        message: 'Google 연동이 완료됐어요.',
+        redirectTo: 'settings',
       };
     }
 
@@ -613,7 +615,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const user = users.find((u) => u.id === result.userId) ?? null;
 
     if (!isAppReadyMember(user)) {
-      await clearSocialSignupInProgress();
       await supabaseAbandonIncompleteSignup();
       set({
         currentUser: null,
@@ -623,8 +624,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       return {
         success: false,
-        message:
-          'Google 연동이 되어 있지 않아요. 설정에서 연동하거나 회원가입 탭에서 간편 회원가입을 이용하세요.',
+        message: 'Google 연동이 되어 있지 않아요. 학번으로 가입한 뒤 설정에서 연동해 주세요.',
       };
     }
 
@@ -641,45 +641,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return {
       success: true,
       message: result.message,
-      needsSignup: false,
     };
   },
 
-  loginWithSocial: async (provider, intent = 'login') => {
+  loginWithSocial: async (provider) => {
     if (!isSupabaseEnabled()) {
       return { success: false, message: 'Supabase가 설정되지 않았어요.' };
     }
-    const oauth = await signInWithSocialProvider(provider, intent);
+    const oauth = await signInWithSocialProvider(provider);
     if (!oauth.success) return oauth;
     if (Platform.OS === 'web') {
       return { success: true, message: '', oauthRedirect: true };
     }
     return get().applySocialSession();
-  },
-
-  completeSocialSignup: async (studentId, name, password) => {
-    if (!isSupabaseEnabled()) {
-      return { success: false, message: 'Supabase가 설정되지 않았어요.' };
-    }
-    const result = await supabaseCompleteSocialSignup(studentId, name, password);
-    if (!result.success) return result;
-
-    await clearSocialSignupInProgress();
-
-    const userId = get().currentUser?.id;
-    const users = await fetchAllProfiles();
-    const user = userId ? users.find((u) => u.id === userId) ?? null : null;
-    set({ users, currentUser: user, isAuthenticated: Boolean(user), isGuestSession: false });
-    await afterSupabaseAuth(user);
-    get().resetPeakReservationsIfNewDay();
-
-    if (user?.memberStatus === 'pending') {
-      await supabaseLogout();
-      set({ currentUser: null, isAuthenticated: false });
-      return result;
-    }
-
-    return result;
   },
 
   approveMember: (userId) => {

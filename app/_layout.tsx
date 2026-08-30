@@ -38,7 +38,6 @@ import { useFriendArrivalWatch } from '@/src/hooks/useFriendArrivalWatch';
 import { useAttendanceFromNotification } from '@/src/hooks/useAttendanceFromNotification';
 import { PushPermissionGate } from '@/src/components/profile/PushPermissionGate';
 import { AttendanceIntentGate } from '@/src/components/profile/AttendanceIntentGate';
-import { SocialSignupGate } from '@/src/components/auth/SocialSignupGate';
 import { TabTourHost } from '@/src/components/layout/TabTourHost';
 import { ensurePwaServiceWorker } from '@/src/services/pwaInstall';
 import * as WebBrowser from 'expo-web-browser';
@@ -146,7 +145,6 @@ function RootLayoutInner() {
         <TabTourHost />
         <PushPermissionGate />
         <AttendanceIntentGate />
-        <SocialSignupGate />
         <PostLoginOverlayGate />
       </SafeAreaProvider>
     </GestureHandlerRootView>

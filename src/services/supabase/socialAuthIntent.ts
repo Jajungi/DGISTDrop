@@ -3,9 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const INTENT_KEY = 'social_auth_intent';
 const FLASH_KEY = 'social_auth_flash';
-const SIGNUP_PROGRESS_KEY = 'social_signup_in_progress';
 
-export type SocialAuthIntent = 'login' | 'signup' | 'link';
+export type SocialAuthIntent = 'login' | 'link';
 
 async function write(key: string, value: string): Promise<void> {
   if (Platform.OS === 'web' && typeof sessionStorage !== 'undefined') {
@@ -37,32 +36,20 @@ export async function setSocialAuthIntent(intent: SocialAuthIntent): Promise<voi
 export async function consumeSocialAuthIntent(): Promise<SocialAuthIntent> {
   const raw = await read(INTENT_KEY);
   await remove(INTENT_KEY);
-  if (raw === 'signup' || raw === 'link') return raw;
+  if (raw === 'link') return 'link';
   return 'login';
 }
 
 /** OAuth 복귀 전 intent 확인 (소비하지 않음) */
 export async function peekSocialAuthIntent(): Promise<SocialAuthIntent | null> {
   const raw = await read(INTENT_KEY);
-  if (raw === 'signup' || raw === 'link' || raw === 'login') return raw;
+  if (raw === 'link' || raw === 'login') return raw;
   return null;
 }
 
 export function isOAuthCallbackPath(): boolean {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
   return /\/auth\/callback\/?$/i.test(window.location.pathname);
-}
-
-export async function setSocialSignupInProgress(): Promise<void> {
-  await write(SIGNUP_PROGRESS_KEY, '1');
-}
-
-export async function clearSocialSignupInProgress(): Promise<void> {
-  await remove(SIGNUP_PROGRESS_KEY);
-}
-
-export async function isSocialSignupInProgress(): Promise<boolean> {
-  return (await read(SIGNUP_PROGRESS_KEY)) === '1';
 }
 
 export async function setSocialAuthFlash(message: string): Promise<void> {

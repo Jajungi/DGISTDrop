@@ -25,7 +25,7 @@ import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
 import { useFriendPrefsStore } from '@/src/stores/friendPrefsStore';
 import { afterSupabaseAuth } from '@/src/services/supabase/authBridge';
 import { isAppReadyMember, isIncompleteSocialSignup } from '@/src/utils/socialSignup';
-import { isSocialSignupInProgress, peekSocialAuthIntent, isOAuthCallbackPath } from '@/src/services/supabase/socialAuthIntent';
+import { peekSocialAuthIntent, isOAuthCallbackPath } from '@/src/services/supabase/socialAuthIntent';
 
 let courtsUnsub: (() => void) | null = null;
 let profilesUnsub: (() => void) | null = null;
@@ -153,22 +153,18 @@ export async function initSupabaseApp(): Promise<boolean> {
       ? bundle.users.find((u) => u.id === sessionUserId) ?? null
       : null;
 
-  let signupInProgress = false;
   const oauthCallback = isOAuthCallbackPath();
   const pendingOAuthIntent = await peekSocialAuthIntent();
   if (currentUser && isIncompleteSocialSignup(currentUser)) {
-    signupInProgress = await isSocialSignupInProgress();
     const deferIncompleteCleanup =
-      oauthCallback || pendingOAuthIntent === 'login' || pendingOAuthIntent === 'signup' || pendingOAuthIntent === 'link';
-    if (!signupInProgress && !deferIncompleteCleanup) {
+      oauthCallback || pendingOAuthIntent === 'login' || pendingOAuthIntent === 'link';
+    if (!deferIncompleteCleanup) {
       await supabaseLogout();
       currentUser = null;
     }
   }
 
-  const isAuthenticated = Boolean(
-    currentUser && (isAppReadyMember(currentUser) || signupInProgress)
-  );
+  const isAuthenticated = Boolean(currentUser && isAppReadyMember(currentUser));
 
   useAuthStore.getState().hydrateAuth(
     bundle.users,

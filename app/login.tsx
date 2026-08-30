@@ -34,7 +34,6 @@ import { PwaInstallCard } from '@/src/components/layout/PwaInstallCard';
 import { SocialLoginButtons } from '@/src/components/auth/SocialLoginButtons';
 import { consumeSocialAuthFlash } from '@/src/services/supabase/socialAuthIntent';
 import type { SocialProvider } from '@/src/constants/socialAuth';
-import type { SocialAuthIntent } from '@/src/services/supabase/socialAuthIntent';
 
 type Mode = 'login' | 'register' | 'guest';
 
@@ -209,11 +208,11 @@ export default function LoginScreen() {
     })();
   };
 
-  const handleSocialAuth = (provider: SocialProvider, intent: SocialAuthIntent) => {
+  const handleSocialLogin = (provider: SocialProvider) => {
     setBusy(true);
     setSocialBusy(provider);
     void (async () => {
-      const result = await loginWithSocial(provider, intent);
+      const result = await loginWithSocial(provider);
       if (result.oauthRedirect) {
         return;
       }
@@ -221,10 +220,6 @@ export default function LoginScreen() {
       setSocialBusy(null);
       if (!result.success) {
         showToast({ type: 'warning', title: '', message: result.message });
-        return;
-      }
-      if (result.needsSignup) {
-        setMode('register');
         return;
       }
       finishAuth(true, result.message);
@@ -451,15 +446,6 @@ export default function LoginScreen() {
                 학번당 계정 1개만 만들 수 있어요. 가입 후 바로 로그인할 수 있습니다.
               </Text>
             )}
-
-            {mode === 'register' && !promptAccount ? (
-              <SocialLoginButtons
-                mode="signup"
-                busy={busy}
-                busyProvider={socialBusy}
-                onPress={(provider) => handleSocialAuth(provider, 'signup')}
-              />
-            ) : null}
               </>
             )}
           </View>
@@ -471,7 +457,7 @@ export default function LoginScreen() {
             <SocialLoginButtons
               busy={busy}
               busyProvider={socialBusy}
-              onPress={(provider) => handleSocialAuth(provider, 'login')}
+              onPress={(provider) => handleSocialLogin(provider)}
             />
           ) : null}
         </ScrollView>

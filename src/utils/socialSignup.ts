@@ -5,7 +5,7 @@ export function isPendingSocialStudentId(studentId: string): boolean {
   return studentId.startsWith('pending-');
 }
 
-/** 간편 회원가입을 아직 마치지 않은 프로필 */
+/** OAuth로 생긴 미완성 프로필(pending 학번 등) */
 export function isIncompleteSocialSignup(
   user: Pick<User, 'studentId' | 'signupComplete'> | null | undefined
 ): boolean {

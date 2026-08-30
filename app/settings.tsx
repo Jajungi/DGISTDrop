@@ -16,6 +16,7 @@ import { useNotificationStore } from '@/src/stores/notificationStore';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import { useAppTheme, type ThemePreference } from '@/src/theme/ThemeProvider';
 import type { UserNotificationPrefs } from '@/src/services/supabase/notificationPrefs';
+import { consumeSocialAuthFlash } from '@/src/services/supabase/socialAuthIntent';
 
 export default function SettingsScreen() {
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -37,6 +38,17 @@ export default function SettingsScreen() {
     void hydratePrefs(currentUser.id);
     void hydrateArrival(currentUser.id);
   }, [currentUser?.id, hydratePrefs, hydrateArrival]);
+
+  useEffect(() => {
+    void consumeSocialAuthFlash().then((message) => {
+      if (!message) return;
+      const ok = /완료|해제/.test(message);
+      showToast({ type: ok ? 'success' : 'warning', title: '', message });
+    });
+  }, [showToast]);
+
+  const showAccountLink =
+    currentUser?.membershipTier !== 'guest' && currentUser?.signupComplete !== false;
 
   const friends = useMemo(() => {
     if (!currentUser) return [];
@@ -73,16 +85,22 @@ export default function SettingsScreen() {
             onToast={(type, message) => showToast({ type, title: '', message })}
           />
 
-          <PushNotificationCard
-            userId={currentUser.id}
-            onToast={(type, message) => showToast({ type, title: '', message })}
-          />
+          <View style={styles.deviceRow}>
+            <View style={styles.deviceCol}>
+              <PushNotificationCard
+                userId={currentUser.id}
+                onToast={(type, message) => showToast({ type, title: '', message })}
+              />
+            </View>
 
-          {currentUser.membershipTier !== 'guest' && currentUser.signupComplete !== false ? (
-            <AccountLinkCard
-              onToast={(type, message) => showToast({ type, title: '', message })}
-            />
-          ) : null}
+            {showAccountLink ? (
+              <View style={styles.deviceCol}>
+                <AccountLinkCard
+                  onToast={(type, message) => showToast({ type, title: '', message })}
+                />
+              </View>
+            ) : null}
+          </View>
 
           <Card style={styles.card}>
             <Text style={styles.sectionTitle}>화면</Text>
@@ -223,6 +241,17 @@ function PrefRow({
 
 const styles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  deviceRow: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  deviceCol: {
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
+  },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { ...typography.caption, color: colors.textMuted, lineHeight: 18 },
   card: { gap: spacing.sm },
