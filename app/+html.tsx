@@ -44,6 +44,11 @@ export default function Root({ children }: PropsWithChildren) {
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" type="image/png" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var k='drop-bundle-reload';window.addEventListener('error',function(e){var t=e.target;if(!t||t.tagName!=='SCRIPT'||!t.src||t.src.indexOf('/_expo/static/')<0)return;if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1');location.reload();},true);})();`,
+          }}
+        />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
       </head>

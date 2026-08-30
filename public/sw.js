@@ -1,4 +1,4 @@
-/* Drop PWA service worker — v20260828 */
+/* Drop PWA service worker — v20260830 */
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });

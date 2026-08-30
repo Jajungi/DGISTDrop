@@ -1,3 +1,5 @@
 /history    /history/index.html    200
 /history/   /history/index.html    200
-/*    /index.html    200
+/_expo/*    /_expo/:splat          200
+/assets/*   /assets/:splat         200
+/*          /index.html            200
