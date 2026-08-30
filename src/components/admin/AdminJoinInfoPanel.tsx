@@ -146,39 +146,10 @@ export function AdminJoinInfoPanel({ adminId, onToast }: Props) {
   return (
     <View style={styles.wrap}>
       <Card style={styles.block}>
-        <Text style={styles.blockTitle}>가입 즉시 승인</Text>
+        <Text style={styles.blockTitle}>동아리 명단 · 가입 규칙</Text>
         <Text style={styles.hint}>
-          명단 제한이 꺼져 있을 때만 적용됩니다. 켜면 새 회원이 바로 이용하고, 끄면 승인 대기입니다.
-        </Text>
-        <Pressable
-          onPress={async () => {
-            const r = await setOpenRegistration(!openRegistration);
-            onToast(r.success ? 'success' : 'warning', r.message);
-            if (r.success) {
-              recordAdminLogAsActor(adminId, {
-                category: 'system',
-                action: openRegistration ? 'registration.close' : 'registration.open',
-                message: `가입 즉시 승인 ${!openRegistration ? 'ON' : 'OFF'}`,
-              });
-            }
-          }}
-          style={styles.switchRow}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: openRegistration }}
-        >
-          <Text style={styles.switchLabel}>
-            {openRegistration ? '켜짐 · 즉시 이용 가능' : '꺼짐 · 승인 대기'}
-          </Text>
-          <View style={[styles.switchTrack, openRegistration && styles.switchTrackOn]}>
-            <View style={[styles.switchKnob, openRegistration && styles.switchKnobOn]} />
-          </View>
-        </Pressable>
-      </Card>
-
-      <Card style={styles.block}>
-        <Text style={styles.blockTitle}>동아리 명단 (학번 + 실명)</Text>
-        <Text style={styles.hint}>
-          한 줄에 학번과 이름 (예: 202410001 홍길동). 「명단 제한」을 켜면 목록에 있는 사람만 즉시 가입되고, 없으면 승인 대기·관리자 알림으로 남습니다.
+          한 줄에 학번과 이름 (예: 202410001 홍길동). 「명단 제한」을 켜면 목록과 일치할 때만 즉시
+          가입되고, 없으면 승인 대기·관리자 알림으로 남습니다.
         </Text>
         {rosterError ? <Text style={styles.warn}>{rosterError}</Text> : null}
         <TextInput
@@ -196,20 +167,6 @@ export function AdminJoinInfoPanel({ adminId, onToast }: Props) {
           onPress={() => void saveRosterPaste()}
           disabled={rosterBusy}
         />
-        <Pressable
-          onPress={() => void toggleRosterEnforcement()}
-          style={styles.switchRow}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: rosterEnforcement }}
-          disabled={rosterBusy}
-        >
-          <Text style={styles.switchLabel}>
-            {rosterEnforcement ? '명단 제한 켜짐 · 없으면 대기' : '명단 제한 꺼짐 · 가입 막지 않음'}
-          </Text>
-          <View style={[styles.switchTrack, rosterEnforcement && styles.switchTrackOn]}>
-            <View style={[styles.switchKnob, rosterEnforcement && styles.switchKnobOn]} />
-          </View>
-        </Pressable>
         <Text style={styles.hint}>저장된 명단 {roster.length}명</Text>
         {roster.map((row) => (
           <View key={row.studentId} style={styles.rosterRow}>
@@ -225,6 +182,57 @@ export function AdminJoinInfoPanel({ adminId, onToast }: Props) {
             />
           </View>
         ))}
+
+        <Pressable
+          onPress={() => void toggleRosterEnforcement()}
+          style={[styles.switchRow, styles.switchRowSpaced]}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: rosterEnforcement }}
+          disabled={rosterBusy}
+        >
+          <Text style={styles.switchLabel}>
+            {rosterEnforcement ? '명단 제한 켜짐 · 없으면 대기' : '명단 제한 꺼짐 · 가입 막지 않음'}
+          </Text>
+          <View style={[styles.switchTrack, rosterEnforcement && styles.switchTrackOn]}>
+            <View style={[styles.switchKnob, rosterEnforcement && styles.switchKnobOn]} />
+          </View>
+        </Pressable>
+
+        {!rosterEnforcement ? (
+          <View style={styles.nestedRule}>
+            <Text style={styles.nestedTitle}>명단 제한이 꺼져 있을 때</Text>
+            <Text style={styles.nestedHint}>
+              아래 스위치로 새 회원을 바로 쓰게 할지, 운영진 승인을 거칠지 정합니다.
+            </Text>
+            <Pressable
+              onPress={async () => {
+                const r = await setOpenRegistration(!openRegistration);
+                onToast(r.success ? 'success' : 'warning', r.message);
+                if (r.success) {
+                  recordAdminLogAsActor(adminId, {
+                    category: 'system',
+                    action: openRegistration ? 'registration.close' : 'registration.open',
+                    message: `가입 즉시 승인 ${!openRegistration ? 'ON' : 'OFF'}`,
+                  });
+                }
+              }}
+              style={styles.switchRow}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: openRegistration }}
+            >
+              <Text style={styles.switchLabel}>
+                {openRegistration ? '가입 즉시 승인 · 켜짐' : '가입 즉시 승인 · 꺼짐 (승인 대기)'}
+              </Text>
+              <View style={[styles.switchTrack, openRegistration && styles.switchTrackOn]}>
+                <View style={[styles.switchKnob, openRegistration && styles.switchKnobOn]} />
+              </View>
+            </Pressable>
+          </View>
+        ) : (
+          <Text style={styles.rosterModeHint}>
+            명단 제한이 켜져 있어요. 학번·실명이 명단과 맞으면 즉시 가입, 아니면 승인 대기입니다.
+          </Text>
+        )}
       </Card>
 
       <Card style={styles.block}>
@@ -293,6 +301,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.sm,
     ...Platform.select({ web: { cursor: 'pointer' as const } }),
+  },
+  switchRowSpaced: { marginTop: spacing.xs },
+  nestedRule: {
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    gap: spacing.xs,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+  },
+  nestedTitle: { ...typography.caption, fontWeight: '700', color: colors.text },
+  nestedHint: { ...typography.small, color: colors.textMuted, lineHeight: 18 },
+  rosterModeHint: {
+    ...typography.small,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginTop: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.primaryLight,
   },
   switchLabel: { ...typography.bodyBold, color: colors.text, fontSize: 14, flex: 1 },
   switchTrack: {

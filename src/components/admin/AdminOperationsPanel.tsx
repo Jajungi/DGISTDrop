@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Platform, Pressable } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Platform } from 'react-native';
 import { useLobbyStore } from '@/src/stores/lobbyStore';
 import { useCoachingStore } from '@/src/stores/coachingStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
-import { useAuthStore, useAppStore } from '@/src/stores/authStore';
+import { useAuthStore } from '@/src/stores/authStore';
 import { recordAdminLogAsActor } from '@/src/services/adminLog';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
@@ -35,8 +35,6 @@ export function AdminOperationsPanel({
   const adminBroadcastNotice = useNotificationStore((s) => s.adminBroadcastNotice);
   const users = useAuthStore((s) => s.users);
   const adminSetUserAtGym = useAuthStore((s) => s.adminSetUserAtGym);
-  const openRegistration = useAppStore((s) => s.openRegistration);
-  const setOpenRegistration = useAppStore((s) => s.setOpenRegistration);
 
   const approvedMembers = useMemo(
     () => users.filter((u) => u.memberStatus === 'approved'),
@@ -52,39 +50,6 @@ export function AdminOperationsPanel({
 
   return (
     <View style={styles.wrap}>
-      <Card style={styles.block}>
-        <Text style={styles.blockTitle}>가입 즉시 승인</Text>
-        <Text style={styles.hint}>
-          켜면 새 회원이 승인 알림 없이 바로 이용할 수 있어요. 회비·등급 등은 나중에 후속
-          조치하면 됩니다. 끄면 가입 후 운영진 승인이 필요합니다.
-        </Text>
-        <Pressable
-          onPress={async () => {
-            const r = await setOpenRegistration(!openRegistration);
-            onToast(r.success ? 'success' : 'warning', r.message);
-            if (r.success) {
-              recordAdminLogAsActor(adminId, {
-                category: 'system',
-                action: openRegistration ? 'registration.close' : 'registration.open',
-                message: `가입 즉시 승인 ${!openRegistration ? 'ON' : 'OFF'}`,
-              });
-            }
-          }}
-          style={styles.switchRow}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: openRegistration }}
-        >
-          <View style={styles.switchTextWrap}>
-            <Text style={styles.switchLabel}>
-              {openRegistration ? '켜짐 · 즉시 이용 가능' : '꺼짐 · 승인 대기'}
-            </Text>
-          </View>
-          <View style={[styles.switchTrack, openRegistration && styles.switchTrackOn]}>
-            <View style={[styles.switchKnob, openRegistration && styles.switchKnobOn]} />
-          </View>
-        </Pressable>
-      </Card>
-
       <Card style={styles.block}>
         <Text style={styles.blockTitle}>전체 공지 보내기</Text>
         <Text style={styles.hint}>승인된 모든 회원 알림함에 도착합니다.</Text>
@@ -286,30 +251,6 @@ const styles = StyleSheet.create({
   rowActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: 4 },
   atGym: { color: colors.success, fontWeight: '600' },
   notAtGym: { color: colors.textMuted },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  switchTextWrap: { flex: 1 },
-  switchLabel: { ...typography.bodyBold, color: colors.text, fontSize: 14 },
-  switchTrack: {
-    width: 48,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.border,
-    padding: 2,
-    justifyContent: 'center',
-  },
-  switchTrackOn: { backgroundColor: colors.primary },
-  switchKnob: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-  },
-  switchKnobOn: { alignSelf: 'flex-end' },
   hintCard: {
     backgroundColor: colors.primaryLight,
     gap: spacing.xs,
