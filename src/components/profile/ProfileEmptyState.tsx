@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography } from '@/src/theme';
 
 interface ProfileEmptyStateProps {
@@ -7,13 +8,12 @@ interface ProfileEmptyStateProps {
   hint?: string;
 }
 
-export function ProfileEmptyState({
-  message = '아직 기록이 없어요',
-  hint,
-}: ProfileEmptyStateProps) {
+export function ProfileEmptyState({ message, hint }: ProfileEmptyStateProps) {
+  const { t } = useI18n();
+
   return (
     <View style={styles.wrap}>
-      <Text style={styles.message}>{message}</Text>
+      <Text style={styles.message}>{message ?? t('common.noRecords')}</Text>
       {hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
   );

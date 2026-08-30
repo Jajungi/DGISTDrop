@@ -7,11 +7,13 @@ import { useGeoLocation } from '@/src/hooks/useGeoLocation';
 import { Button } from '@/src/components/ui/Button';
 import { getDistanceToGym } from '@/src/services/geoFence';
 import { GYM_LOCATION } from '@/src/constants';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 
 export function AttendanceCard() {
   useGeoLocation();
+  const { t, locale } = useI18n();
   const currentUser = useAuthStore((s) => s.currentUser);
   const attendanceRecords = useAuthStore((s) => s.attendanceRecords);
   const checkIn = useAuthStore((s) => s.checkIn);
@@ -30,13 +32,14 @@ export function AttendanceCard() {
 
   const distance = location ? getDistanceToGym(location) : null;
   const canCheckIn = checkGeoFence();
+  const timeLocale = locale === 'ko' ? 'ko-KR' : 'en-US';
 
   const statusText = (() => {
-    if (demoMode) return '데모 모드 · 위치 제한 없이 출석할 수 있어요. 끄면 다시 체육관 근처에서만 됩니다.';
+    if (demoMode) return t('profile.checkInDemo');
     if (locationError) return locationError;
-    if (distance === null) return '위치를 확인하는 중이에요…';
-    if (canCheckIn) return `S1 체육관 반경 안이에요 (약 ${distance}m). 출석할 수 있어요.`;
-    return `체육관에서 약 ${distance}m 떨어져 있어요. 반경 ${GYM_LOCATION.radiusMeters}m 안으로 이동해 주세요.`;
+    if (distance === null) return t('profile.checkInLocating');
+    if (canCheckIn) return t('profile.checkInInRange', { distance });
+    return t('profile.checkInOutOfRange', { distance, radius: GYM_LOCATION.radiusMeters });
   })();
 
   const handleCheckIn = () => {
@@ -51,15 +54,15 @@ export function AttendanceCard() {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Text style={styles.title}>출석</Text>
+        <Text style={styles.title}>{t('header.checkIn')}</Text>
         <View style={[styles.locDot, canCheckIn && styles.locDotOn]} />
       </View>
       <Text style={styles.desc}>{statusText}</Text>
       {todayRecord ? (
         <View style={styles.doneBox}>
-          <Text style={styles.doneText}>✓ 오늘 출석 완료</Text>
+          <Text style={styles.doneText}>{t('profile.checkInDone')}</Text>
           <Text style={styles.doneTime}>
-            {new Date(todayRecord.checkedInAt).toLocaleTimeString('ko-KR', {
+            {new Date(todayRecord.checkedInAt).toLocaleTimeString(timeLocale, {
               hour: '2-digit',
               minute: '2-digit',
             })}
@@ -67,7 +70,7 @@ export function AttendanceCard() {
         </View>
       ) : (
         <Button
-          title={canCheckIn ? '출석하기' : '체육관 근처에서 출석 가능'}
+          title={canCheckIn ? t('profile.checkInButton') : t('profile.checkInButtonDisabled')}
           onPress={handleCheckIn}
           disabled={!canCheckIn}
           fullWidth

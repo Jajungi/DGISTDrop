@@ -21,6 +21,8 @@ import { recordAdminLogAsActor } from '@/src/services/adminLog';
 import { pushLocalNotification } from '@/src/services/localNotifications';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { useAuthStore } from '@/src/stores/authStore';
+import { useLocaleStore } from '@/src/stores/localeStore';
+import { displayNotificationMessage, displayNotificationTitle } from '@/src/utils/notificationDisplay';
 import { isNotificationPrefEnabledForType } from '@/src/stores/notificationPrefsStore';
 import { runWhenRemoteId } from '@/src/utils/localId';
 
@@ -269,7 +271,9 @@ interface NotificationState {
   adminBroadcastNotice: (
     adminId: string,
     title: string,
-    message: string
+    message: string,
+    titleEn?: string,
+    messageEn?: string
   ) => { success: boolean; message: string };
   submitMatchResult: (
     courtId: number,
@@ -514,9 +518,11 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     return revokeServiceSubmission(get, set, submissionId, adminId, 'net_setup', reason);
   },
 
-  adminBroadcastNotice: (adminId, title, message) => {
+  adminBroadcastNotice: (adminId, title, message, titleEn?, messageEn?) => {
     const trimmedTitle = title.trim();
     const trimmedMessage = message.trim();
+    const trimmedTitleEn = titleEn?.trim() || undefined;
+    const trimmedMessageEn = messageEn?.trim() || undefined;
     if (!trimmedTitle || !trimmedMessage) {
       return { success: false, message: '제목과 내용을 입력해 주세요.' };
     }
@@ -529,7 +535,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       get().pushInbox({
         type: 'system',
         title: trimmedTitle,
+        titleEn: trimmedTitleEn,
         message: trimmedMessage,
+        messageEn: trimmedMessageEn,
         targetUserId: u.id,
       });
     });
@@ -733,7 +741,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       id: n.id ?? `n-${Date.now()}`,
       type: n.type,
       title: n.title,
+      titleEn: n.titleEn,
       message: n.message,
+      messageEn: n.messageEn,
       courtId: n.courtId,
       joinRequestId: n.joinRequestId,
       roomId: n.roomId,
@@ -749,7 +759,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         .then(({ insertNotificationRemote }) => insertNotificationRemote(item))
         .catch((err) => console.warn('[notif] insert failed', err));
     } else if (isForMe && Platform.OS !== 'web') {
-      void pushLocalNotification(item.title, item.message, 'default');
+      const locale = useLocaleStore.getState().locale;
+      void pushLocalNotification(
+        displayNotificationTitle(item, locale),
+        displayNotificationMessage(item, locale),
+        'default'
+      );
     }
     if (isForMe) {
       persistAppState();

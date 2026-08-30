@@ -3,12 +3,22 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { Avatar } from '@/src/components/ui/Avatar';
+import { useI18n } from '@/src/i18n/useI18n';
 import type { MatchResult } from '@/src/types';
 import { colors, spacing, typography } from '@/src/theme';
 
-function formatDate(iso: string) {
+function formatDate(iso: string, locale: string) {
   const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const timeLocale = locale === 'ko' ? 'ko-KR' : 'en-US';
+  if (locale === 'ko') {
+    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+  return d.toLocaleString(timeLocale, {
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 function getOpponents(match: MatchResult, myId: string, users: ReturnType<typeof useAuthStore.getState>['users']) {
@@ -32,13 +42,14 @@ function getOpponents(match: MatchResult, myId: string, users: ReturnType<typeof
 }
 
 export function MatchHistoryList({ userId }: { userId: string }) {
+  const { t, locale } = useI18n();
   const users = useAuthStore((s) => s.users);
   const matches = useNotificationStore((s) => s.matchHistory);
 
   const mine = matches.filter((m) => m.teamA.includes(userId) || m.teamB.includes(userId));
 
   if (mine.length === 0) {
-    return <Text style={styles.empty}>아직 기록이 없어요</Text>;
+    return <Text style={styles.empty}>{t('common.noRecords')}</Text>;
   }
 
   return (
@@ -59,16 +70,23 @@ export function MatchHistoryList({ userId }: { userId: string }) {
             <View style={styles.info}>
               <View style={styles.topLine}>
                 <Text style={[styles.result, won ? styles.win : styles.loss]}>
-                  {won ? '승리' : '패배'}
+                  {won ? t('common.win') : t('common.loss')}
                 </Text>
                 <Text style={styles.score}>
                   {myScore} : {oppScore}
                 </Text>
               </View>
-              <Text style={styles.opponents}>vs {opponents || '상대'}</Text>
-              {partners ? <Text style={styles.partners}>파트너: {partners}</Text> : null}
+              <Text style={styles.opponents}>
+                {t('common.vs', { opponents: opponents || t('common.unknownOpponent') })}
+              </Text>
+              {partners ? (
+                <Text style={styles.partners}>{t('common.partner', { name: partners })}</Text>
+              ) : null}
               <Text style={styles.meta}>
-                {match.courtId}번 코트 · {formatDate(match.playedAt)}
+                {t('profile.matchHistoryCourtMeta', {
+                  court: match.courtId,
+                  datetime: formatDate(match.playedAt, locale),
+                })}
               </Text>
             </View>
           </View>

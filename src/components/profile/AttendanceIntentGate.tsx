@@ -14,6 +14,7 @@ import { useSeoulTodayKey } from '@/src/hooks/useSeoulTodayKey';
 import { isGuestUser } from '@/src/utils/guestAccess';
 import { isActivityDay } from '@/src/services/activityTime';
 import { useTabTourStore } from '@/src/stores/tabTourStore';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 /**
@@ -21,6 +22,7 @@ import { colors, spacing, typography, borderRadius } from '@/src/theme';
  * 푸시·알림에서 참석만 고르고 시간이 없을 때 프로필과 같은 시간 칸을 띄운다.
  */
 export function AttendanceIntentGate() {
+  const { t } = useI18n();
   const currentUser = useAuthStore((s) => s.currentUser);
   const setAttendanceIntent = useAuthStore((s) => s.setAttendanceIntent);
   const updateUserSchedule = useAuthStore((s) => s.updateUserSchedule);
@@ -80,7 +82,7 @@ export function AttendanceIntentGate() {
 
   const saveTime = () => {
     if (!arrivalTime) {
-      showToast({ type: 'info', title: '', message: '시간을 모르면 건너뛰어도 돼요.' });
+      showToast({ type: 'info', title: '', message: t('friends.attendanceSkipTimeToast') });
       return;
     }
     const r = updateUserSchedule(currentUser.id, arrivalTime, endTime || undefined);
@@ -100,17 +102,19 @@ export function AttendanceIntentGate() {
                 onPress={skipTime}
                 hitSlop={12}
                 accessibilityRole="button"
-                accessibilityLabel="닫기"
+                accessibilityLabel={t('common.close')}
               >
                 <Ionicons name="close" size={22} color={colors.textMuted} />
               </Pressable>
             ) : null}
           </View>
-          <Text style={styles.title}>{showTimePicker ? '언제 참석하시나요?' : '오늘 오시나요?'}</Text>
+          <Text style={styles.title}>
+            {showTimePicker ? t('friends.attendanceWhenArriving') : t('notifications.attendanceTitle')}
+          </Text>
           <Text style={styles.body}>
             {showTimePicker
-              ? '모를 때는 건너뛰어도 됩니다. 참석은 그대로 유지돼요.'
-              : '참석하면 올 사람 수에 들어가요. 불참이면 오늘 일정에서 빠져요.'}
+              ? t('friends.attendanceTimePickerBody')
+              : t('friends.attendanceIntentBody')}
           </Text>
 
           {showTimePicker ? (
@@ -128,16 +132,16 @@ export function AttendanceIntentGate() {
                 }}
                 showDateRow={false}
               />
-              <Button title="시간 저장" onPress={saveTime} fullWidth />
-              <Button title="건너뛰기" variant="ghost" onPress={skipTime} fullWidth />
+              <Button title={t('friends.attendanceSaveTime')} onPress={saveTime} fullWidth />
+              <Button title={t('common.skip')} variant="ghost" onPress={skipTime} fullWidth />
             </>
           ) : (
             <View style={styles.row}>
               <View style={styles.rowBtn}>
-                <Button title="참석" onPress={chooseGoing} fullWidth />
+                <Button title={t('notifications.going')} onPress={chooseGoing} fullWidth />
               </View>
               <View style={styles.rowBtn}>
-                <Button title="불참" variant="outline" onPress={chooseNotGoing} fullWidth />
+                <Button title={t('notifications.notGoing')} variant="outline" onPress={chooseNotGoing} fullWidth />
               </View>
             </View>
           )}

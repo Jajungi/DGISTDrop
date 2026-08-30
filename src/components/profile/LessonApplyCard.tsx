@@ -1,30 +1,47 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { Button } from '@/src/components/ui/Button';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/theme';
 import type { LessonAccessStatus } from '@/src/types';
 
-const STATUS_LABEL: Record<
-  Exclude<LessonAccessStatus, 'none'>,
-  { text: string; color: string; bg: string }
-> = {
-  pending: { text: '승인 대기', color: colors.warning, bg: withAlpha(colors.warning, 0.16) },
-  approved: { text: '승인됨', color: colors.success, bg: colors.primaryLight },
-  rejected: { text: '거절됨', color: colors.error, bg: withAlpha(colors.error, 0.14) },
-};
-
 /** 프로필용 — 레슨 권한 신청만 */
 export function LessonApplyCard() {
+  const { t } = useI18n();
   const currentUser = useAuthStore((s) => s.currentUser);
   const requestLessonAccess = useAuthStore((s) => s.requestLessonAccess);
   const showToast = useNotificationStore((s) => s.showToast);
 
+  const statusLabel = useMemo(
+    (): Record<
+      Exclude<LessonAccessStatus, 'none'>,
+      { text: string; color: string; bg: string }
+    > => ({
+      pending: {
+        text: t('profile.lessonStatusPending'),
+        color: colors.warning,
+        bg: withAlpha(colors.warning, 0.16),
+      },
+      approved: {
+        text: t('profile.lessonStatusApproved'),
+        color: colors.success,
+        bg: colors.primaryLight,
+      },
+      rejected: {
+        text: t('profile.lessonStatusRejected'),
+        color: colors.error,
+        bg: withAlpha(colors.error, 0.14),
+      },
+    }),
+    [t]
+  );
+
   if (!currentUser) return null;
 
   const lessonStatus = currentUser.lessonStatus ?? 'none';
-  const statusStyle = lessonStatus !== 'none' ? STATUS_LABEL[lessonStatus] : null;
+  const statusStyle = lessonStatus !== 'none' ? statusLabel[lessonStatus] : null;
 
   const handleRequest = () => {
     const result = requestLessonAccess(currentUser.id);
@@ -37,11 +54,8 @@ export function LessonApplyCard() {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>레슨 권한</Text>
-      <Text style={styles.desc}>
-        코치 레슨을 받으려면 권한 신청 후 운영진 승인이 필요해요. 승인되면 코트 화면의 코칭
-        메뉴에서 대기열·순서를 이용할 수 있습니다.
-      </Text>
+      <Text style={styles.title}>{t('profile.lessonTitle')}</Text>
+      <Text style={styles.desc}>{t('profile.lessonDescription')}</Text>
 
       {statusStyle && (
         <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
@@ -50,15 +64,15 @@ export function LessonApplyCard() {
       )}
 
       {(lessonStatus === 'none' || lessonStatus === 'rejected') && (
-        <Button title="레슨 권한 신청" onPress={handleRequest} fullWidth variant="outline" />
+        <Button title={t('profile.lessonApply')} onPress={handleRequest} fullWidth variant="outline" />
       )}
 
       {lessonStatus === 'pending' && (
-        <Text style={styles.hint}>운영진 승인을 기다리는 중이에요.</Text>
+        <Text style={styles.hint}>{t('profile.lessonPendingHint')}</Text>
       )}
 
       {lessonStatus === 'approved' && (
-        <Text style={styles.hint}>승인 완료 — 코트 화면 하단 「코칭 · 레슨」에서 이용하세요.</Text>
+        <Text style={styles.hint}>{t('profile.lessonApprovedHint')}</Text>
       )}
     </View>
   );

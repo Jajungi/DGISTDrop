@@ -3,6 +3,7 @@ import { Pressable, Text, StyleSheet, Platform, View } from 'react-native';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useFriendStore } from '@/src/stores/friendStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, borderRadius, typography } from '@/src/theme';
 
 interface FriendActionButtonProps {
@@ -11,6 +12,7 @@ interface FriendActionButtonProps {
 }
 
 export function FriendActionButton({ otherUserId, compact = false }: FriendActionButtonProps) {
+  const { t } = useI18n();
   const currentUserId = useAuthStore((s) => s.currentUser?.id ?? null);
   const friendRequests = useFriendStore((s) => s.friendRequests);
   const friendships = useFriendStore((s) => s.friendships);
@@ -67,7 +69,7 @@ export function FriendActionButton({ otherUserId, compact = false }: FriendActio
         style={[styles.btn, styles.btnGhost, compact && styles.btnCompact]}
       >
         <Text style={[styles.btnText, styles.btnTextGhost]} numberOfLines={1}>
-          친구 삭제
+          {t('friends.removeFriend')}
         </Text>
       </Pressable>
     );
@@ -81,7 +83,7 @@ export function FriendActionButton({ otherUserId, compact = false }: FriendActio
           style={[styles.btn, styles.btnPrimary, compact && styles.btnCompact]}
         >
           <Text style={styles.btnText} numberOfLines={1}>
-            수락
+            {t('common.accept')}
           </Text>
         </Pressable>
         <Pressable
@@ -89,7 +91,7 @@ export function FriendActionButton({ otherUserId, compact = false }: FriendActio
           style={[styles.btn, styles.btnGhost, compact && styles.btnCompact]}
         >
           <Text style={[styles.btnText, styles.btnTextGhost]} numberOfLines={1}>
-            거절
+            {t('common.reject')}
           </Text>
         </Pressable>
       </View>
@@ -103,7 +105,7 @@ export function FriendActionButton({ otherUserId, compact = false }: FriendActio
         style={[styles.btn, styles.btnGhost, compact && styles.btnCompact]}
       >
         <Text style={[styles.btnText, styles.btnTextGhost]} numberOfLines={1}>
-          신청 취소
+          {t('friends.cancelFriendRequest')}
         </Text>
       </Pressable>
     );
@@ -115,7 +117,7 @@ export function FriendActionButton({ otherUserId, compact = false }: FriendActio
       style={[styles.btn, styles.btnPrimary, compact && styles.btnCompact]}
     >
       <Text style={styles.btnText} numberOfLines={1}>
-        친구 신청
+        {t('friends.friendRequest')}
       </Text>
     </Pressable>
   );

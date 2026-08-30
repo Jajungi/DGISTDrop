@@ -4,6 +4,7 @@ import type { Court } from '@/src/types';
 import { COURT_FLOOR_COLORS } from '@/src/constants/court';
 import { GameCountPicker } from '@/src/components/courts/GameCountPicker';
 import { Button } from '@/src/components/ui/Button';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, borderRadius, spacing, typography } from '@/src/theme';
 
 interface TeamCourtReserveModalProps {
@@ -19,6 +20,7 @@ export function TeamCourtReserveModal({
   onClose,
   onReserve,
 }: TeamCourtReserveModalProps) {
+  const { t } = useI18n();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [gameCount, setGameCount] = useState(3);
 
@@ -35,12 +37,12 @@ export function TeamCourtReserveModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>코트 선택</Text>
-          <Text style={styles.subtitle}>빈 코트를 골라 팀 예약을 진행하세요</Text>
+          <Text style={styles.title}>{t('lobby.pickCourt')}</Text>
+          <Text style={styles.subtitle}>{t('lobby.pickCourtHint')}</Text>
 
           <ScrollView style={styles.list}>
             {emptyCourts.length === 0 && (
-              <Text style={styles.empty}>현재 빈 코트가 없어요</Text>
+              <Text style={styles.empty}>{t('lobby.noEmptyCourts')}</Text>
             )}
             {emptyCourts.map((court) => {
               const selected = selectedId === court.id;
@@ -51,9 +53,9 @@ export function TeamCourtReserveModal({
                   onPress={() => setSelectedId(court.id)}
                 >
                   <View style={[styles.swatch, { backgroundColor: COURT_FLOOR_COLORS.empty }]} />
-                  <Text style={styles.courtName}>{court.id}번 코트</Text>
-                  {court.isCoachCourt && <Text style={styles.tag}>코치</Text>}
-                  {court.isCenter && !court.isCoachCourt && <Text style={styles.tag}>인기</Text>}
+                  <Text style={styles.courtName}>{t('common.courtNumber', { court: court.id })}</Text>
+                  {court.isCoachCourt && <Text style={styles.tag}>{t('lobby.coachTag')}</Text>}
+                  {court.isCenter && !court.isCoachCourt && <Text style={styles.tag}>{t('lobby.popularTag')}</Text>}
                 </Pressable>
               );
             })}
@@ -61,7 +63,11 @@ export function TeamCourtReserveModal({
 
           <GameCountPicker value={gameCount} onChange={setGameCount} />
           <Button
-            title={selectedId ? `${selectedId}번 · ${gameCount}게임 예약` : '코트를 선택하세요'}
+            title={
+              selectedId
+                ? t('lobby.reserveGames', { court: selectedId, count: gameCount })
+                : t('lobby.pickCourtFirst')
+            }
             onPress={handleReserve}
             fullWidth
             size="lg"

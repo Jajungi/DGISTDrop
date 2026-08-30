@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import type { User } from '@/src/types';
 import { FriendRow } from './FriendRow';
 import { colors, spacing, typography, borderRadius, shadows } from '@/src/theme';
+import { useI18n } from '@/src/i18n/useI18n';
 
 interface FriendsListPanelProps {
   onlineFriends: User[];
@@ -49,15 +50,16 @@ export function FriendsListPanel({
   offlineFriends,
   othersCheckedIn,
 }: FriendsListPanelProps) {
+  const { t } = useI18n();
   const hasFriends = onlineFriends.length > 0 || offlineFriends.length > 0;
 
   return (
     <View style={styles.wrap}>
       <Section
-        title="체육관 · 온라인"
-        subtitle="지금 체육관에 있는 친구"
+        title={t('friends.sectionAtGym')}
+        subtitle={t('friends.sectionAtGymSub')}
         isEmpty={onlineFriends.length === 0}
-        emptyMessage="체육관에 있는 친구가 없어요"
+        emptyMessage={t('friends.sectionAtGymEmpty')}
       >
         {onlineFriends.map((user, i) => (
           <React.Fragment key={user.id}>
@@ -68,10 +70,12 @@ export function FriendsListPanel({
       </Section>
 
       <Section
-        title="오프라인"
-        subtitle="아직 도착하지 않은 친구"
+        title={t('friends.sectionOffline')}
+        subtitle={t('friends.sectionOfflineSub')}
         isEmpty={offlineFriends.length === 0}
-        emptyMessage={hasFriends ? '모든 친구가 체육관에 있어요' : '등록된 친구가 없어요'}
+        emptyMessage={
+          hasFriends ? t('friends.sectionOfflineAllHere') : t('friends.sectionOfflineEmpty')
+        }
       >
         {offlineFriends.map((user, i) => (
           <React.Fragment key={user.id}>
@@ -82,10 +86,10 @@ export function FriendsListPanel({
       </Section>
 
       <Section
-        title="오늘 출석"
-        subtitle="친구가 아닌 동아리원"
+        title={t('friends.sectionOthers')}
+        subtitle={t('friends.sectionOthersSub')}
         isEmpty={othersCheckedIn.length === 0}
-        emptyMessage="오늘 출석한 다른 동아리원이 없어요"
+        emptyMessage={t('friends.sectionOthersEmpty')}
       >
         {othersCheckedIn.map((user, i) => (
           <React.Fragment key={user.id}>

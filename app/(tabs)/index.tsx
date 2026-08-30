@@ -23,9 +23,11 @@ import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { isGoingToday } from '@/src/utils/attendanceIntent';
 import { isStaffUser } from '@/src/utils/staffAccess';
 import { colors } from '@/src/theme';
+import { useI18n } from '@/src/i18n/useI18n';
 import type { Court, GameMode, NantaHalf } from '@/src/types';
 
 export default function CourtsScreen() {
+  const { t } = useI18n();
   const { remaining } = useActivityStatus();
   const { isAtGym } = useGeoLocation();
   useCourtRealtime();
@@ -140,7 +142,7 @@ export default function CourtsScreen() {
     onJoin: () => {
       if (!currentUser || !selectedCourt) return;
       if (!checkGeoFence()) {
-        showToast({ type: 'warning', title: '', message: '체육관 근처에서만 합류할 수 있어요.' });
+        showToast({ type: 'warning', title: '', message: t('courts.joinNearGymOnly') });
         return;
       }
       const result = requestJoin(selectedCourt.id, currentUser.id, currentUser.name, currentUser.rank);
@@ -155,7 +157,7 @@ export default function CourtsScreen() {
     onRejectJoin: (requestId: string) => {
       if (!selectedCourt) return;
       rejectJoin(selectedCourt.id, requestId);
-      showToast({ type: 'info', title: '', message: '합류 신청을 거절했어요.' });
+      showToast({ type: 'info', title: '', message: t('courts.joinRejected') });
     },
     onJoinWait: () => {
       if (!currentUser || !selectedCourt) return;
@@ -181,7 +183,7 @@ export default function CourtsScreen() {
       if (!selectedCourt) return;
       returnCourt(selectedCourt.id);
       setShowScoreSheet(false);
-      showToast({ type: 'info', title: '', message: '코트가 반납되었어요.' });
+      showToast({ type: 'info', title: '', message: t('courts.courtReturned') });
       handleClose();
     },
     onCancelReservation: () => {
@@ -224,19 +226,19 @@ export default function CourtsScreen() {
     );
     setShowScoreSheet(false);
     if (!result.recorded) {
-      showToast({ type: 'warning', title: '', message: '점수를 다시 확인해주세요.' });
+      showToast({ type: 'warning', title: '', message: t('courts.scoreRecheck') });
       return;
     }
     if (result.requiresApproval) {
       showToast({
         type: 'info',
         title: '',
-        message: '오늘 경기가 많아 관리자 승인 후 Elo가 반영돼요.',
+        message: t('courts.eloPendingApproval'),
       });
     } else if (result.applied) {
-      showToast({ type: 'success', title: '', message: 'Elo·포인트가 반영됐어요.' });
+      showToast({ type: 'success', title: '', message: t('courts.eloApplied') });
     } else {
-      showToast({ type: 'success', title: '', message: '친선경기로 기록됐어요.' });
+      showToast({ type: 'success', title: '', message: t('courts.friendlyRecorded') });
     }
   };
 
@@ -329,7 +331,7 @@ export default function CourtsScreen() {
           </View>
 
           {selectedCourtId === null && needsVerticalScroll && (
-            <Text style={styles.scrollHint}>아래로 스크롤해 전체 코트를 볼 수 있어요</Text>
+            <Text style={styles.scrollHint}>{t('courts.scrollHint')}</Text>
           )}
         </ScrollView>
       </PageContainer>

@@ -8,10 +8,12 @@ import { FriendActionButton } from './FriendActionButton';
 import { countPlayPartners } from '@/src/utils/playPartners';
 import { RANK_THRESHOLDS } from '@/src/constants';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography, borderRadius, shadows } from '@/src/theme';
 
 /** 최근 같이 친 비친구 → 친구 추천 */
 export function PartnerSuggestPanel() {
+  const { t } = useI18n();
   const currentUser = useAuthStore((s) => s.currentUser);
   const users = useAuthStore((s) => s.users);
   const matchHistory = useNotificationStore((s) => s.matchHistory);
@@ -45,8 +47,8 @@ export function PartnerSuggestPanel() {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>자주 치는 파트너</Text>
-        <Text style={styles.sectionSubtitle}>최근 같이 친 횟수 · 친구 추천</Text>
+        <Text style={styles.sectionTitle}>{t('friends.partnerSuggestTitle')}</Text>
+        <Text style={styles.sectionSubtitle}>{t('friends.partnerSuggestSub')}</Text>
       </View>
       <View style={styles.card}>
         {suggestions.map(({ user, count, rel }, i) => (
@@ -63,9 +65,9 @@ export function PartnerSuggestPanel() {
               <View style={styles.body}>
                 <Text style={styles.name}>{user.name}</Text>
                 <Text style={styles.meta}>
-                  같이 {count}경기
+                  {t('friends.playedTogether', { count })}
                   {eloOn ? ` · ${RANK_THRESHOLDS[user.rank]?.label ?? user.rank}` : ''}
-                  {rel === 'pending_out' ? ' · 신청함' : rel === 'pending_in' ? ' · 받은 신청' : ''}
+                  {rel === 'pending_out' ? t('common.pendingOut') : rel === 'pending_in' ? t('common.pendingIn') : ''}
                 </Text>
               </View>
               <FriendActionButton otherUserId={user.id} compact />

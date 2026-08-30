@@ -26,6 +26,7 @@ import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { useSeoulTodayKey } from '@/src/hooks/useSeoulTodayKey';
 import { isGuestUser } from '@/src/utils/guestAccess';
 import { useI18n } from '@/src/i18n/useI18n';
+import { displayNotificationMessage, displayNotificationTitle } from '@/src/utils/notificationDisplay';
 import { router } from 'expo-router';
 
 const INITIAL_VISIBLE = 5;
@@ -364,12 +365,12 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
                   <View style={styles.body}>
                     <View style={styles.titleRow}>
                       <Text style={[styles.rowTitle, !item.read && styles.rowTitleUnread]} numberOfLines={2}>
-                        {item.title}
+                        {displayNotificationTitle(item, locale)}
                       </Text>
                       {item.read ? <Text style={styles.readBadge}>{t('notifications.read')}</Text> : null}
                     </View>
                     <Text style={styles.rowMsg} numberOfLines={3}>
-                      {item.message}
+                      {displayNotificationMessage(item, locale)}
                     </Text>
                     <Text style={styles.rowTime}>{formatTime(item.createdAt, locale)}</Text>
                   </View>

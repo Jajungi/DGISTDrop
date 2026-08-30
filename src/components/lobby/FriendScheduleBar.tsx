@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import type { User } from '@/src/types';
 import { Avatar } from '@/src/components/ui/Avatar';
 import { getEffectiveSchedule } from '@/src/utils/dateFormat';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, borderRadius, spacing, typography, shadows } from '@/src/theme';
 
 interface FriendScheduleBarProps {
@@ -26,9 +27,11 @@ function timeToPercent(time: string, start: string, end: string): { left: number
 }
 
 export function FriendScheduleBar({ friends, activityStart, activityEnd }: FriendScheduleBarProps) {
+  const { t } = useI18n();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>친구 일정</Text>
+      <Text style={styles.title}>{t('lobby.friendSchedule')}</Text>
       <View style={styles.card}>
         <View style={styles.timeLabels}>
           <Text style={styles.timeLabel}>{activityStart}</Text>

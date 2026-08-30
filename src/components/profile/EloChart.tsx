@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, LayoutChangeEvent } from 'react-native';
 import Svg, { Polyline, Circle, Line, Text as SvgText } from 'react-native-svg';
 import type { EloHistoryPoint } from '@/src/types';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography } from '@/src/theme';
 import { ProfileEmptyState } from './ProfileEmptyState';
 
@@ -12,6 +13,7 @@ interface EloChartProps {
 }
 
 export function EloChart({ data, width, height = 120 }: EloChartProps) {
+  const { t } = useI18n();
   const [measured, setMeasured] = useState(0);
   const onLayout = (e: LayoutChangeEvent) => {
     const w = Math.floor(e.nativeEvent.layout.width);
@@ -21,8 +23,8 @@ export function EloChart({ data, width, height = 120 }: EloChartProps) {
   if (data.length < 2) {
     return (
       <View style={styles.container} onLayout={onLayout}>
-        <Text style={styles.title}>Elo 레이팅 추이</Text>
-        <ProfileEmptyState message="아직 기록이 없어요" hint="경기 결과가 쌓이면 그래프가 표시돼요" />
+        <Text style={styles.title}>{t('profile.eloChartTitle')}</Text>
+        <ProfileEmptyState hint={t('profile.eloChartEmptyHint')} />
       </View>
     );
   }
@@ -46,7 +48,7 @@ export function EloChart({ data, width, height = 120 }: EloChartProps) {
 
   return (
     <View style={styles.container} onLayout={onLayout}>
-      <Text style={styles.title}>Elo 레이팅 추이</Text>
+      <Text style={styles.title}>{t('profile.eloChartTitle')}</Text>
       <Svg width={chartWidth} height={height}>
         <Line
           x1={padding.left}

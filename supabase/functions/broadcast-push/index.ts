@@ -29,6 +29,8 @@ const CORS = {
 interface Payload {
   title?: string;
   message?: string;
+  title_en?: string;
+  message_en?: string;
   type?: string;
   sent_by?: string;
 }
@@ -89,11 +91,13 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as Payload;
     const title = body.title ?? 'Drop';
     const message = body.message ?? '';
+    const titleEn = body.title_en?.trim() || '';
+    const messageEn = body.message_en?.trim() || '';
     const type = body.type ?? 'activity';
 
     const { data: tokens, error } = await supabase
       .from('push_tokens')
-      .select('token, platform, user_id, updated_at, created_at');
+      .select('token, platform, user_id, locale, updated_at, created_at');
 
     if (error) throw error;
 
@@ -121,38 +125,71 @@ Deno.serve(async (req) => {
       (t: { user_id: string }) => approvedIds.has(t.user_id) && !prefOff.has(t.user_id)
     );
 
-    const expoTokens = filtered
-      .filter((t: { token: string }) => isExpoToken(t.token))
-      .map((t: { token: string; platform?: string | null }) => ({
-        token: t.token,
-        platform: t.platform,
-      }));
-    const { keep: webTokens, drop: extraWeb } = splitWebTokensPerUser(
-      filtered as Array<{
+    const userIds = [...new Set(filtered.map((t: { user_id: string }) => t.user_id))];
+    const localeByUser = new Map<string, string>();
+    if (userIds.length) {
+      const { data: localeRows } = await supabase
+        .from('profiles')
+        .select('id, preferred_locale')
+        .in('id', userIds);
+      for (const row of localeRows ?? []) {
+        const r = row as { id: string; preferred_locale?: string | null };
+        localeByUser.set(r.id, r.preferred_locale === 'en' ? 'en' : 'ko');
+      }
+    }
+
+    const hasEnCopy = !!titleEn && !!messageEn;
+    const koBatch = filtered.filter(
+      (t: { user_id: string }) => localeByUser.get(t.user_id) !== 'en'
+    );
+    const enBatch = hasEnCopy
+      ? filtered.filter((t: { user_id: string }) => localeByUser.get(t.user_id) === 'en')
+      : [];
+
+    async function sendBatch(
+      batch: Array<{
         token: string;
         user_id: string;
         platform?: string | null;
         updated_at?: string | null;
         created_at?: string | null;
-      }>
-    );
-    const extraPruned = await deleteTokens(supabase, extraWeb);
+      }>,
+      pushTitle: string,
+      pushMessage: string
+    ) {
+      const expoTokens = batch
+        .filter((t) => isExpoToken(t.token))
+        .map((t) => ({ token: t.token, platform: t.platform }));
+      const { keep: webTokens, drop: extraWeb } = splitWebTokensPerUser(batch);
+      const extraPruned = await deleteTokens(supabase, extraWeb);
+      const expoRes = await sendExpoAndPrune(
+        supabase,
+        expoTokens,
+        pushTitle,
+        pushMessage,
+        type,
+        EXPO_ACCESS_TOKEN
+      );
+      const webRes = await sendWebAndPrune(supabase, webTokens, pushTitle, pushMessage, {
+        subject: VAPID_SUBJECT,
+        publicKey: VAPID_PUBLIC,
+        privateKey: VAPID_PRIVATE,
+      }, type);
+      return {
+        sent: expoRes.sent + webRes.sent,
+        expo: expoRes.sent,
+        web: webRes.sent,
+        pruned: expoRes.pruned + webRes.pruned + extraPruned,
+      };
+    }
 
-    const expoRes = await sendExpoAndPrune(
-      supabase,
-      expoTokens,
-      title,
-      message,
-      type,
-      EXPO_ACCESS_TOKEN
-    );
-    const webRes = await sendWebAndPrune(supabase, webTokens, title, message, {
-      subject: VAPID_SUBJECT,
-      publicKey: VAPID_PUBLIC,
-      privateKey: VAPID_PRIVATE,
-    }, type);
-    const sent = expoRes.sent + webRes.sent;
-    const pruned = expoRes.pruned + webRes.pruned + extraPruned;
+    const koRes = koBatch.length ? await sendBatch(koBatch, title, message) : { sent: 0, expo: 0, web: 0, pruned: 0 };
+    const enRes =
+      enBatch.length && hasEnCopy
+        ? await sendBatch(enBatch, titleEn, messageEn)
+        : { sent: 0, expo: 0, web: 0, pruned: 0 };
+    const sent = koRes.sent + enRes.sent;
+    const pruned = koRes.pruned + enRes.pruned;
 
     await supabase.from('push_notify_log').insert({
       type,
@@ -162,7 +199,7 @@ Deno.serve(async (req) => {
       sent_by: body.sent_by ?? null,
     });
 
-    return json({ sent, expo: expoRes.sent, web: webRes.sent, pruned });
+    return json({ sent, expo: koRes.expo + enRes.expo, web: koRes.web + enRes.web, pruned });
   } catch (err) {
     return json({ error: String(err) }, 500);
   }

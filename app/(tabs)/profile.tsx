@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ScrollView, View, Text, StyleSheet, TextInput, Pressable, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -29,9 +29,21 @@ import { generateNumericConfirmCode } from '@/src/utils/confirmCode';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { CLEANING_AREAS } from '@/src/constants';
 import { NET_SETUP_AREAS, SHUTTLECOCK_CARRY_AREAS, POINT_EARN, POINT_SPEND } from '@/src/constants/points';
+import { useI18n } from '@/src/i18n/useI18n';
+import { useLocaleStore } from '@/src/stores/localeStore';
+import {
+  getCleaningAreaLabels,
+  getNetAreaLabels,
+  getShuttlecockCarryAreaLabels,
+} from '@/src/i18n/volunteerAreas';
 import { colors, spacing, typography, borderRadius, shadows, glass } from '@/src/theme';
 
 export default function ProfileScreen() {
+  const locale = useLocaleStore((s) => s.locale);
+  const { t } = useI18n();
+  const cleaningLabels = useMemo(() => getCleaningAreaLabels(locale), [locale]);
+  const netLabels = useMemo(() => getNetAreaLabels(locale), [locale]);
+  const shuttlecockLabels = useMemo(() => getShuttlecockCarryAreaLabels(locale), [locale]);
   const currentUser = useAuthStore((s) => s.currentUser);
   const logout = useAuthStore((s) => s.logout);
   const deleteMyAccount = useAuthStore((s) => s.deleteMyAccount);
@@ -105,7 +117,7 @@ export default function ProfileScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
-          <Text style={styles.emptyText}>로그인이 필요합니다</Text>
+          <Text style={styles.emptyText}>{t('settings.loginRequired')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -144,8 +156,8 @@ export default function ProfileScreen() {
     if (!checkGeoFence()) {
       showToast({
         type: 'error',
-        title: '위치 인증 필요',
-        message: '체육관에서만 청소 인증이 가능해요!',
+        title: t('profile.geoTitle'),
+        message: t('profile.geoCleaningOnly'),
       });
       return;
     }
@@ -158,8 +170,8 @@ export default function ProfileScreen() {
     setShowCleaning(false);
     showToast({
       type: 'success',
-      title: '청소 인증 완료!',
-      message: `+${POINT_EARN.CLEANING}P · 기여해주셔서 감사합니다 🧹`,
+      title: t('profile.cleaningSuccessTitle'),
+      message: t('profile.cleaningSuccessMessage', { points: POINT_EARN.CLEANING }),
     });
   };
 
@@ -167,8 +179,8 @@ export default function ProfileScreen() {
     if (!checkGeoFence()) {
       showToast({
         type: 'error',
-        title: '위치 인증 필요',
-        message: '체육관에서만 네트 인증이 가능해요!',
+        title: t('profile.geoTitle'),
+        message: t('profile.geoNetOnly'),
       });
       return;
     }
@@ -181,8 +193,8 @@ export default function ProfileScreen() {
     setShowNetSetup(false);
     showToast({
       type: 'success',
-      title: '네트 인증 완료!',
-      message: `+${POINT_EARN.NET_SETUP}P · 수고하셨습니다 🥅`,
+      title: t('profile.netSuccessTitle'),
+      message: t('profile.netSuccessMessage', { points: POINT_EARN.NET_SETUP }),
     });
   };
 
@@ -190,8 +202,8 @@ export default function ProfileScreen() {
     if (!checkGeoFence()) {
       showToast({
         type: 'error',
-        title: '위치 인증 필요',
-        message: '체육관에서만 콕 운반 인증이 가능해요!',
+        title: t('profile.geoTitle'),
+        message: t('profile.geoShuttlecockCarryOnly'),
       });
       return;
     }
@@ -204,8 +216,8 @@ export default function ProfileScreen() {
     setShowCockCarry(false);
     showToast({
       type: 'success',
-      title: '콕 운반 인증 완료!',
-      message: `+${POINT_EARN.NET_SETUP}P · 감사합니다 🏸`,
+      title: t('profile.shuttlecockCarrySuccessTitle'),
+      message: t('profile.shuttlecockCarrySuccessMessage', { points: POINT_EARN.NET_SETUP }),
     });
   };
 
@@ -213,15 +225,15 @@ export default function ProfileScreen() {
     if (!checkGeoFence()) {
       showToast({
         type: 'error',
-        title: '위치 인증 필요',
-        message: '체육관에서만 셔틀콕을 수령할 수 있어요!',
+        title: t('profile.geoTitle'),
+        message: t('profile.geoShuttlecockClaimOnly'),
       });
       return;
     }
     const r = claimShuttlecock(currentUser.id);
     showToast({
       type: r.success ? 'success' : 'warning',
-      title: r.success ? '셔틀콕 수령' : '',
+      title: r.success ? t('profile.shuttlecockClaimTitle') : '',
       message: r.message,
     });
   };
@@ -288,10 +300,10 @@ export default function ProfileScreen() {
             onPress={() => router.push('/settings')}
             style={styles.settingsBtn}
             accessibilityRole="button"
-            accessibilityLabel="설정"
+            accessibilityLabel={t('common.settings')}
           >
             <Ionicons name="settings-outline" size={22} color={colors.primary} />
-            <Text style={styles.settingsBtnText}>설정</Text>
+            <Text style={styles.settingsBtnText}>{t('common.settings')}</Text>
           </Pressable>
         </View>
 
@@ -308,12 +320,12 @@ export default function ProfileScreen() {
           >
             <Text style={[styles.statValue, isMobile && statValueMobile(scaledTypography)]}>{currentUser.elo}</Text>
             <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Elo</Text>
-            <Text style={styles.statHint}>순위표 보기</Text>
+            <Text style={styles.statHint}>{t('profile.viewRanking')}</Text>
           </Pressable>
           ) : null}
           <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Text style={[styles.statValue, isMobile && statValueMobile(scaledTypography)]}>{hasGameStats ? `${winRate}%` : '—'}</Text>
-            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>승률</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>{t('profile.winRate')}</Text>
           </Card>
           {pointsOn ? (
           <Pressable
@@ -326,8 +338,8 @@ export default function ProfileScreen() {
             ]}
           >
             <Text style={[styles.statValue, isMobile && statValueMobile(scaledTypography)]}>{currentUser.points}P</Text>
-            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>포인트</Text>
-            <Text style={styles.statHint}>내역 보기</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>{t('profile.points')}</Text>
+            <Text style={styles.statHint}>{t('profile.viewHistory')}</Text>
           </Pressable>
           ) : null}
           <Pressable
@@ -340,13 +352,13 @@ export default function ProfileScreen() {
             ]}
           >
             <Text style={[styles.statValue, isMobile && statValueMobile(scaledTypography)]}>{currentUser.totalGames}</Text>
-            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>총 게임</Text>
-            <Text style={styles.statHint}>전적 보기</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>{t('profile.totalGames')}</Text>
+            <Text style={styles.statHint}>{t('profile.viewMatches')}</Text>
           </Pressable>
         </View>
 
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>오늘 참석</Text>
+          <Text style={styles.sectionTitle}>{t('profile.sectionAttendance')}</Text>
           <ArrivalScheduleCard />
         </Card>
 
@@ -371,12 +383,16 @@ export default function ProfileScreen() {
 
         {pointsOn ? (
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>🧹 봉사 · 소모품</Text>
+          <Text style={styles.sectionTitle}>{t('profile.volunteerTitle')}</Text>
           <Text style={styles.sectionHint}>
-            청소 +{POINT_EARN.CLEANING}P · 네트 +{POINT_EARN.NET_SETUP}P · 셔틀콕 -{POINT_SPEND.SHUTTLECOCK}P
+            {t('profile.volunteerPointsHint', {
+              cleaning: POINT_EARN.CLEANING,
+              net: POINT_EARN.NET_SETUP,
+              shuttlecock: POINT_SPEND.SHUTTLECOCK,
+            })}
           </Text>
           {cleaningEntries.length === 0 ? (
-            <ProfileEmptyState message="아직 청소 인증 기록이 없어요" />
+            <ProfileEmptyState message={t('profile.volunteerEmptyLeaderboard')} />
           ) : (
             cleaningEntries.map((entry, idx) => (
             <View key={entry.id} style={styles.leaderRow}>
@@ -389,25 +405,25 @@ export default function ProfileScreen() {
           )}
           <View style={styles.serviceActions}>
             <Button
-              title={`청소 인증 (+${POINT_EARN.CLEANING}P)`}
+              title={t('profile.volunteerCleaning', { points: POINT_EARN.CLEANING })}
               onPress={() => setShowCleaning(true)}
               fullWidth
               variant="outline"
             />
             <Button
-              title={`네트 설치·철거 (+${POINT_EARN.NET_SETUP}P)`}
+              title={t('profile.volunteerNet', { points: POINT_EARN.NET_SETUP })}
               onPress={() => setShowNetSetup(true)}
               fullWidth
               variant="outline"
             />
             <Button
-              title={`콕 운반 (동방) (+${POINT_EARN.NET_SETUP}P)`}
+              title={t('profile.volunteerShuttlecockCarry', { points: POINT_EARN.NET_SETUP })}
               onPress={() => setShowCockCarry(true)}
               fullWidth
               variant="outline"
             />
             <Button
-              title={`셔틀콕 수령 (-${POINT_SPEND.SHUTTLECOCK}P)`}
+              title={t('profile.volunteerShuttlecockClaim', { points: POINT_SPEND.SHUTTLECOCK })}
               onPress={handleShuttlecockClaim}
               fullWidth
               variant="secondary"
@@ -417,7 +433,7 @@ export default function ProfileScreen() {
         ) : null}
 
         <Button
-          title="로그아웃"
+          title={t('common.logout')}
           onPress={() => {
             void logout().then(() => router.replace('/login'));
           }}
@@ -430,7 +446,7 @@ export default function ProfileScreen() {
           style={styles.deleteAccountBtn}
           accessibilityRole="button"
         >
-          <Text style={styles.deleteAccountText}>계정 삭제</Text>
+          <Text style={styles.deleteAccountText}>{t('profile.deleteAccount')}</Text>
         </Pressable>
       </ScrollView>
       </PageContainer>
@@ -466,22 +482,22 @@ export default function ProfileScreen() {
       {pointsOn && showNetSetup && (
         <View style={styles.cleaningModal}>
           <View style={styles.cleaningSheet}>
-            <Text style={styles.modalTitle}>네트 설치 · 철거 인증</Text>
-            <Text style={styles.label}>작업 선택</Text>
+            <Text style={styles.modalTitle}>{t('profile.modalNetTitle')}</Text>
+            <Text style={styles.label}>{t('profile.modalTaskSelect')}</Text>
             <View style={styles.areaGrid}>
-              {NET_SETUP_AREAS.map((area) => (
+              {NET_SETUP_AREAS.map((area, i) => (
                 <Pressable
                   key={area}
                   onPress={() => setSelectedNetArea(area)}
                   style={[styles.areaChip, selectedNetArea === area && styles.areaChipActive]}
                 >
                   <Text style={[styles.areaText, selectedNetArea === area && styles.areaTextActive]}>
-                    {area}
+                    {netLabels[i]}
                   </Text>
                 </Pressable>
               ))}
             </View>
-            <Text style={styles.label}>참여 인원</Text>
+            <Text style={styles.label}>{t('profile.modalParticipantCount')}</Text>
             <TextInput
               style={styles.input}
               value={participantCount}
@@ -489,8 +505,8 @@ export default function ProfileScreen() {
               keyboardType="number-pad"
             />
             <View style={styles.modalActions}>
-              <Button title="취소" onPress={() => setShowNetSetup(false)} variant="ghost" />
-              <Button title="인증 제출" onPress={handleNetSetupSubmit} variant="secondary" />
+              <Button title={t('common.cancel')} onPress={() => setShowNetSetup(false)} variant="ghost" />
+              <Button title={t('common.submit')} onPress={handleNetSetupSubmit} variant="secondary" />
             </View>
           </View>
         </View>
@@ -498,22 +514,22 @@ export default function ProfileScreen() {
       {pointsOn && showCockCarry && (
         <View style={styles.cleaningModal}>
           <View style={styles.cleaningSheet}>
-            <Text style={styles.modalTitle}>셔틀콕 운반 인증</Text>
-            <Text style={styles.label}>작업 선택</Text>
+            <Text style={styles.modalTitle}>{t('profile.modalShuttlecockCarryTitle')}</Text>
+            <Text style={styles.label}>{t('profile.modalTaskSelect')}</Text>
             <View style={styles.areaGrid}>
-              {SHUTTLECOCK_CARRY_AREAS.map((area) => (
+              {SHUTTLECOCK_CARRY_AREAS.map((area, i) => (
                 <Pressable
                   key={area}
                   onPress={() => setSelectedCockArea(area)}
                   style={[styles.areaChip, selectedCockArea === area && styles.areaChipActive]}
                 >
                   <Text style={[styles.areaText, selectedCockArea === area && styles.areaTextActive]}>
-                    {area}
+                    {shuttlecockLabels[i]}
                   </Text>
                 </Pressable>
               ))}
             </View>
-            <Text style={styles.label}>참여 인원</Text>
+            <Text style={styles.label}>{t('profile.modalParticipantCount')}</Text>
             <TextInput
               style={styles.input}
               value={participantCount}
@@ -521,8 +537,8 @@ export default function ProfileScreen() {
               keyboardType="number-pad"
             />
             <View style={styles.modalActions}>
-              <Button title="취소" onPress={() => setShowCockCarry(false)} variant="ghost" />
-              <Button title="인증 제출" onPress={handleCockCarrySubmit} variant="secondary" />
+              <Button title={t('common.cancel')} onPress={() => setShowCockCarry(false)} variant="ghost" />
+              <Button title={t('common.submit')} onPress={handleCockCarrySubmit} variant="secondary" />
             </View>
           </View>
         </View>
@@ -530,22 +546,22 @@ export default function ProfileScreen() {
       {pointsOn && showCleaning && (
         <View style={styles.cleaningModal}>
           <View style={styles.cleaningSheet}>
-            <Text style={styles.modalTitle}>청소 인증</Text>
-            <Text style={styles.label}>구역 선택</Text>
+            <Text style={styles.modalTitle}>{t('profile.modalCleaningTitle')}</Text>
+            <Text style={styles.label}>{t('profile.modalAreaSelect')}</Text>
             <View style={styles.areaGrid}>
-              {CLEANING_AREAS.map((area) => (
+              {CLEANING_AREAS.map((area, i) => (
                 <Pressable
                   key={area}
                   onPress={() => setSelectedArea(area)}
                   style={[styles.areaChip, selectedArea === area && styles.areaChipActive]}
                 >
                   <Text style={[styles.areaText, selectedArea === area && styles.areaTextActive]}>
-                    {area}
+                    {cleaningLabels[i]}
                   </Text>
                 </Pressable>
               ))}
             </View>
-            <Text style={styles.label}>참여 인원</Text>
+            <Text style={styles.label}>{t('profile.modalParticipantCount')}</Text>
             <TextInput
               style={styles.input}
               value={participantCount}
@@ -553,8 +569,8 @@ export default function ProfileScreen() {
               keyboardType="number-pad"
             />
             <View style={styles.modalActions}>
-              <Button title="취소" onPress={() => setShowCleaning(false)} variant="ghost" />
-              <Button title="인증 제출" onPress={handleCleaningSubmit} variant="secondary" />
+              <Button title={t('common.cancel')} onPress={() => setShowCleaning(false)} variant="ghost" />
+              <Button title={t('common.submit')} onPress={handleCleaningSubmit} variant="secondary" />
             </View>
           </View>
         </View>
@@ -563,18 +579,18 @@ export default function ProfileScreen() {
       <NumericConfirmModal
         visible={deleteStep !== 'idle'}
         step={deleteStep === 'confirm' || deleteStep === 'code' ? deleteStep : 'confirm'}
-        title="계정 삭제"
-        body="계정을 삭제하면 전적·포인트 기록이 사라지고, 같은 학번으로 다시 가입할 수 있어요."
-        codeHint="아래 10자리 숫자를 그대로 입력하면 계정이 삭제됩니다."
+        title={t('profile.deleteAccount')}
+        body={t('profile.deleteAccountBody')}
+        codeHint={t('profile.deleteAccountCodeHint')}
         confirmCode={deleteConfirmCode}
         codeInput={deleteCodeInput}
         onCodeInputChange={setDeleteCodeInput}
         onClose={closeDeleteFlow}
         onProceedToCode={proceedDeleteToCode}
         onExecute={() => void executeDeleteAccount()}
-        executeLabel="계정 삭제"
+        executeLabel={t('profile.deleteAccount')}
         executing={deletingAccount}
-        executingLabel="삭제 중…"
+        executingLabel={t('profile.deleteAccountExecuting')}
       />
     </SafeAreaView>
   );

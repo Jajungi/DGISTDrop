@@ -62,6 +62,13 @@ export function mapCourtRpcError(err: unknown): string {
     return '이 코트는 이미 사용 중이에요.';
   }
   if (m.includes('staff only')) return '운영진만 코트 현황을 바꿀 수 있어요.';
+  if (
+    m.includes('rpc_set_court_setup_state') ||
+    m.includes('pgrst202') ||
+    m.includes('could not find the function')
+  ) {
+    return '코트 3단계 현황 DB가 아직 없어요. Supabase에서 048_court_setup_and_lesson_timer.sql 을 실행해 주세요.';
+  }
   if (m.includes('insufficient points')) return '포인트가 부족해요.';
   if (m.includes('outside gym fence') || m.includes('location required')) {
     return '체육관 근처에서만 예약할 수 있어요.';

@@ -10,8 +10,9 @@ import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { todayAttendanceIntent } from '@/src/utils/attendanceIntent';
 import { formatCompactDayLabel, getSeoulWeekday, isScheduleForToday, normalizeHHMM } from '@/src/utils/dateFormat';
 import { useSeoulTodayKey } from '@/src/hooks/useSeoulTodayKey';
-import { isActivityDay, getActivityDayLabel } from '@/src/services/activityTime';
-import { formatActivityScheduleLabel } from '@/src/utils/activitySchedule';
+import { isActivityDay } from '@/src/services/activityTime';
+import { useActivityScheduleLabel } from '@/src/hooks/useGuideSections';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography } from '@/src/theme';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -19,6 +20,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 export function ArrivalScheduleCard() {
+  const { t } = useI18n();
   const currentUser = useAuthStore((s) => s.currentUser);
   const updateUserSchedule = useAuthStore((s) => s.updateUserSchedule);
   const setAttendanceIntent = useAuthStore((s) => s.setAttendanceIntent);
@@ -30,10 +32,7 @@ export function ArrivalScheduleCard() {
   const todayKey = useSeoulTodayKey();
   const todayLabel = useMemo(() => formatCompactDayLabel(), [todayKey]);
   const activityDay = useMemo(() => isActivityDay(), [schedule, events, cancelledDate, todayKey]);
-  const scheduleLabel = useMemo(
-    () => formatActivityScheduleLabel(schedule, getActivityDayLabel),
-    [schedule]
-  );
+  const scheduleLabel = useActivityScheduleLabel();
   const intent = todayAttendanceIntent(currentUser, todayKey);
   const showTime = activityDay && intent === 'going';
 
@@ -80,7 +79,7 @@ export function ArrivalScheduleCard() {
     return (
       <View style={styles.wrap}>
         <Text style={styles.hint}>
-          오늘은 활동일이 아니에요. 참석 여부는 {scheduleLabel}에만 고를 수 있어요.
+          {t('friends.scheduleNotActivityDay', { schedule: scheduleLabel })}
         </Text>
       </View>
     );
@@ -106,7 +105,7 @@ export function ArrivalScheduleCard() {
       showToast({
         type: 'warning',
         title: '',
-        message: '시간을 선택해 주세요.',
+        message: t('friends.scheduleSelectTimeRequired'),
       });
       return;
     }
@@ -120,11 +119,11 @@ export function ArrivalScheduleCard() {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.question}>오늘 오시나요?</Text>
+      <Text style={styles.question}>{t('notifications.attendanceTitle')}</Text>
       <View style={styles.row}>
         <View style={styles.rowBtn}>
           <Button
-            title="참석"
+            title={t('notifications.going')}
             onPress={chooseGoing}
             fullWidth
             variant={intent === 'going' ? 'primary' : 'outline'}
@@ -132,7 +131,7 @@ export function ArrivalScheduleCard() {
         </View>
         <View style={styles.rowBtn}>
           <Button
-            title="불참"
+            title={t('notifications.notGoing')}
             onPress={chooseNotGoing}
             fullWidth
             variant={intent === 'not_going' ? 'secondary' : 'outline'}
@@ -141,7 +140,7 @@ export function ArrivalScheduleCard() {
       </View>
 
       {intent === 'not_going' ? (
-        <Text style={styles.hint}>오늘은 불참이에요. 참석으로 바꾸면 올 사람 수에 들어갑니다.</Text>
+        <Text style={styles.hint}>{t('friends.scheduleNotGoingHint')}</Text>
       ) : null}
 
       {showTime ? (
@@ -153,7 +152,7 @@ export function ArrivalScheduleCard() {
             },
           ]}
         >
-          <Text style={styles.question}>언제 참석하시나요?</Text>
+          <Text style={styles.question}>{t('friends.attendanceWhenArriving')}</Text>
           <TimeRangeSlider
             startHour={activityBounds.startHour}
             startMinute={activityBounds.startMinute}
@@ -164,8 +163,14 @@ export function ArrivalScheduleCard() {
             onChange={handleTimeChange}
             dateLabel={todayLabel}
           />
-          <Text style={styles.hint}>친구 탭에 오늘 도착 시간으로 보여요. 올 사람 수는 참석/불참만 셉니다.</Text>
-          <Button title="오늘 시간 저장" variant="outline" fullWidth onPress={handleSave} style={styles.saveBtn} />
+          <Text style={styles.hint}>{t('friends.scheduleArrivalHint')}</Text>
+          <Button
+            title={t('friends.scheduleSaveTodayTime')}
+            variant="outline"
+            fullWidth
+            onPress={handleSave}
+            style={styles.saveBtn}
+          />
         </Animated.View>
       ) : null}
     </View>

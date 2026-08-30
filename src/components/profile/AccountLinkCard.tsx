@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { Card } from '@/src/components/ui/Card';
+import { useI18n } from '@/src/i18n/useI18n';
 import { spacing, typography, borderRadius } from '@/src/theme';
 import { useAppTheme } from '@/src/theme/ThemeProvider';
 import { GoogleBrandIcon } from '@/src/components/auth/SocialBrandIcons';
@@ -62,6 +63,7 @@ function GoogleIconCircle({
 }
 
 export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
+  const { t } = useI18n();
   const { colors: theme } = useAppTheme();
   const googleStyles = googleAuthButtonStyles(theme);
   const { width: windowWidth } = useWindowDimensions();
@@ -100,7 +102,8 @@ export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
       if (result.oauthRedirect) return;
       onToast(
         result.success ? (isLinked ? 'info' : 'success') : 'warning',
-        result.message || (isLinked ? '연동 해제에 실패했어요.' : '연동에 실패했어요.')
+        result.message ||
+          (isLinked ? t('profile.accountLinkUnlinkFailed') : t('profile.accountLinkLinkFailed'))
       );
       if (result.success) await refresh();
     } finally {
@@ -114,7 +117,9 @@ export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
   const isLinked = provider ? linked.includes(provider) : false;
   const loadingIcon = busy === provider;
   const providerLabel = provider ? SOCIAL_PROVIDER_LABELS[provider] : 'Google';
-  const actionLabel = isLinked ? `${providerLabel} 연동됨` : `${providerLabel} 연동`;
+  const actionLabel = isLinked
+    ? t('profile.accountLinkLinked', { provider: providerLabel })
+    : t('profile.accountLinkLink', { provider: providerLabel });
 
   const renderProviderControl = () => {
     if (loading) {
@@ -194,15 +199,15 @@ export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
         <View style={styles.wideWrap}>
           <View style={styles.headerRow}>
             <Ionicons name="link-outline" size={18} color={theme.primary} />
-            <Text style={[styles.title, { color: theme.text }]}>간편 로그인</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('login.socialDivider')}</Text>
             {isLinked ? (
               <View style={[styles.badge, { backgroundColor: theme.success }]}>
-                <Text style={styles.badgeText}>ON</Text>
+                <Text style={styles.badgeText}>{t('push.on')}</Text>
               </View>
             ) : null}
           </View>
           <Text style={[styles.wideHint, { color: theme.textMuted }]}>
-            Google을 연동하면 로그인 탭에서 간편 로그인을 쓸 수 있어요.
+            {t('profile.accountLinkGoogleHint')}
           </Text>
           {renderProviderControl()}
         </View>
@@ -210,15 +215,15 @@ export function AccountLinkCard({ onToast }: AccountLinkCardProps) {
         <View style={styles.row}>
           <Ionicons name="link-outline" size={18} color={theme.primary} />
           <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
-            간편 로그인
+            {t('login.socialDivider')}
           </Text>
           {isLinked ? (
             <View style={[styles.badge, { backgroundColor: theme.success }]}>
-              <Text style={styles.badgeText}>ON</Text>
+              <Text style={styles.badgeText}>{t('push.on')}</Text>
             </View>
           ) : null}
           <Text style={[styles.hint, { color: theme.textMuted }]} numberOfLines={1}>
-            Google을 연동하면 로그인 탭에서 간편 로그인을 쓸 수 있어요.
+            {t('profile.accountLinkGoogleHint')}
           </Text>
           {renderProviderControl()}
         </View>

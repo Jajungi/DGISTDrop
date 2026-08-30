@@ -2,8 +2,9 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { POINT_EARN, POINT_SPEND } from '@/src/constants/points';
 import { colors, borderRadius, spacing, typography } from '@/src/theme';
+import { useI18n } from '@/src/i18n/useI18n';
 
-const ROWS: { category: string; activity: string; points: string; positive?: boolean }[] = [
+const ROWS_KO: { category: string; activity: string; points: string; positive?: boolean }[] = [
   { category: '적립 (+)', activity: '동아리비 납부 인증', points: `+${POINT_EARN.CLUB_FEE}p`, positive: true },
   {
     category: '적립 (+)',
@@ -20,15 +21,34 @@ const ROWS: { category: string; activity: string; points: string; positive?: boo
   { category: '사용 (-)', activity: '새 경기용 셔틀콕 수령', points: `-${POINT_SPEND.SHUTTLECOCK}p`, positive: false },
 ];
 
+const ROWS_EN: { category: string; activity: string; points: string; positive?: boolean }[] = [
+  { category: 'Earn (+)', activity: 'Club fee payment', points: `+${POINT_EARN.CLUB_FEE}p`, positive: true },
+  {
+    category: 'Earn (+)',
+    activity: 'Gym check-in (within 500m)',
+    points: `Full +${POINT_EARN.ATTENDANCE_FULL}p / Associate +${POINT_EARN.ATTENDANCE_ASSOCIATE}p`,
+    positive: true,
+  },
+  { category: 'Earn (+)', activity: 'Cleaning & tidying', points: `+${POINT_EARN.CLEANING}p`, positive: true },
+  { category: 'Earn (+)', activity: 'Net setup / removal', points: `+${POINT_EARN.NET_SETUP}p`, positive: true },
+  { category: 'Earn (+)', activity: 'Match win (per player)', points: `+${POINT_EARN.MATCH_WIN}p`, positive: true },
+  { category: 'Earn (+)', activity: 'Match loss (per player)', points: `+${POINT_EARN.MATCH_LOSS}p`, positive: true },
+  { category: 'Spend (-)', activity: 'General court booking (per game)', points: `-${POINT_SPEND.COURT_GENERAL}p`, positive: false },
+  { category: 'Spend (-)', activity: 'Center courts 4–6 (per game)', points: `-${POINT_SPEND.COURT_CENTER}p`, positive: false },
+  { category: 'Spend (-)', activity: 'New shuttlecock pickup', points: `-${POINT_SPEND.SHUTTLECOCK}p`, positive: false },
+];
+
 export function GuidePointsTable() {
+  const { t, locale } = useI18n();
+  const rows = locale === 'en' ? ROWS_EN : ROWS_KO;
   return (
     <View style={styles.wrap}>
       <View style={styles.headerRow}>
-        <Text style={[styles.headerCell, styles.colCat]}>구분</Text>
-        <Text style={[styles.headerCell, styles.colAct]}>활동</Text>
-        <Text style={[styles.headerCell, styles.colPts]}>포인트</Text>
+        <Text style={[styles.headerCell, styles.colCat]}>{t('guide.pointsColCategory')}</Text>
+        <Text style={[styles.headerCell, styles.colAct]}>{t('guide.pointsColActivity')}</Text>
+        <Text style={[styles.headerCell, styles.colPts]}>{t('guide.pointsColPoints')}</Text>
       </View>
-      {ROWS.map((row, i) => (
+      {rows.map((row, i) => (
         <View key={i} style={[styles.row, i % 2 === 1 && styles.rowAlt]}>
           <Text style={[styles.cell, styles.colCat, styles.catText]}>{row.category}</Text>
           <Text style={[styles.cell, styles.colAct]}>{row.activity}</Text>

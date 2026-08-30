@@ -10,6 +10,7 @@ import { GuidePointsTable } from './GuidePointsTable';
 import { TierDistribution } from './TierDistribution';
 import { GuidePwaInstallPanel } from './GuidePwaInstallPanel';
 import { colors, borderRadius, spacing, typography } from '@/src/theme';
+import { useI18n } from '@/src/i18n/useI18n';
 import { ExternalLink } from '@/components/ExternalLink';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -21,6 +22,7 @@ interface GuideAccordionProps {
 }
 
 export function GuideAccordion({ sections }: GuideAccordionProps) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const toggle = (id: string) => {
@@ -76,9 +78,10 @@ export function GuideAccordion({ sections }: GuideAccordionProps) {
                       </View>
                       {section.pwaInstallGuide &&
                       Platform.OS === 'web' &&
-                      item.title === '활동 알림 (푸시)' ? (
+                      (item.title === '활동 알림 (푸시)' ||
+                        item.title === t('guide.pushItemTitle')) ? (
                         <View style={styles.pwaGuide}>
-                          <Text style={styles.pwaGuideHeading}>웹앱 설치</Text>
+                          <Text style={styles.pwaGuideHeading}>{t('guide.pwaInstallHeading')}</Text>
                           <GuidePwaInstallPanel />
                         </View>
                       ) : null}
@@ -99,13 +102,13 @@ export function GuideAccordion({ sections }: GuideAccordionProps) {
             onPress={replayTour}
             style={styles.historyLink}
             accessibilityRole="button"
-            accessibilityLabel="탭 안내 다시 보기"
+            accessibilityLabel={t('guide.replayTour')}
           >
-          <Text style={styles.historyLinkText}>탭 안내 다시 보기</Text>
+          <Text style={styles.historyLinkText}>{t('guide.replayTour')}</Text>
         </Pressable>
       ) : null}
       <ExternalLink href={changelogHref} style={styles.historyLink}>
-        <Text style={styles.historyLinkText}>소프트웨어 변경 이력</Text>
+        <Text style={styles.historyLinkText}>{t('guide.changelog')}</Text>
       </ExternalLink>
     </View>
   );

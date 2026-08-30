@@ -9,9 +9,11 @@ import { RankBadge } from '@/src/components/ui/RankBadge';
 import { FriendActionButton } from './FriendActionButton';
 import { getWinRate } from '@/src/services/points';
 import { formatArrivalLabel } from '@/src/utils/friendsPresence';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography, borderRadius, shadows } from '@/src/theme';
 
 export function FriendSearchPanel() {
+  const { t } = useI18n();
   const query = useSearchStore((s) => s.query);
   const clearQuery = useSearchStore((s) => s.clearQuery);
   const users = useAuthStore((s) => s.users);
@@ -25,17 +27,17 @@ export function FriendSearchPanel() {
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
-        <Text style={styles.title}>검색 결과</Text>
-        <Text style={styles.count}>{results.length}명</Text>
-        <Pressable onPress={clearQuery} hitSlop={8} accessibilityLabel="검색 닫기">
-          <Text style={styles.clear}>닫기</Text>
+        <Text style={styles.title}>{t('friends.searchResults')}</Text>
+        <Text style={styles.count}>{t('common.peopleCount', { count: results.length })}</Text>
+        <Pressable onPress={clearQuery} hitSlop={8} accessibilityLabel={t('common.searchClose')}>
+          <Text style={styles.clear}>{t('common.close')}</Text>
         </Pressable>
       </View>
       <Text style={styles.queryLabel}>「{trimmed}」</Text>
 
       <View style={styles.card}>
         {results.length === 0 ? (
-          <Text style={styles.empty}>검색 결과가 없어요</Text>
+          <Text style={styles.empty}>{t('friends.searchEmpty')}</Text>
         ) : (
           results.map((user, i) => (
             <React.Fragment key={user.id}>
@@ -51,10 +53,12 @@ export function FriendSearchPanel() {
                     {eloOn ? <RankBadge rank={user.rank} size="sm" /> : null}
                   </View>
                   <Text style={styles.arrival}>
-                    {formatArrivalLabel(user) ?? '일정 미등록'}
+                    {formatArrivalLabel(user) ?? t('common.noSchedule')}
                   </Text>
                   <Text style={styles.meta}>
-                    {eloOn ? `ELO ${user.elo} · ` : ''}승률 {getWinRate(user.wins, user.losses)}% · {user.wins}승 {user.losses}패
+                    {eloOn ? `ELO ${user.elo} · ` : ''}
+                    {t('common.winRate')} {getWinRate(user.wins, user.losses)}% · {user.wins}
+                    {t('common.wins')} {user.losses}{t('common.losses')}
                   </Text>
                 </View>
                 <FriendActionButton otherUserId={user.id} compact />

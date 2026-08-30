@@ -7,6 +7,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { useFriendStore } from '@/src/stores/friendStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { colors, spacing, typography, borderRadius, shadows } from '@/src/theme';
+import { useI18n } from '@/src/i18n/useI18n';
 
 interface FriendRequestsPanelProps {
   incoming: FriendRequest[];
@@ -14,6 +15,7 @@ interface FriendRequestsPanelProps {
 }
 
 export function FriendRequestsPanel({ incoming, outgoing }: FriendRequestsPanelProps) {
+  const { t } = useI18n();
   const currentUser = useAuthStore((s) => s.currentUser);
   const users = useAuthStore((s) => s.users);
   const acceptFriendRequest = useFriendStore((s) => s.acceptFriendRequest);
@@ -37,7 +39,9 @@ export function FriendRequestsPanel({ incoming, outgoing }: FriendRequestsPanelP
     <View style={styles.wrap}>
       {incoming.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.title}>받은 친구 신청 ({incoming.length})</Text>
+          <Text style={styles.title}>
+            {t('friends.incomingRequests', { count: incoming.length })}
+          </Text>
           <View style={styles.card}>
             {incoming.map((req, i) => {
               const av = avatarFor(req.fromUserId, req.fromUserName);
@@ -60,7 +64,7 @@ export function FriendRequestsPanel({ incoming, outgoing }: FriendRequestsPanelP
                           {req.fromUserName}
                         </Text>
                         <Text style={styles.sub} numberOfLines={1}>
-                          친구 신청을 보냈어요
+                          {t('friends.requestSent')}
                         </Text>
                       </View>
                     </Pressable>
@@ -70,7 +74,7 @@ export function FriendRequestsPanel({ incoming, outgoing }: FriendRequestsPanelP
                         style={[styles.btn, styles.accept]}
                       >
                         <Text style={styles.btnTextLight} numberOfLines={1}>
-                          수락
+                          {t('common.accept')}
                         </Text>
                       </Pressable>
                       <Pressable
@@ -78,7 +82,7 @@ export function FriendRequestsPanel({ incoming, outgoing }: FriendRequestsPanelP
                         style={[styles.btn, styles.reject]}
                       >
                         <Text style={styles.btnTextMuted} numberOfLines={1}>
-                          거절
+                          {t('common.reject')}
                         </Text>
                       </Pressable>
                     </View>
@@ -92,7 +96,9 @@ export function FriendRequestsPanel({ incoming, outgoing }: FriendRequestsPanelP
 
       {outgoing.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.title}>보낸 친구 신청 ({outgoing.length})</Text>
+          <Text style={styles.title}>
+            {t('friends.outgoingRequests', { count: outgoing.length })}
+          </Text>
           <View style={styles.card}>
             {outgoing.map((req, i) => {
               const av = avatarFor(req.toUserId, req.toUserName);
@@ -111,7 +117,7 @@ export function FriendRequestsPanel({ incoming, outgoing }: FriendRequestsPanelP
                           {req.toUserName}
                         </Text>
                         <Text style={styles.sub} numberOfLines={1}>
-                          응답 대기 중
+                          {t('friends.waitingResponse')}
                         </Text>
                       </View>
                     </Pressable>
@@ -120,7 +126,7 @@ export function FriendRequestsPanel({ incoming, outgoing }: FriendRequestsPanelP
                       style={[styles.btn, styles.reject]}
                     >
                       <Text style={styles.btnTextMuted} numberOfLines={1}>
-                        취소
+                        {t('friends.cancelRequest')}
                       </Text>
                     </Pressable>
                   </View>

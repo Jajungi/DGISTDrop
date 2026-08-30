@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import type { PointTransaction } from '@/src/types';
 import { usePointStore } from '@/src/stores/pointStore';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography, borderRadius, glass, withAlpha } from '@/src/theme';
 
 type FilterTab = 'all' | 'earned' | 'spent';
@@ -18,31 +19,6 @@ interface PointsHistorySheetProps {
   userId: string;
   balance: number;
   onClose: () => void;
-}
-
-const TAB_LABELS: { key: FilterTab; label: string }[] = [
-  { key: 'all', label: '전체' },
-  { key: 'earned', label: '받은 내역' },
-  { key: 'spent', label: '쓴 내역' },
-];
-
-function formatWhen(iso: string) {
-  const d = new Date(iso);
-  const now = new Date();
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
-
-  const time = d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-  if (sameDay) return `오늘 ${time}`;
-
-  return d.toLocaleDateString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 function typeIcon(type: PointTransaction['type']) {
@@ -72,7 +48,13 @@ function typeIcon(type: PointTransaction['type']) {
   }
 }
 
-function TransactionRow({ tx }: { tx: PointTransaction }) {
+function TransactionRow({
+  tx,
+  formatWhen,
+}: {
+  tx: PointTransaction;
+  formatWhen: (iso: string) => string;
+}) {
   const earned = tx.amount > 0;
 
   return (
@@ -95,23 +77,55 @@ function TransactionRow({ tx }: { tx: PointTransaction }) {
 }
 
 export function PointsHistorySheet({ visible, userId, balance, onClose }: PointsHistorySheetProps) {
+  const { t, locale } = useI18n();
   const getTransactionsForUser = usePointStore((s) => s.getTransactionsForUser);
   const [tab, setTab] = useState<FilterTab>('all');
+
+  const tabLabels: { key: FilterTab; label: string }[] = useMemo(
+    () => [
+      { key: 'all', label: t('profile.pointsHistoryTabAll') },
+      { key: 'earned', label: t('profile.pointsHistoryTabEarned') },
+      { key: 'spent', label: t('profile.pointsHistoryTabSpent') },
+    ],
+    [t]
+  );
+
+  const formatWhen = useMemo(() => {
+    const timeLocale = locale === 'ko' ? 'ko-KR' : 'en-US';
+    return (iso: string) => {
+      const d = new Date(iso);
+      const now = new Date();
+      const sameDay =
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate();
+
+      const time = d.toLocaleTimeString(timeLocale, { hour: '2-digit', minute: '2-digit' });
+      if (sameDay) return t('common.todayAt', { time });
+
+      return d.toLocaleDateString(timeLocale, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    };
+  }, [locale, t]);
 
   const all = useMemo(() => getTransactionsForUser(userId), [getTransactionsForUser, userId]);
 
   const filtered = useMemo(() => {
-    if (tab === 'earned') return all.filter((t) => t.amount > 0);
-    if (tab === 'spent') return all.filter((t) => t.amount < 0);
+    if (tab === 'earned') return all.filter((tx) => tx.amount > 0);
+    if (tab === 'spent') return all.filter((tx) => tx.amount < 0);
     return all;
   }, [all, tab]);
 
   const earnedTotal = useMemo(
-    () => all.filter((t) => t.amount > 0).reduce((sum, t) => sum + t.amount, 0),
+    () => all.filter((tx) => tx.amount > 0).reduce((sum, tx) => sum + tx.amount, 0),
     [all]
   );
   const spentTotal = useMemo(
-    () => Math.abs(all.filter((t) => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)),
+    () => Math.abs(all.filter((tx) => tx.amount < 0).reduce((sum, tx) => sum + tx.amount, 0)),
     [all]
   );
 
@@ -122,19 +136,23 @@ export function PointsHistorySheet({ visible, userId, balance, onClose }: Points
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" />
       <View style={styles.sheet}>
         <View style={styles.handle} />
-        <Text style={styles.title}>포인트 내역</Text>
+        <Text style={styles.title}>{t('profile.pointsHistoryTitle')}</Text>
 
         <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>보유 포인트</Text>
+          <Text style={styles.balanceLabel}>{t('profile.pointsHistoryBalance')}</Text>
           <Text style={styles.balanceValue}>{balance}P</Text>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryEarned}>받음 +{earnedTotal}P</Text>
-            <Text style={styles.summarySpent}>사용 -{spentTotal}P</Text>
+            <Text style={styles.summaryEarned}>
+              {t('profile.pointsHistoryEarned', { points: earnedTotal })}
+            </Text>
+            <Text style={styles.summarySpent}>
+              {t('profile.pointsHistorySpent', { points: spentTotal })}
+            </Text>
           </View>
         </View>
 
         <View style={styles.tabs}>
-          {TAB_LABELS.map(({ key, label }) => (
+          {tabLabels.map(({ key, label }) => (
             <Pressable
               key={key}
               onPress={() => setTab(key)}
@@ -147,14 +165,14 @@ export function PointsHistorySheet({ visible, userId, balance, onClose }: Points
 
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
           {filtered.length === 0 ? (
-            <Text style={styles.empty}>내역이 없어요.</Text>
+            <Text style={styles.empty}>{t('profile.pointsHistoryEmpty')}</Text>
           ) : (
-            filtered.map((tx) => <TransactionRow key={tx.id} tx={tx} />)
+            filtered.map((tx) => <TransactionRow key={tx.id} tx={tx} formatWhen={formatWhen} />)
           )}
         </ScrollView>
 
         <Pressable onPress={onClose} style={styles.closeBtn}>
-          <Text style={styles.closeBtnText}>닫기</Text>
+          <Text style={styles.closeBtnText}>{t('common.close')}</Text>
         </Pressable>
       </View>
     </View>

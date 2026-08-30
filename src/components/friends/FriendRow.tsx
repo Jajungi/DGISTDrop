@@ -14,6 +14,7 @@ import { useFriendStore } from '@/src/stores/friendStore';
 import { useFriendPrefsStore } from '@/src/stores/friendPrefsStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography } from '@/src/theme';
 
 interface FriendRowProps {
@@ -22,6 +23,7 @@ interface FriendRowProps {
 }
 
 export function FriendRow({ user, compact = false }: FriendRowProps) {
+  const { t } = useI18n();
   const currentUser = useAuthStore((s) => s.currentUser);
   const currentUserId = currentUser?.id;
   const isGuest = useAuthStore((s) => s.isGuestSession);
@@ -74,7 +76,7 @@ export function FriendRow({ user, compact = false }: FriendRowProps) {
               </Text>
             ) : (
               <Text style={styles.noSchedule} numberOfLines={1}>
-                일정 미등록
+                {t('common.noSchedule')}
               </Text>
             )}
             {range && user.scheduledEnd ? (
@@ -86,7 +88,7 @@ export function FriendRow({ user, compact = false }: FriendRowProps) {
           {user.isAtGym ? (
             <View style={styles.hereBadge}>
               <Text style={styles.hereText} numberOfLines={1}>
-                체육관
+                {t('common.gymShort')}
               </Text>
             </View>
           ) : null}
@@ -98,12 +100,12 @@ export function FriendRow({ user, compact = false }: FriendRowProps) {
                 style={[styles.notifyLabel, notifyOn && styles.notifyLabelOn]}
                 numberOfLines={1}
               >
-                도착
+                {t('common.arrival')}
               </Text>
               <Toggle
                 size="sm"
                 value={notifyOn}
-                accessibilityLabel={`${user.name} 도착 알림`}
+                accessibilityLabel={t('friends.arrivalNotifyLabel', { name: user.name })}
                 onValueChange={(on) => {
                   if (!currentUserId) return;
                   void setArrivalNotify(currentUserId, user.id, on);
@@ -111,14 +113,14 @@ export function FriendRow({ user, compact = false }: FriendRowProps) {
                     type: 'info',
                     title: '',
                     message: on
-                      ? `${user.name}님 도착 시 알려드릴게요.`
-                      : `${user.name}님 도착 알림을 껐어요.`,
+                      ? t('friends.arrivalNotifyOn', { name: user.name })
+                      : t('friends.arrivalNotifyOff', { name: user.name }),
                   });
                 }}
               />
             </View>
             {canInvite ? (
-              <Button title="초대" size="sm" variant="outline" onPress={() => setInviteOpen(true)} />
+              <Button title={t('common.invite')} size="sm" variant="outline" onPress={() => setInviteOpen(true)} />
             ) : null}
             <FriendActionButton otherUserId={user.id} compact />
           </View>

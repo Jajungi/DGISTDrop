@@ -19,8 +19,10 @@ import { useFriendsPresence } from '@/src/hooks/useFriendsPresence';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { colors, spacing, typography } from '@/src/theme';
+import { useI18n } from '@/src/i18n/useI18n';
 
 export default function FriendsScreen() {
+  const { t } = useI18n();
   const { isDesktop } = useLayoutMode();
   const [tab, setTab] = useState<FriendsTab>('friends');
   const searchQuery = useSearchStore((s) => s.query);
@@ -54,8 +56,10 @@ export default function FriendsScreen() {
     <SafeAreaView style={styles.safe} edges={[]}>
       <PageContainer>
         <View style={[styles.header, isDesktop && styles.headerDesktop]}>
-          <Text style={[styles.title, isDesktop && styles.titleDesktop]}>친구</Text>
-          <Text style={styles.subtitle}>오늘 {activityStart} – {activityEnd}</Text>
+          <Text style={[styles.title, isDesktop && styles.titleDesktop]}>{t('friends.title')}</Text>
+          <Text style={styles.subtitle}>
+            {t('friends.activityHours', { start: activityStart, end: activityEnd })}
+          </Text>
         </View>
 
         <ClubEventBanner />

@@ -30,9 +30,11 @@ import { getRankIndex } from '@/src/services/elo';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import type { RankTier } from '@/src/types';
 import { colors, spacing, typography, borderRadius, glass } from '@/src/theme';
+import { useI18n } from '@/src/i18n/useI18n';
 
 export default function LobbyScreen() {
   useGeoLocation();
+  const { t } = useI18n();
 
   const rooms = useLobbyStore((s) => s.rooms);
   const requestJoinRoom = useLobbyStore((s) => s.requestJoinRoom);
@@ -71,10 +73,10 @@ export default function LobbyScreen() {
         showToast({
           type: 'info',
           title: '',
-          message: `만료된 모집방 ${n}개를 정리했어요.`,
+          message: t('lobby.expiredRooms', { count: n }),
         });
       }
-    }, [expireStaleRooms, showToast])
+    }, [expireStaleRooms, showToast, t])
   );
 
   const joinTargetRoom = joinTargetId ? rooms.find((r) => r.id === joinTargetId) : null;
@@ -82,7 +84,7 @@ export default function LobbyScreen() {
   const attemptJoin = (roomId: string, password?: string) => {
     if (!currentUser) return;
     if (!checkGeoFence()) {
-      showToast({ type: 'warning', title: '', message: '체육관 도착 후 참여할 수 있어요.' });
+      showToast({ type: 'warning', title: '', message: t('lobby.needAtGym') });
       return;
     }
     void (async () => {
@@ -137,11 +139,11 @@ export default function LobbyScreen() {
   const handleCreate = () => {
     if (!currentUser || !roomTitle.trim()) return;
     if (usePassword && roomPassword.length < 4) {
-      showToast({ type: 'warning', title: '', message: '비밀번호는 4자 이상이어야 해요.' });
+      showToast({ type: 'warning', title: '', message: t('lobby.passwordTooShort') });
       return;
     }
     if (eloOn && useRankLimit && minRank && maxRank && getRankIndex(minRank) > getRankIndex(maxRank)) {
-      showToast({ type: 'warning', title: '', message: '최소 랭크가 최대 랭크보다 높을 수 없어요.' });
+      showToast({ type: 'warning', title: '', message: t('lobby.rankRangeInvalid') });
       return;
     }
     const result = createRoom({
@@ -165,7 +167,7 @@ export default function LobbyScreen() {
   const handleLeaveRoom = (roomId: string) => {
     if (!currentUser) return;
     leaveRoom(roomId, currentUser.id);
-    showToast({ type: 'info', title: '', message: '방에서 나왔어요.' });
+    showToast({ type: 'info', title: '', message: t('lobby.leftRoom') });
   };
 
   const handleTeamReserve = (courtId: number, gameCount: number) => {
@@ -195,7 +197,9 @@ export default function LobbyScreen() {
         onPress={() => onSelect(null)}
         style={[styles.rankChip, selected === null && styles.rankChipOn]}
       >
-        <Text style={[styles.rankChipText, selected === null && styles.rankChipTextOn]}>없음</Text>
+        <Text style={[styles.rankChipText, selected === null && styles.rankChipTextOn]}>
+          {t('common.none')}
+        </Text>
       </Pressable>
       {RANK_ORDER.map((rank) => {
         const on = selected === rank;
@@ -218,14 +222,14 @@ export default function LobbyScreen() {
     <SafeAreaView style={styles.safe} edges={[]}>
       <PageContainer>
         <View style={[styles.header, isDesktop && styles.headerDesktop]}>
-          <Text style={[styles.title, isDesktop && styles.titleDesktop]}>파트너 모집</Text>
+          <Text style={[styles.title, isDesktop && styles.titleDesktop]}>{t('lobby.title')}</Text>
           {!isGuest && (
-            <Button title="방 만들기" onPress={() => setShowCreate(true)} size="sm" />
+            <Button title={t('lobby.createRoom')} onPress={() => setShowCreate(true)} size="sm" />
           )}
         </View>
 
         {isGuest && (
-          <Text style={styles.guestHint}>게스트는 모집방 참여만 가능해요. 방 만들기는 회원 전용입니다.</Text>
+          <Text style={styles.guestHint}>{t('lobby.guestHint')}</Text>
         )}
 
         <ClubEventBanner />
@@ -233,7 +237,7 @@ export default function LobbyScreen() {
         <ActivityNoticeBanner />
 
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.sectionTitle}>모집 목록</Text>
+          <Text style={styles.sectionTitle}>{t('lobby.roomList')}</Text>
           {rooms
             .filter((r) => r.status !== 'closed')
             .map((room) => (
@@ -275,10 +279,10 @@ export default function LobbyScreen() {
           <Pressable style={styles.modalOverlay} onPress={resetCreateForm}>
             <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalTitle}>새 모집방</Text>
+                <Text style={styles.modalTitle}>{t('lobby.newRoom')}</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="방 제목"
+                  placeholder={t('lobby.roomTitlePlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   value={roomTitle}
                   onChangeText={setRoomTitle}
@@ -287,7 +291,7 @@ export default function LobbyScreen() {
                 {eloOn && (
                   <>
                     <View style={styles.switchRow}>
-                      <Text style={styles.switchLabel}>랭크 제한</Text>
+                      <Text style={styles.switchLabel}>{t('lobby.rankLimit')}</Text>
                       <Toggle
                         value={useRankLimit}
                         onValueChange={(next) => {
@@ -297,36 +301,34 @@ export default function LobbyScreen() {
                             setMaxRank(null);
                           }
                         }}
-                        accessibilityLabel="랭크 제한"
+                        accessibilityLabel={t('lobby.rankLimit')}
                       />
                     </View>
                     {useRankLimit && (
                       <>
-                        <Text style={styles.fieldLabel}>최소 랭크</Text>
+                        <Text style={styles.fieldLabel}>{t('lobby.minRank')}</Text>
                         {renderRankChips(minRank, setMinRank)}
-                        <Text style={styles.fieldLabel}>최대 랭크</Text>
+                        <Text style={styles.fieldLabel}>{t('lobby.maxRank')}</Text>
                         {renderRankChips(maxRank, setMaxRank)}
-                        <Text style={styles.rankHint}>
-                          비워 두면 제한 없음. 참여 시 랭크가 범위 밖이면 입장할 수 없어요.
-                        </Text>
+                        <Text style={styles.rankHint}>{t('lobby.rankHint')}</Text>
                       </>
                     )}
                   </>
                 )}
 
                 <View style={styles.switchRow}>
-                  <Text style={styles.switchLabel}>비밀번호 설정</Text>
+                  <Text style={styles.switchLabel}>{t('lobby.passwordToggle')}</Text>
                   <Toggle
                     value={usePassword}
                     onValueChange={setUsePassword}
-                    accessibilityLabel="비밀번호 설정"
+                    accessibilityLabel={t('lobby.passwordToggle')}
                   />
                 </View>
 
                 {usePassword && (
                   <TextInput
                     style={styles.input}
-                    placeholder="비밀번호 (4자 이상)"
+                    placeholder={t('lobby.passwordPlaceholder')}
                     placeholderTextColor={colors.textMuted}
                     value={roomPassword}
                     onChangeText={setRoomPassword}
@@ -335,9 +337,9 @@ export default function LobbyScreen() {
                   />
                 )}
 
-                <Text style={styles.hint}>2~4명 모이면 코트 예약이 가능해요</Text>
+                <Text style={styles.hint}>{t('lobby.createHint')}</Text>
                 <Button
-                  title="만들기"
+                  title={t('common.create')}
                   onPress={handleCreate}
                   fullWidth
                   size="lg"
@@ -351,11 +353,11 @@ export default function LobbyScreen() {
         <Modal visible={joinTargetId !== null} transparent animationType="fade">
           <Pressable style={styles.modalOverlayCenter} onPress={() => setJoinTargetId(null)}>
             <Pressable style={styles.passwordSheet} onPress={(e) => e.stopPropagation()}>
-              <Text style={styles.modalTitle}>비밀번호 입력</Text>
+              <Text style={styles.modalTitle}>{t('lobby.enterPassword')}</Text>
               <Text style={styles.passwordHint}>{joinTargetRoom?.title}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="비밀번호"
+                placeholder={t('common.password')}
                 placeholderTextColor={colors.textMuted}
                 value={joinPassword}
                 onChangeText={setJoinPassword}
@@ -363,8 +365,8 @@ export default function LobbyScreen() {
                 autoFocus
               />
               <View style={styles.passwordActions}>
-                <Button title="취소" onPress={() => setJoinTargetId(null)} variant="ghost" />
-                <Button title="참여" onPress={handleJoinWithPassword} disabled={!joinPassword} />
+                <Button title={t('common.cancel')} onPress={() => setJoinTargetId(null)} variant="ghost" />
+                <Button title={t('common.join')} onPress={handleJoinWithPassword} disabled={!joinPassword} />
               </View>
             </Pressable>
           </Pressable>

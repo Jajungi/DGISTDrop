@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable, ScrollView, Platform } from 'react-n
 import { useAuthStore } from '@/src/stores/authStore';
 import { Avatar } from '@/src/components/ui/Avatar';
 import { RankBadge } from '@/src/components/ui/RankBadge';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography, borderRadius, glass } from '@/src/theme';
 
 interface EloRankingSheetProps {
@@ -14,6 +15,7 @@ interface EloRankingSheetProps {
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 export function EloRankingSheet({ visible, currentUserId, onClose }: EloRankingSheetProps) {
+  const { t } = useI18n();
   const users = useAuthStore((s) => s.users);
 
   const ranked = useMemo(
@@ -33,16 +35,16 @@ export function EloRankingSheet({ visible, currentUserId, onClose }: EloRankingS
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" />
       <View style={styles.sheet}>
         <View style={styles.handle} />
-        <Text style={styles.title}>Elo 순위표</Text>
+        <Text style={styles.title}>{t('profile.rankingTitle')}</Text>
         {myRank > 0 && (
           <Text style={styles.myRankText}>
-            내 순위: {ranked.length}명 중 {myRank}위
+            {t('profile.rankingMyRank', { total: ranked.length, rank: myRank })}
           </Text>
         )}
 
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
           {ranked.length === 0 ? (
-            <Text style={styles.empty}>아직 랭킹 데이터가 없어요.</Text>
+            <Text style={styles.empty}>{t('profile.rankingEmpty')}</Text>
           ) : (
             ranked.map((u, i) => {
               const isMe = u.id === currentUserId;
@@ -59,7 +61,7 @@ export function EloRankingSheet({ visible, currentUserId, onClose }: EloRankingS
                   <View style={styles.nameCol}>
                     <Text style={styles.name} numberOfLines={1}>
                       {u.name}
-                      {isMe ? ' (나)' : ''}
+                      {isMe ? t('profile.rankingMeSuffix') : ''}
                     </Text>
                     <RankBadge rank={u.rank} size="sm" />
                   </View>
@@ -71,7 +73,7 @@ export function EloRankingSheet({ visible, currentUserId, onClose }: EloRankingS
         </ScrollView>
 
         <Pressable onPress={onClose} style={styles.closeBtn}>
-          <Text style={styles.closeBtnText}>닫기</Text>
+          <Text style={styles.closeBtnText}>{t('common.close')}</Text>
         </Pressable>
       </View>
     </View>

@@ -9,6 +9,7 @@ import {
   overlapMinutes,
   scheduleCoversTime,
 } from '@/src/utils/playPartners';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, borderRadius, spacing, typography, shadows } from '@/src/theme';
 
 interface FriendSchedulePanelProps {
@@ -45,6 +46,7 @@ export function FriendSchedulePanel({
   activityStart,
   activityEnd,
 }: FriendSchedulePanelProps) {
+  const { t } = useI18n();
   const currentUser = useAuthStore((s) => s.currentUser);
   const mySched = currentUser ? getEffectiveSchedule(currentUser) : {};
   const slots = useMemo(
@@ -86,7 +88,7 @@ export function FriendSchedulePanel({
   if (sorted.length === 0) {
     return (
       <View style={styles.emptyWrap}>
-        <Text style={styles.empty}>등록된 친구가 없어요</Text>
+        <Text style={styles.empty}>{t('friends.scheduleEmpty')}</Text>
       </View>
     );
   }
@@ -99,14 +101,14 @@ export function FriendSchedulePanel({
   return (
     <View style={styles.wrap}>
       <View style={styles.slotCard}>
-        <Text style={styles.slotTitle}>이 시간에 올 사람</Text>
-        <Text style={styles.slotHint}>시각을 누르면 그 시간에 체육관에 있을 친구가 보여요</Text>
+        <Text style={styles.slotTitle}>{t('friends.slotTitle')}</Text>
+        <Text style={styles.slotHint}>{t('friends.slotHint')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.slotRow}>
           <Pressable
             onPress={() => setSlot(null)}
             style={[styles.slotChip, slot === null && styles.slotChipOn]}
           >
-            <Text style={[styles.slotChipText, slot === null && styles.slotChipTextOn]}>전체</Text>
+            <Text style={[styles.slotChipText, slot === null && styles.slotChipTextOn]}>{t('common.all')}</Text>
           </Pressable>
           {slots.map((t) => {
             const on = slot === t;
@@ -130,7 +132,7 @@ export function FriendSchedulePanel({
         {slot && (
           <View style={styles.slotResult}>
             {atSlot.length === 0 ? (
-              <Text style={styles.slotEmpty}>{slot}에 일정이 있는 친구가 없어요</Text>
+              <Text style={styles.slotEmpty}>{t('friends.slotEmpty', { slot })}</Text>
             ) : (
               atSlot.map((f) => (
                 <View key={f.id} style={styles.slotPerson}>
@@ -147,7 +149,7 @@ export function FriendSchedulePanel({
         )}
         {!slot && mySched.start && overlapWithMe.length > 0 && (
           <View style={styles.slotResult}>
-            <Text style={styles.overlapLabel}>나와 일정이 겹치는 친구</Text>
+            <Text style={styles.overlapLabel}>{t('friends.overlapLabel')}</Text>
             {overlapWithMe.slice(0, 8).map(({ friend, mins }) => (
               <View key={friend.id} style={styles.slotPerson}>
                 <Avatar
@@ -157,7 +159,7 @@ export function FriendSchedulePanel({
                   showOnline={friend.isAtGym}
                 />
                 <Text style={styles.slotPersonName}>{friend.name}</Text>
-                <Text style={styles.overlapMins}>{mins}분 겹침</Text>
+                <Text style={styles.overlapMins}>{t('friends.overlapMins', { mins })}</Text>
               </View>
             ))}
           </View>
@@ -180,7 +182,7 @@ export function FriendSchedulePanel({
                 showOnline={currentUser.isAtGym}
               />
               <View style={styles.nameCol}>
-                <Text style={[styles.friendName, styles.meLabel]}>나</Text>
+                <Text style={[styles.friendName, styles.meLabel]}>{t('common.me')}</Text>
                 <Text style={styles.arrivalTime}>{mySched.start}</Text>
               </View>
             </View>
@@ -225,7 +227,7 @@ export function FriendSchedulePanel({
                     <Text style={styles.noTime}>—</Text>
                   )}
                   {highlight ? (
-                    <Text style={styles.overlapBadge}>{over}분 겹침</Text>
+                    <Text style={styles.overlapBadge}>{t('friends.overlapBadge', { mins: over })}</Text>
                   ) : null}
                 </View>
               </View>
@@ -261,9 +263,7 @@ export function FriendSchedulePanel({
           );
         })}
       </View>
-      <Text style={styles.hint}>
-        내 일정과 겹치면 강조돼요. 위 시각 칩으로 「이 시간에 올 사람」을 볼 수 있어요.
-      </Text>
+      <Text style={styles.hint}>{t('friends.scheduleFooter')}</Text>
     </View>
   );
 }

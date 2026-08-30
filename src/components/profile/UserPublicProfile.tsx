@@ -10,6 +10,7 @@ import { getEffectiveSchedule } from '@/src/utils/dateFormat';
 import { RANK_THRESHOLDS } from '@/src/constants';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { roleBadgeLabel } from '@/src/utils/staffAccess';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 interface UserPublicProfileProps {
@@ -17,6 +18,7 @@ interface UserPublicProfileProps {
 }
 
 export function UserPublicProfile({ user }: UserPublicProfileProps) {
+  const { t } = useI18n();
   const winRate = getWinRate(user.wins, user.losses);
   const rankLabel = RANK_THRESHOLDS[user.rank]?.label ?? user.rank;
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
@@ -38,11 +40,11 @@ export function UserPublicProfile({ user }: UserPublicProfileProps) {
             ) : null}
           </View>
           {user.isAtGym ? (
-            <Text style={styles.atGym}>지금 체육관</Text>
+            <Text style={styles.atGym}>{t('friends.presenceAtGym')}</Text>
           ) : arrival ? (
             <Text style={styles.schedule}>{arrival}</Text>
           ) : (
-            <Text style={styles.noSchedule}>일정 미등록</Text>
+            <Text style={styles.noSchedule}>{t('common.noSchedule')}</Text>
           )}
           {schedule && getEffectiveSchedule(user).end ? (
             <Text style={styles.scheduleRange}>{schedule}</Text>
@@ -59,33 +61,29 @@ export function UserPublicProfile({ user }: UserPublicProfileProps) {
         ) : null}
         <Card style={styles.statCard}>
           <Text style={styles.statValue}>{winRate}%</Text>
-          <Text style={styles.statLabel}>승률</Text>
+          <Text style={styles.statLabel}>{t('profile.winRate')}</Text>
         </Card>
         <Card style={styles.statCard}>
           <Text style={styles.statValue}>{user.wins}</Text>
-          <Text style={styles.statLabel}>승</Text>
+          <Text style={styles.statLabel}>{t('common.wins')}</Text>
         </Card>
         <Card style={styles.statCard}>
           <Text style={styles.statValue}>{user.losses}</Text>
-          <Text style={styles.statLabel}>패</Text>
+          <Text style={styles.statLabel}>{t('common.losses')}</Text>
         </Card>
       </View>
 
       <Card style={styles.section}>
-        <Text style={styles.sectionTitle}>활동</Text>
-        <InfoRow label="총 게임" value={`${user.totalGames}경기`} />
-        <InfoRow label="청소 기여" value={`${user.cleaningContributions}회`} />
+        <Text style={styles.sectionTitle}>{t('friends.profileActivity')}</Text>
+        <InfoRow label={t('profile.totalGames')} value={t('common.gamesCount', { count: user.totalGames })} />
+        <InfoRow label={t('friends.profileCleaning')} value={t('common.timesCount', { count: user.cleaningContributions })} />
         <InfoRow
-          label="회원 등급"
-          value={
-            roleBadgeLabel(user)
-          }
+          label={t('friends.profileMembership')}
+          value={roleBadgeLabel(user) || user.membershipTier || '—'}
         />
       </Card>
 
-      <Text style={styles.privacyNote}>
-        학번·이메일·실명·포인트 등 개인정보는 표시되지 않습니다.
-      </Text>
+      <Text style={styles.privacyNote}>{t('friends.profilePrivacy')}</Text>
     </View>
   );
 }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { useI18n } from '@/src/i18n/useI18n';
 
 export type FriendsTab = 'friends' | 'schedule';
 
@@ -9,15 +10,16 @@ interface FriendsSegmentTabsProps {
   onChange: (tab: FriendsTab) => void;
 }
 
-const TABS: { key: FriendsTab; label: string }[] = [
-  { key: 'friends', label: '친구' },
-  { key: 'schedule', label: '일정' },
-];
-
 export function FriendsSegmentTabs({ active, onChange }: FriendsSegmentTabsProps) {
+  const { t } = useI18n();
+  const tabs: { key: FriendsTab; label: string }[] = [
+    { key: 'friends', label: t('friends.tabFriends') },
+    { key: 'schedule', label: t('friends.tabSchedule') },
+  ];
+
   return (
     <View style={styles.wrap}>
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const isActive = active === tab.key;
         return (
           <Pressable

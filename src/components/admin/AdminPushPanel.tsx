@@ -20,13 +20,15 @@ import {
   fetchPushNotifyLogs,
   fetchPushTokenStats,
   prunePushTokens,
-  invokeBroadcastPush,
+  invokeBroadcastPushBilingual,
   DEFAULT_PUSH_SETTINGS,
   type PushNotifySettings,
   type PushNotifyLog,
   type PushTokenStats,
 } from '@/src/services/supabase/pushSettings';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
+import { AdminBilingualFields } from '@/src/components/admin/AdminBilingualFields';
+import type { AppLocale } from '@/src/i18n/types';
 
 type PushSub = 'status' | 'settings' | 'send' | 'logs';
 
@@ -85,6 +87,8 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
   const [saving, setSaving] = useState(false);
   const [customMessage, setCustomMessage] = useState('');
   const [customTitle, setCustomTitle] = useState('Drop');
+  const [customWriteLocale, setCustomWriteLocale] = useState<AppLocale>('ko');
+  const [sending, setSending] = useState(false);
 
   const [editNotifyTime, setEditNotifyTime] = useState(DEFAULT_PUSH_SETTINGS.notify_time);
   const [editTemplate, setEditTemplate] = useState(DEFAULT_PUSH_SETTINGS.message_template);
@@ -235,7 +239,10 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
     }
     const message = previewMessage;
     try {
-      const result = await invokeBroadcastPush({
+      setSending(true);
+      onToast('info', '다른 언어로 번역 중…');
+      const result = await invokeBroadcastPushBilingual({
+        writeLocale: 'ko',
         title: 'Drop 활동 알림',
         message,
         type: 'activity',
@@ -250,6 +257,8 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : '발송 실패';
       onToast('warning', msg);
+    } finally {
+      setSending(false);
     }
   };
 
@@ -259,7 +268,10 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
       return;
     }
     try {
-      const result = await invokeBroadcastPush({
+      setSending(true);
+      onToast('info', '다른 언어로 번역 중…');
+      const result = await invokeBroadcastPushBilingual({
+        writeLocale: customWriteLocale,
         title: customTitle.trim() || 'Drop',
         message: customMessage.trim(),
         type: 'custom',
@@ -273,6 +285,8 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : '발송 실패';
       onToast('warning', msg);
+    } finally {
+      setSending(false);
     }
   };
 
@@ -500,34 +514,34 @@ export function AdminPushPanel({ adminId, onToast }: AdminPushPanelProps) {
               />
             ) : (
               <Button
-                title="활동 알림 발송"
+                title={sending ? '번역·발송 중…' : '활동 알림 발송'}
                 onPress={() => void sendActivityNotify()}
                 variant="secondary"
                 fullWidth
+                disabled={sending}
               />
             )}
           </Card>
 
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>커스텀 메시지</Text>
-            <TextInput
-              style={styles.input}
-              value={customTitle}
-              onChangeText={setCustomTitle}
-              placeholder="제목"
-              placeholderTextColor={colors.textMuted}
-            />
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={customMessage}
-              onChangeText={setCustomMessage}
-              multiline
-              numberOfLines={4}
-              placeholder="보낼 메시지 입력..."
-              placeholderTextColor={colors.textMuted}
+            <AdminBilingualFields
+              writeLocale={customWriteLocale}
+              onWriteLocaleChange={setCustomWriteLocale}
+              title={customTitle}
+              body={customMessage}
+              onTitleChange={setCustomTitle}
+              onBodyChange={setCustomMessage}
+              bodyPlaceholder="보낼 메시지 입력..."
             />
             <View style={styles.gap} />
-            <Button title="발송" onPress={() => void sendCustom()} variant="outline" fullWidth />
+            <Button
+              title={sending ? '번역·발송 중…' : '발송'}
+              onPress={() => void sendCustom()}
+              variant="outline"
+              fullWidth
+              disabled={sending}
+            />
           </Card>
         </View>
       )}

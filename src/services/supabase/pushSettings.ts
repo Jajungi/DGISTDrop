@@ -1,5 +1,8 @@
 import { getSupabase, isSupabaseEnabled } from '@/src/lib/supabase';
 import { getSeoulTodayKey } from '@/src/utils/dateFormat';
+import type { AppLocale } from '@/src/i18n/types';
+import { resolveBilingualNotice } from '@/src/services/translateContent';
+import { PUSH_COPY } from '@/src/i18n/noticePresets';
 
 /** 웹 푸시는 사람당 최근 구독 1개만 유지 (PC·폰 웹 합산). */
 export const MAX_WEB_PUSH_PER_USER = 1;
@@ -30,10 +33,10 @@ export const DEFAULT_PUSH_SETTINGS: PushNotifySettings = {
   enabled: true,
   auto_notify_enabled: true,
   notify_time: '18:00',
-  message_template: '🏸 오늘 {time}부터 활동 있습니다! 앱에서 출석·코트를 확인하세요.',
+  message_template: PUSH_COPY.activityBodyTemplate.ko,
   cancel_today: false,
   cancel_date: null,
-  cancel_message: '❌ 오늘 활동이 취소되었습니다.',
+  cancel_message: PUSH_COPY.cancelBody.ko,
   last_auto_sent_date: null,
 };
 
@@ -90,7 +93,7 @@ export async function savePushNotifySettings(
   return settings;
 }
 
-export const CANCEL_PUSH_TITLE = 'Drop 활동 취소';
+export const CANCEL_PUSH_TITLE = PUSH_COPY.cancelTitle.ko;
 
 export async function toggleActivityCancelToday(
   cancel: boolean,
@@ -110,10 +113,12 @@ export async function toggleActivityCancelToday(
   return saved;
 }
 
-export async function invokeCancelNoticePush(message?: string) {
-  return invokeBroadcastPush({
+export async function invokeCancelNoticePush(message?: string, writeLocale: AppLocale = 'ko') {
+  const body = (message ?? DEFAULT_PUSH_SETTINGS.cancel_message).trim() || DEFAULT_PUSH_SETTINGS.cancel_message;
+  return invokeBroadcastPushBilingual({
+    writeLocale,
     title: CANCEL_PUSH_TITLE,
-    message: (message ?? DEFAULT_PUSH_SETTINGS.cancel_message).trim() || DEFAULT_PUSH_SETTINGS.cancel_message,
+    message: body,
     type: 'cancel',
   });
 }
@@ -331,6 +336,8 @@ export async function prunePushTokens(): Promise<{
 export async function invokeBroadcastPush(input: {
   title: string;
   message: string;
+  title_en?: string;
+  message_en?: string;
   type?: string;
 }): Promise<{ sent: number; expo?: number; web?: number; pruned?: number }> {
   const { data, error } = await getSupabase().functions.invoke('broadcast-push', {
@@ -350,4 +357,24 @@ export async function invokeBroadcastPush(input: {
     throw new Error(detail);
   }
   return (data ?? { sent: 0 }) as { sent: number; expo?: number; web?: number };
+}
+
+export async function invokeBroadcastPushBilingual(input: {
+  writeLocale: AppLocale;
+  title: string;
+  message: string;
+  type?: string;
+}): Promise<{ sent: number; expo?: number; web?: number; pruned?: number }> {
+  const copy = await resolveBilingualNotice({
+    writeLocale: input.writeLocale,
+    title: input.title,
+    body: input.message,
+  });
+  return invokeBroadcastPush({
+    title: copy.title,
+    message: copy.body,
+    title_en: copy.titleEn,
+    message_en: copy.bodyEn,
+    type: input.type,
+  });
 }

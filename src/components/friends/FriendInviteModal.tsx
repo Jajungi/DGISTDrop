@@ -4,6 +4,7 @@ import { useLobbyStore } from '@/src/stores/lobbyStore';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { Button } from '@/src/components/ui/Button';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography, borderRadius, glass } from '@/src/theme';
 
 interface FriendInviteModalProps {
@@ -20,6 +21,7 @@ export function FriendInviteModal({
   friendName,
   onClose,
 }: FriendInviteModalProps) {
+  const { t } = useI18n();
   const currentUser = useAuthStore((s) => s.currentUser);
   const rooms = useLobbyStore((s) => s.rooms);
   const inviteFriendToRoom = useLobbyStore((s) => s.inviteFriendToRoom);
@@ -56,10 +58,10 @@ export function FriendInviteModal({
     <Modal visible={visible} transparent animationType="fade">
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>{friendName}님 초대</Text>
-          <Text style={styles.hint}>초대하면 친구가 알림에서 수락해 바로 참여할 수 있어요.</Text>
+          <Text style={styles.title}>{t('friends.inviteTitle', { name: friendName })}</Text>
+          <Text style={styles.hint}>{t('friends.inviteHint')}</Text>
           {myRooms.length === 0 ? (
-            <Text style={styles.empty}>초대할 수 있는 모집방이 없어요. 먼저 방을 만들거나 참여해 주세요.</Text>
+            <Text style={styles.empty}>{t('friends.inviteNoRooms')}</Text>
           ) : (
             <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
               {myRooms.map((room) => {
@@ -74,8 +76,9 @@ export function FriendInviteModal({
                       {room.title}
                     </Text>
                     <Text style={styles.roomMeta}>
-                      {room.members.length}/{room.maxMembers}명
-                      {room.hostId === currentUser?.id ? ' · 내 방' : ''}
+                      {room.members.length}/{room.maxMembers}
+                      {t('common.peopleCount', { count: '' })}
+                      {room.hostId === currentUser?.id ? t('common.myRoom') : ''}
                     </Text>
                   </Pressable>
                 );
@@ -83,9 +86,9 @@ export function FriendInviteModal({
             </ScrollView>
           )}
           <View style={styles.actions}>
-            <Button title="취소" onPress={onClose} variant="ghost" />
+            <Button title={t('common.cancel')} onPress={onClose} variant="ghost" />
             <Button
-              title="초대 보내기"
+              title={t('friends.inviteSend')}
               onPress={handleInvite}
               disabled={!selectedId}
             />

@@ -22,6 +22,11 @@ import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import { canManageCoachAnnouncement, canPostCoachAnnouncement } from '@/src/utils/coachAccess';
 import { formatLessonEtaLabel } from '@/src/utils/lessonEta';
 import { CoachLessonControls } from '@/src/components/coaching/CoachLessonControls';
+import { localizedBody, localizedTitle } from '@/src/i18n/localizedContent';
+import { useI18n } from '@/src/i18n/useI18n';
+import { AdminBilingualFields } from '@/src/components/admin/AdminBilingualFields';
+import { resolveBilingualNotice } from '@/src/services/translateContent';
+import type { AppLocale } from '@/src/i18n/types';
 import { occupancySetupFromStatus, OCCUPANCY_SETUP_LABEL } from '@/src/utils/occupancyCourt';
 
 const QUEUE_STATUS: Record<string, string> = {
@@ -31,6 +36,7 @@ const QUEUE_STATUS: Record<string, string> = {
 };
 
 export function CoachingScreenContent({ embedded = false }: { embedded?: boolean }) {
+  const { locale } = useI18n();
   const currentUser = useAuthStore((s) => s.currentUser);
   const requestLessonAccess = useAuthStore((s) => s.requestLessonAccess);
   const joinQueue = useLessonStore((s) => s.joinQueue);
@@ -45,8 +51,10 @@ export function CoachingScreenContent({ embedded = false }: { embedded?: boolean
   const coachCourt = useCourtStore((s) => s.courts.find((c) => c.id === COACH_COURT_ID));
   const showToast = useNotificationStore((s) => s.showToast);
 
+  const [postWriteLocale, setPostWriteLocale] = useState<AppLocale>('ko');
   const [postTitle, setPostTitle] = useState('');
   const [postBody, setPostBody] = useState('');
+  const [posting, setPosting] = useState(false);
   const [showPostForm, setShowPostForm] = useState(false);
 
   if (!currentUser) {
@@ -68,13 +76,37 @@ export function CoachingScreenContent({ embedded = false }: { embedded?: boolean
     showToast({ type: result.success ? 'success' : 'warning', title: '', message: result.message });
   };
 
-  const handlePost = () => {
-    const result = postAnnouncement(currentUser.id, currentUser.name, postTitle, postBody);
-    showToast({ type: result.success ? 'success' : 'warning', title: '', message: result.message });
-    if (result.success) {
-      setPostTitle('');
-      setPostBody('');
-      setShowPostForm(false);
+  const handlePost = async () => {
+    setPosting(true);
+    try {
+      showToast({ type: 'info', title: '', message: '다른 언어로 번역 중…' });
+      const copy = await resolveBilingualNotice({
+        writeLocale: postWriteLocale,
+        title: postTitle,
+        body: postBody,
+      });
+      const result = postAnnouncement(
+        currentUser.id,
+        currentUser.name,
+        copy.title,
+        copy.body,
+        copy.titleEn,
+        copy.bodyEn
+      );
+      showToast({ type: result.success ? 'success' : 'warning', title: '', message: result.message });
+      if (result.success) {
+        setPostTitle('');
+        setPostBody('');
+        setShowPostForm(false);
+      }
+    } catch (err) {
+      showToast({
+        type: 'warning',
+        title: '',
+        message: err instanceof Error ? err.message : '번역에 실패했어요.',
+      });
+    } finally {
+      setPosting(false);
     }
   };
 
@@ -111,14 +143,14 @@ export function CoachingScreenContent({ embedded = false }: { embedded?: boolean
         {announcements.map((a) => (
           <View key={a.id} style={styles.announceCard}>
             <View style={styles.announceTop}>
-              <Text style={styles.announceTitle}>{a.title}</Text>
+              <Text style={styles.announceTitle}>{localizedTitle(a, locale)}</Text>
               {canManageCoachAnnouncement(currentUser, a.authorId) && (
                 <Pressable onPress={() => removeAnnouncement(a.id)} hitSlop={8}>
                   <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
                 </Pressable>
               )}
             </View>
-            <Text style={styles.announceBody}>{a.message}</Text>
+            <Text style={styles.announceBody}>{localizedBody(a, locale)}</Text>
             <Text style={styles.announceMeta}>
               {a.authorName} · {new Date(a.createdAt).toLocaleString('ko-KR')}
             </Text>
@@ -136,24 +168,23 @@ export function CoachingScreenContent({ embedded = false }: { embedded?: boolean
               />
             ) : (
               <View style={styles.postForm}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="제목"
-                  placeholderTextColor={colors.textMuted}
-                  value={postTitle}
-                  onChangeText={setPostTitle}
-                />
-                <TextInput
-                  style={[styles.input, styles.inputMultiline]}
-                  placeholder="내용"
-                  placeholderTextColor={colors.textMuted}
-                  value={postBody}
-                  onChangeText={setPostBody}
-                  multiline
+                <AdminBilingualFields
+                  writeLocale={postWriteLocale}
+                  onWriteLocaleChange={setPostWriteLocale}
+                  title={postTitle}
+                  body={postBody}
+                  onTitleChange={setPostTitle}
+                  onBodyChange={setPostBody}
                 />
                 <View style={styles.postActions}>
                   <Button title="취소" onPress={() => setShowPostForm(false)} size="sm" variant="ghost" />
-                  <Button title="등록" onPress={handlePost} size="sm" variant="secondary" />
+                  <Button
+                    title={posting ? '번역·등록 중…' : '등록'}
+                    onPress={() => void handlePost()}
+                    size="sm"
+                    variant="secondary"
+                    disabled={posting}
+                  />
                 </View>
               </View>
             )}

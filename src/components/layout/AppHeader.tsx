@@ -158,7 +158,7 @@ export function AppHeader() {
       </View>
 
       <View style={[styles.right, isMobile && styles.rightMobile]}>
-        {!isMobile ? <LanguageSwitcher /> : null}
+        <LanguageSwitcher compact={isMobile} />
         <Pressable
           style={[styles.actionBtn, isMobile && styles.actionBtnMobile, todayRecord && styles.actionBtnDone]}
           onPress={handleCheckIn}

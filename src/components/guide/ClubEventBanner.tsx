@@ -4,9 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { clubEventKindLabel, getActiveClubEvents } from '@/src/utils/siteOps';
 import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/theme';
+import { useI18n } from '@/src/i18n/useI18n';
+import { localizedBody, localizedTitle } from '@/src/i18n/localizedContent';
 
 /** 오늘 휴관·추가 활동일·배너 공지 안내 */
 export function ClubEventBanner() {
+  const { t, locale } = useI18n();
   const events = useClubEventStore((s) => s.events);
   const active = useMemo(() => getActiveClubEvents(events), [events]);
 
@@ -17,6 +20,9 @@ export function ClubEventBanner() {
       {active.map((ev) => {
         const tone =
           ev.kind === 'closure' ? 'closure' : ev.kind === 'extra' ? 'extra' : 'special';
+        const kindLabel = clubEventKindLabel(ev.kind, locale);
+        const title = localizedTitle(ev, locale);
+        const body = localizedBody(ev, locale);
         return (
           <View
             key={ev.id}
@@ -46,9 +52,11 @@ export function ClubEventBanner() {
             />
             <View style={styles.body}>
               <Text style={styles.title}>
-                {tone === 'special' ? '공지' : `오늘 ${clubEventKindLabel(ev.kind)}`} · {ev.title}
+                {tone === 'special'
+                  ? `${t('guide.noticePrefix')} · ${title}`
+                  : `${t('guide.clubEventToday', { kind: kindLabel })} · ${title}`}
               </Text>
-              {!!ev.body && <Text style={styles.sub}>{ev.body}</Text>}
+              {!!body && <Text style={styles.sub}>{body}</Text>}
               <Text style={styles.range}>
                 {ev.dateStart === ev.dateEnd ? ev.dateStart : `${ev.dateStart} ~ ${ev.dateEnd}`}
               </Text>

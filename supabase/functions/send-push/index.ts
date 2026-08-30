@@ -30,8 +30,17 @@ interface Payload {
   user_id?: string;
   title?: string;
   message?: string;
+  title_en?: string;
+  message_en?: string;
   kind?: string;
-  record?: { user_id?: string; title?: string; message?: string; kind?: string };
+  record?: {
+    user_id?: string;
+    title?: string;
+    message?: string;
+    title_en?: string;
+    message_en?: string;
+    kind?: string;
+  };
 }
 
 function isAuthorized(req: Request): boolean {
@@ -53,8 +62,10 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as Payload;
     const rec = body.record ?? body;
     const userId = rec.user_id;
-    const title = rec.title ?? '알림';
-    const message = rec.message ?? '';
+    const titleKo = rec.title ?? '알림';
+    const messageKo = rec.message ?? '';
+    const titleEn = (rec as { title_en?: string }).title_en;
+    const messageEn = (rec as { message_en?: string }).message_en;
 
     if (!userId) {
       return new Response(JSON.stringify({ error: 'user_id 없음' }), { status: 400 });
@@ -92,6 +103,16 @@ Deno.serve(async (req) => {
     if (!tokens || tokens.length === 0) {
       return new Response(JSON.stringify({ sent: 0 }), { status: 200 });
     }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('preferred_locale')
+      .eq('id', userId)
+      .maybeSingle();
+    const locale = (profile as { preferred_locale?: string } | null)?.preferred_locale;
+    const useEn = locale === 'en' && !!titleEn?.trim() && !!messageEn?.trim();
+    const title = useEn ? titleEn!.trim() : titleKo;
+    const message = useEn ? messageEn!.trim() : messageKo;
 
     const expoTokens = tokens
       .filter((t: { token: string }) => isExpoToken(t.token))

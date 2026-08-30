@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, borderRadius, spacing, typography } from '@/src/theme';
 import { ProfileEmptyState } from './ProfileEmptyState';
 
@@ -14,13 +15,14 @@ interface HourlyHeadcountChartProps {
 }
 
 export function HourlyHeadcountChart({ data, labels, myPresence, cellHeight = 32 }: HourlyHeadcountChartProps) {
+  const { t } = useI18n();
   const hasData = data && data.length > 0 && data.some((row) => row.some((v) => v > 0));
 
   if (!hasData || !labels) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>시간대별 인원수</Text>
-        <ProfileEmptyState message="아직 기록이 없어요" hint="출석 데이터가 쌓이면 표시돼요" />
+        <Text style={styles.title}>{t('profile.headcountTitle')}</Text>
+        <ProfileEmptyState hint={t('profile.headcountEmptyHint')} />
       </View>
     );
   }
@@ -37,17 +39,17 @@ export function HourlyHeadcountChart({ data, labels, myPresence, cellHeight = 32
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>시간대별 인원수</Text>
-      <Text style={styles.subtitle}>진한 색 = 인원 많은 시간 · 테두리 = 내가 있던 시간</Text>
+      <Text style={styles.title}>{t('profile.headcountTitle')}</Text>
+      <Text style={styles.subtitle}>{t('profile.headcountSubtitle')}</Text>
 
       <View style={styles.legend}>
         <View style={styles.legendItem}>
           <View style={[styles.legendSwatch, { backgroundColor: colors.primary }]} />
-          <Text style={styles.legendText}>혼잡</Text>
+          <Text style={styles.legendText}>{t('profile.headcountBusy')}</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendSwatch, styles.legendMine]} />
-          <Text style={styles.legendText}>내 참여</Text>
+          <Text style={styles.legendText}>{t('profile.headcountMine')}</Text>
         </View>
       </View>
 

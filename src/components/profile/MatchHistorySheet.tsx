@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, Platform } from 'react-native';
 import { MatchHistoryList } from './MatchHistoryList';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography, borderRadius, glass } from '@/src/theme';
 
 interface MatchHistorySheetProps {
@@ -20,6 +21,8 @@ export function MatchHistorySheet({
   losses,
   onClose,
 }: MatchHistorySheetProps) {
+  const { t } = useI18n();
+
   if (!visible) return null;
 
   return (
@@ -27,22 +30,22 @@ export function MatchHistorySheet({
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" />
       <View style={styles.sheet}>
         <View style={styles.handle} />
-        <Text style={styles.title}>전적</Text>
+        <Text style={styles.title}>{t('profile.matchHistoryTitle')}</Text>
 
         <View style={styles.summaryCard}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryValue}>{totalGames}</Text>
-            <Text style={styles.summaryLabel}>총 게임</Text>
+            <Text style={styles.summaryLabel}>{t('profile.totalGames')}</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
             <Text style={[styles.summaryValue, { color: colors.success }]}>{wins}</Text>
-            <Text style={styles.summaryLabel}>승</Text>
+            <Text style={styles.summaryLabel}>{t('common.wins')}</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
             <Text style={[styles.summaryValue, { color: colors.error }]}>{losses}</Text>
-            <Text style={styles.summaryLabel}>패</Text>
+            <Text style={styles.summaryLabel}>{t('common.losses')}</Text>
           </View>
         </View>
 
@@ -51,7 +54,7 @@ export function MatchHistorySheet({
         </ScrollView>
 
         <Pressable onPress={onClose} style={styles.closeBtn}>
-          <Text style={styles.closeBtnText}>닫기</Text>
+          <Text style={styles.closeBtnText}>{t('common.close')}</Text>
         </Pressable>
       </View>
     </View>

@@ -15,7 +15,9 @@ interface CoachingState {
     authorId: string,
     authorName: string,
     title: string,
-    message: string
+    message: string,
+    titleEn?: string,
+    messageEn?: string
   ) => { success: boolean; message: string };
   removeAnnouncement: (id: string) => void;
 }
@@ -30,7 +32,7 @@ export const useCoachingStore = create<CoachingState>((set, get) => ({
       ),
     }),
 
-  postAnnouncement: (authorId, authorName, title, message) => {
+  postAnnouncement: (authorId, authorName, title, message, titleEn?, messageEn?) => {
     const author =
       useAuthStore.getState().users.find((u) => u.id === authorId) ??
       useAuthStore.getState().currentUser;
@@ -47,7 +49,9 @@ export const useCoachingStore = create<CoachingState>((set, get) => ({
     const entry: CoachAnnouncement = {
       id: `ca-${Date.now()}`,
       title: trimmedTitle,
+      titleEn: titleEn?.trim() || undefined,
       message: trimmedMessage,
+      messageEn: messageEn?.trim() || undefined,
       authorId,
       authorName,
       createdAt: new Date().toISOString(),
@@ -85,6 +89,8 @@ export const useCoachingStore = create<CoachingState>((set, get) => ({
           invokeBroadcastPush({
             title: trimmedTitle,
             message: trimmedMessage,
+            title_en: entry.titleEn,
+            message_en: entry.messageEn,
             type: 'coach',
           })
         )

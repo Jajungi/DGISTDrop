@@ -117,7 +117,9 @@ export type SiteOverlaySurface = 'login' | 'post_login' | 'home';
 export interface SiteOverlay {
   id: string;
   title: string;
+  titleEn?: string;
   body: string;
+  bodyEn?: string;
   /** 로그인 창 / 로그인 직후 / 홈 진입 */
   surfaces: SiteOverlaySurface[];
   active: boolean;
@@ -135,7 +137,9 @@ export interface ClubEvent {
   id: string;
   kind: ClubEventKind;
   title: string;
+  titleEn?: string;
   body?: string;
+  bodyEn?: string;
   /** YYYY-MM-DD (로컬) */
   dateStart: string;
   /** YYYY-MM-DD inclusive */
@@ -355,7 +359,9 @@ export interface AppNotification {
   id: string;
   type: AppNotificationType;
   title: string;
+  titleEn?: string;
   message: string;
+  messageEn?: string;
   read: boolean;
   createdAt: string;
   courtId?: number;
@@ -393,7 +399,9 @@ export interface AdminLogEntry {
 export interface CoachAnnouncement {
   id: string;
   title: string;
+  titleEn?: string;
   message: string;
+  messageEn?: string;
   authorId: string;
   authorName: string;
   createdAt: string;

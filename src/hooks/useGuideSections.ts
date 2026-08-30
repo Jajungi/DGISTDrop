@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
 import { getGuideSections } from '@/src/constants/guideContent';
-import { getActivityDayLabel } from '@/src/services/activityTime';
+import { formatActivityScheduleLabelLocalized } from '@/src/i18n/activityLabels';
 import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { useLocaleStore } from '@/src/stores/localeStore';
-import { formatActivityScheduleLabel } from '@/src/utils/activitySchedule';
 import { detectClientDevice, getPushGuideCopy } from '@/src/utils/clientDevice';
 
 /** 설정에 저장된 정기 활동 시간이 반영된 이용 안내 섹션 */
@@ -15,7 +14,7 @@ export function useGuideSections() {
   const reservationOn = useFeatureFlagsStore((s) => s.reservationEnabled);
   const locale = useLocaleStore((s) => s.locale);
   return useMemo(() => {
-    const label = formatActivityScheduleLabel(schedule, getActivityDayLabel);
+    const label = formatActivityScheduleLabelLocalized(schedule, locale);
     const sections = getGuideSections(label, locale);
     const device = detectClientDevice();
     const pushCopy = getPushGuideCopy(device, locale);
@@ -47,8 +46,9 @@ export function useGuideSections() {
 
 export function useActivityScheduleLabel() {
   const schedule = useActivityScheduleStore((s) => s.schedule);
+  const locale = useLocaleStore((s) => s.locale);
   return useMemo(
-    () => formatActivityScheduleLabel(schedule, getActivityDayLabel),
-    [schedule]
+    () => formatActivityScheduleLabelLocalized(schedule, locale),
+    [schedule, locale]
   );
 }

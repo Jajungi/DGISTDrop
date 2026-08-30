@@ -170,7 +170,9 @@ type DbCoachAnnouncement = {
   author_id: string | null;
   author_name: string;
   title: string;
+  title_en?: string | null;
   message: string;
+  message_en?: string | null;
   pinned: boolean;
   created_at: string;
 };
@@ -181,7 +183,9 @@ function mapAnnouncement(r: DbCoachAnnouncement): CoachAnnouncement {
     authorId: r.author_id ?? '',
     authorName: r.author_name,
     title: r.title,
+    titleEn: r.title_en ?? undefined,
     message: r.message,
+    messageEn: r.message_en ?? undefined,
     pinned: r.pinned,
     createdAt: r.created_at,
   };
@@ -206,7 +210,9 @@ export async function insertCoachAnnouncementRemote(
       author_id: a.authorId || null,
       author_name: a.authorName,
       title: a.title,
+      title_en: a.titleEn ?? null,
       message: a.message,
+      message_en: a.messageEn ?? null,
       pinned: a.pinned ?? false,
     })
     .select('id')

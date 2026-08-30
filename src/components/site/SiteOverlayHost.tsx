@@ -9,12 +9,8 @@ import { overlaysForSurface } from '@/src/utils/siteOps';
 import type { SiteOverlay, SiteOverlaySurface } from '@/src/types';
 import { Button } from '@/src/components/ui/Button';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
-
-const SURFACE_LABEL: Record<SiteOverlaySurface, string> = {
-  login: '로그인',
-  post_login: '로그인 직후',
-  home: '홈',
-};
+import { useI18n } from '@/src/i18n/useI18n';
+import { localizedBody, localizedTitle } from '@/src/i18n/localizedContent';
 
 function dismissKey(overlayId: string, userKey: string) {
   return `site_overlay_dismissed:${userKey}:${overlayId}`;
@@ -43,16 +39,25 @@ interface SiteOverlayHostProps {
 }
 
 export function SiteOverlayHost({ surface: forcedSurface }: SiteOverlayHostProps) {
+  const { t, locale } = useI18n();
   const pathname = usePathname();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const currentUserId = useAuthStore((s) => s.currentUser?.id);
   const overlays = useSiteOverlayStore((s) => s.overlays);
 
+  const surfaceLabel = useCallback(
+    (s: SiteOverlaySurface) => {
+      if (s === 'login') return t('guide.surfaceLogin');
+      if (s === 'post_login') return t('guide.surfacePostLogin');
+      return t('guide.surfaceHome');
+    },
+    [t]
+  );
+
   const surface: SiteOverlaySurface | null = useMemo(() => {
     if (forcedSurface) return forcedSurface;
     if (!isAuthenticated) return null;
     const p = pathname ?? '';
-    // 홈(코트) 탭 — 오버레이 공지
     if (
       p === '/' ||
       p === '/index' ||
@@ -104,7 +109,6 @@ export function SiteOverlayHost({ surface: forcedSurface }: SiteOverlayHostProps
         await markDismissed(active.id, userKey);
         setDismissedIds((prev) => new Set(prev).add(active.id));
       } else if (!active.dismissible) {
-        // 닫기 불가 공지도 이번 세션에서는 다시 안 띄움
         setDismissedIds((prev) => new Set(prev).add(active.id));
       } else {
         setDismissedIds((prev) => new Set(prev).add(active.id));
@@ -116,24 +120,39 @@ export function SiteOverlayHost({ surface: forcedSurface }: SiteOverlayHostProps
 
   if (!active) return null;
 
+  const title = localizedTitle(active, locale);
+  const body = localizedBody(active, locale);
+
   return (
     <Modal transparent animationType="fade" visible>
       <View style={styles.overlay}>
         <View style={styles.card}>
           <View style={styles.accent} />
-          <Text style={styles.badge}>{SURFACE_LABEL[surface ?? 'home']} 공지</Text>
-          <Text style={styles.title}>{active.title}</Text>
-          {!!active.body && <Text style={styles.body}>{active.body}</Text>}
+          <Text style={styles.badge}>
+            {t('guide.overlayBadge', { surface: surfaceLabel(surface ?? 'home') })}
+          </Text>
+          <Text style={styles.title}>{title}</Text>
+          {!!body && <Text style={styles.body}>{body}</Text>}
           <View style={styles.actions}>
             {active.dismissible ? (
-              <Button title="확인" onPress={() => void close(true)} size="md" fullWidth />
+              <Button
+                title={t('guide.overlayConfirm')}
+                onPress={() => void close(true)}
+                size="md"
+                fullWidth
+              />
             ) : (
-              <Button title="닫기" onPress={() => void close(false)} size="md" fullWidth />
+              <Button
+                title={t('guide.overlayClose')}
+                onPress={() => void close(false)}
+                size="md"
+                fullWidth
+              />
             )}
           </View>
           {Platform.OS === 'web' && active.dismissible ? (
             <Pressable onPress={() => void close(true)} accessibilityRole="button">
-              <Text style={styles.hint}>다시 보지 않기</Text>
+              <Text style={styles.hint}>{t('guide.overlayDontShow')}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -147,7 +166,6 @@ export function PostLoginOverlayGate() {
   const [ready, setReady] = useState(false);
   const tourOpen = useTabTourStore((s) => s.activeIndex !== null);
   useEffect(() => {
-    // 로그인 직후 플래그
     try {
       const flag =
         typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('post_login_overlay') : null;

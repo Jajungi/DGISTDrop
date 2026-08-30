@@ -15,6 +15,9 @@ import {
 } from '@/src/utils/siteOps';
 import type { SiteOverlaySurface } from '@/src/types';
 import { invokeBroadcastPush } from '@/src/services/supabase/pushSettings';
+import { resolveBilingualNotice } from '@/src/services/translateContent';
+import { AdminBilingualFields } from '@/src/components/admin/AdminBilingualFields';
+import type { AppLocale } from '@/src/i18n/types';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import type { BannerPrefill } from '@/src/components/admin/AdminClosureCalendar';
 
@@ -52,12 +55,14 @@ export function AdminNoticesPanel({
   const removeAnnouncement = useCoachingStore((s) => s.removeAnnouncement);
   const adminBroadcastNotice = useNotificationStore((s) => s.adminBroadcastNotice);
 
+  const [ovWriteLocale, setOvWriteLocale] = useState<AppLocale>('ko');
   const [ovTitle, setOvTitle] = useState('');
   const [ovBody, setOvBody] = useState('');
   const [ovSurfaces, setOvSurfaces] = useState<SiteOverlaySurface[]>(['home']);
   const [ovDismissible, setOvDismissible] = useState(true);
   const [ovSendPush, setOvSendPush] = useState(true);
 
+  const [bnWriteLocale, setBnWriteLocale] = useState<AppLocale>('ko');
   const [bnTitle, setBnTitle] = useState('');
   const [bnBody, setBnBody] = useState('');
   const [bnStart, setBnStart] = useState(todayLocalISODate());
@@ -66,10 +71,13 @@ export function AdminNoticesPanel({
   const [bnEventId, setBnEventId] = useState<string | null>(null);
   const [bnKind, setBnKind] = useState<'special' | 'closure'>('special');
 
+  const [noticeWriteLocale, setNoticeWriteLocale] = useState<AppLocale>('ko');
   const [noticeTitle, setNoticeTitle] = useState('');
   const [noticeBody, setNoticeBody] = useState('');
+  const [coachWriteLocale, setCoachWriteLocale] = useState<AppLocale>('ko');
   const [coachTitle, setCoachTitle] = useState('');
   const [coachBody, setCoachBody] = useState('');
+  const [translating, setTranslating] = useState(false);
 
   useEffect(() => {
     if (!bannerPrefill) return;
@@ -97,20 +105,13 @@ export function AdminNoticesPanel({
         <Text style={styles.hint}>
           알림함이 아니라 사이트 위에 모달로 뜹니다. 푸시를 켜면 알림을 허용한 승인 회원에게도 갑니다.
         </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="제목"
-          placeholderTextColor={colors.textMuted}
-          value={ovTitle}
-          onChangeText={setOvTitle}
-        />
-        <TextInput
-          style={[styles.input, styles.inputMulti]}
-          placeholder="내용"
-          placeholderTextColor={colors.textMuted}
-          value={ovBody}
-          onChangeText={setOvBody}
-          multiline
+        <AdminBilingualFields
+          writeLocale={ovWriteLocale}
+          onWriteLocaleChange={setOvWriteLocale}
+          title={ovTitle}
+          body={ovBody}
+          onTitleChange={setOvTitle}
+          onBodyChange={setOvBody}
         />
         <Text style={styles.fieldLabel}>노출 위치</Text>
         <View style={styles.chipRow}>
@@ -154,9 +155,10 @@ export function AdminNoticesPanel({
           </View>
         </Pressable>
         <Button
-          title="오버레이 공지 등록"
+          title={translating ? '번역·등록 중…' : '오버레이 공지 등록'}
           size="sm"
           fullWidth
+          disabled={translating}
           onPress={async () => {
             if (!ovTitle.trim() && !ovBody.trim()) {
               onToast('warning', '제목 또는 내용을 입력해 주세요.');
@@ -166,33 +168,50 @@ export function AdminNoticesPanel({
               onToast('warning', '노출 위치를 하나 이상 선택해 주세요.');
               return;
             }
-            const now = new Date().toISOString();
-            const r = await upsertOverlay({
-              id: newOverlayId(),
-              title: ovTitle.trim() || '공지',
-              body: ovBody.trim(),
-              surfaces: ovSurfaces,
-              active: true,
-              dismissible: ovDismissible,
-              createdAt: now,
-              updatedAt: now,
-            });
-            onToast(r.success ? 'success' : 'warning', r.message);
-            if (r.success) {
-              if (ovSendPush) {
-                try {
-                  const push = await invokeBroadcastPush({
-                    title: ovTitle.trim() || '공지',
-                    message: ovBody.trim() || '새 공지가 등록되었습니다.',
-                    type: 'notice',
-                  });
-                  onToast('info', `푸시 ${push.sent}명에게 발송됨`);
-                } catch (err) {
-                  onToast('warning', err instanceof Error ? err.message : '푸시 발송 실패');
+            setTranslating(true);
+            try {
+              onToast('info', '다른 언어로 번역 중…');
+              const copy = await resolveBilingualNotice({
+                writeLocale: ovWriteLocale,
+                title: ovTitle,
+                body: ovBody,
+              });
+              const now = new Date().toISOString();
+              const r = await upsertOverlay({
+                id: newOverlayId(),
+                title: copy.title || '공지',
+                titleEn: copy.titleEn,
+                body: copy.body,
+                bodyEn: copy.bodyEn,
+                surfaces: ovSurfaces,
+                active: true,
+                dismissible: ovDismissible,
+                createdAt: now,
+                updatedAt: now,
+              });
+              onToast(r.success ? 'success' : 'warning', r.message);
+              if (r.success) {
+                if (ovSendPush) {
+                  try {
+                    const push = await invokeBroadcastPush({
+                      title: copy.title,
+                      message: copy.body || '새 공지가 등록되었습니다.',
+                      title_en: copy.titleEn,
+                      message_en: copy.bodyEn,
+                      type: 'notice',
+                    });
+                    onToast('info', `푸시 ${push.sent}명에게 발송됨`);
+                  } catch (err) {
+                    onToast('warning', err instanceof Error ? err.message : '푸시 발송 실패');
+                  }
                 }
+                setOvTitle('');
+                setOvBody('');
               }
-              setOvTitle('');
-              setOvBody('');
+            } catch (err) {
+              onToast('warning', err instanceof Error ? err.message : '번역에 실패했어요.');
+            } finally {
+              setTranslating(false);
             }
           }}
         />
@@ -241,20 +260,13 @@ export function AdminNoticesPanel({
           홈·친구·모집 상단 배너로 표시됩니다. 비어 있는 상태에서 제목·내용을 자유롭게 입력하세요.
           휴관 달력에서 넘어오면 문구가 미리 채워집니다.
         </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="제목"
-          placeholderTextColor={colors.textMuted}
-          value={bnTitle}
-          onChangeText={setBnTitle}
-        />
-        <TextInput
-          style={[styles.input, styles.inputMulti]}
-          placeholder="내용"
-          placeholderTextColor={colors.textMuted}
-          value={bnBody}
-          onChangeText={setBnBody}
-          multiline
+        <AdminBilingualFields
+          writeLocale={bnWriteLocale}
+          onWriteLocaleChange={setBnWriteLocale}
+          title={bnTitle}
+          body={bnBody}
+          onTitleChange={setBnTitle}
+          onBodyChange={setBnBody}
         />
         <View style={styles.dateRow}>
           <View style={styles.dateField}>
@@ -292,9 +304,10 @@ export function AdminNoticesPanel({
           </View>
         </Pressable>
         <Button
-          title={bnEventId ? '휴관 배너 문구 저장' : '배너 공지 등록'}
+          title={translating ? '번역·등록 중…' : bnEventId ? '휴관 배너 문구 저장' : '배너 공지 등록'}
           size="sm"
           fullWidth
+          disabled={translating}
           onPress={async () => {
             if (!bnTitle.trim() && !bnBody.trim()) {
               onToast('warning', '제목 또는 내용을 입력해 주세요.');
@@ -304,36 +317,55 @@ export function AdminNoticesPanel({
               onToast('warning', '날짜는 YYYY-MM-DD 형식으로 입력해 주세요.');
               return;
             }
-            const kind = bnKind;
-            const r = await upsertEvent({
-              id: bnEventId ?? newEventId(),
-              kind,
-              title: bnTitle.trim() || '공지',
-              body: bnBody.trim() || undefined,
-              dateStart: bnStart,
-              dateEnd: bnEnd < bnStart ? bnStart : bnEnd,
-              active: true,
-            });
-            onToast(r.success ? 'success' : 'warning', r.message);
-            if (r.success) {
-              if (bnSendPush) {
-                try {
-                  const range =
-                    bnEnd < bnStart || bnStart === bnEnd ? bnStart : `${bnStart} ~ ${bnEnd}`;
-                  const push = await invokeBroadcastPush({
-                    title: `[${clubEventKindLabel(kind)}] ${bnTitle.trim() || '공지'}`,
-                    message: bnBody.trim() || `${range} 공지가 등록되었습니다.`,
-                    type: 'notice',
-                  });
-                  onToast('info', `푸시 ${push.sent}명에게 발송됨`);
-                } catch (err) {
-                  onToast('warning', err instanceof Error ? err.message : '푸시 발송 실패');
+            setTranslating(true);
+            try {
+              onToast('info', '다른 언어로 번역 중…');
+              const copy = await resolveBilingualNotice({
+                writeLocale: bnWriteLocale,
+                title: bnTitle,
+                body: bnBody,
+              });
+              const kind = bnKind;
+              const r = await upsertEvent({
+                id: bnEventId ?? newEventId(),
+                kind,
+                title: copy.title || '공지',
+                titleEn: copy.titleEn,
+                body: copy.body || undefined,
+                bodyEn: copy.bodyEn || undefined,
+                dateStart: bnStart,
+                dateEnd: bnEnd < bnStart ? bnStart : bnEnd,
+                active: true,
+              });
+              onToast(r.success ? 'success' : 'warning', r.message);
+              if (r.success) {
+                if (bnSendPush) {
+                  try {
+                    const range =
+                      bnEnd < bnStart || bnStart === bnEnd ? bnStart : `${bnStart} ~ ${bnEnd}`;
+                    const kindKo = clubEventKindLabel(kind, 'ko');
+                    const kindEn = clubEventKindLabel(kind, 'en');
+                    const push = await invokeBroadcastPush({
+                      title: `[${kindKo}] ${copy.title || '공지'}`,
+                      message: copy.body || `${range} 공지가 등록되었습니다.`,
+                      title_en: copy.titleEn ? `[${kindEn}] ${copy.titleEn}` : undefined,
+                      message_en: copy.bodyEn || undefined,
+                      type: 'notice',
+                    });
+                    onToast('info', `푸시 ${push.sent}명에게 발송됨`);
+                  } catch (err) {
+                    onToast('warning', err instanceof Error ? err.message : '푸시 발송 실패');
+                  }
                 }
+                setBnTitle('');
+                setBnBody('');
+                setBnEventId(null);
+                setBnKind('special');
               }
-              setBnTitle('');
-              setBnBody('');
-              setBnEventId(null);
-              setBnKind('special');
+            } catch (err) {
+              onToast('warning', err instanceof Error ? err.message : '번역에 실패했어요.');
+            } finally {
+              setTranslating(false);
             }
           }}
         />
@@ -375,29 +407,42 @@ export function AdminNoticesPanel({
       <Card style={styles.block}>
         <Text style={styles.blockTitle}>전체 공지 보내기</Text>
         <Text style={styles.hint}>승인된 모든 회원 알림함에 도착합니다.</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="제목"
-          placeholderTextColor={colors.textMuted}
-          value={noticeTitle}
-          onChangeText={setNoticeTitle}
-        />
-        <TextInput
-          style={[styles.input, styles.inputMulti]}
-          placeholder="내용"
-          placeholderTextColor={colors.textMuted}
-          value={noticeBody}
-          onChangeText={setNoticeBody}
-          multiline
+        <AdminBilingualFields
+          writeLocale={noticeWriteLocale}
+          onWriteLocaleChange={setNoticeWriteLocale}
+          title={noticeTitle}
+          body={noticeBody}
+          onTitleChange={setNoticeTitle}
+          onBodyChange={setNoticeBody}
         />
         <Button
-          title="공지 발송"
-          onPress={() => {
-            const r = adminBroadcastNotice(adminId, noticeTitle, noticeBody);
-            onToast(r.success ? 'success' : 'warning', r.message);
-            if (r.success) {
-              setNoticeTitle('');
-              setNoticeBody('');
+          title={translating ? '번역·발송 중…' : '공지 발송'}
+          disabled={translating}
+          onPress={async () => {
+            setTranslating(true);
+            try {
+              onToast('info', '다른 언어로 번역 중…');
+              const copy = await resolveBilingualNotice({
+                writeLocale: noticeWriteLocale,
+                title: noticeTitle,
+                body: noticeBody,
+              });
+              const r = adminBroadcastNotice(
+                adminId,
+                copy.title,
+                copy.body,
+                copy.titleEn,
+                copy.bodyEn
+              );
+              onToast(r.success ? 'success' : 'warning', r.message);
+              if (r.success) {
+                setNoticeTitle('');
+                setNoticeBody('');
+              }
+            } catch (err) {
+              onToast('warning', err instanceof Error ? err.message : '번역에 실패했어요.');
+            } finally {
+              setTranslating(false);
             }
           }}
           size="sm"
@@ -408,35 +453,51 @@ export function AdminNoticesPanel({
       <Card style={styles.block}>
         <Text style={styles.blockTitle}>코칭 · 레슨 공지</Text>
         <Text style={styles.hint}>코칭 역할이 있는 회원 화면에 표시됩니다.</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="공지 제목"
-          placeholderTextColor={colors.textMuted}
-          value={coachTitle}
-          onChangeText={setCoachTitle}
-        />
-        <TextInput
-          style={[styles.input, styles.inputMulti]}
-          placeholder="공지 내용"
-          placeholderTextColor={colors.textMuted}
-          value={coachBody}
-          onChangeText={setCoachBody}
-          multiline
+        <AdminBilingualFields
+          writeLocale={coachWriteLocale}
+          onWriteLocaleChange={setCoachWriteLocale}
+          title={coachTitle}
+          body={coachBody}
+          onTitleChange={setCoachTitle}
+          onBodyChange={setCoachBody}
+          titlePlaceholder="공지 제목"
+          bodyPlaceholder="공지 내용"
         />
         <Button
-          title="코칭 화면에 공지 등록"
-          onPress={() => {
-            const r = postAnnouncement(adminId, adminName, coachTitle, coachBody);
-            if (r.success) {
-              recordAdminLogAsActor(adminId, {
-                category: 'lesson',
-                action: 'coach.announcement',
-                message: `코칭 공지: ${coachTitle.trim()}`,
+          title={translating ? '번역·등록 중…' : '코칭 화면에 공지 등록'}
+          disabled={translating}
+          onPress={async () => {
+            setTranslating(true);
+            try {
+              onToast('info', '다른 언어로 번역 중…');
+              const copy = await resolveBilingualNotice({
+                writeLocale: coachWriteLocale,
+                title: coachTitle,
+                body: coachBody,
               });
-              setCoachTitle('');
-              setCoachBody('');
+              const r = postAnnouncement(
+                adminId,
+                adminName,
+                copy.title,
+                copy.body,
+                copy.titleEn,
+                copy.bodyEn
+              );
+              if (r.success) {
+                recordAdminLogAsActor(adminId, {
+                  category: 'lesson',
+                  action: 'coach.announcement',
+                  message: `코칭 공지: ${copy.title}`,
+                });
+                setCoachTitle('');
+                setCoachBody('');
+              }
+              onToast(r.success ? 'success' : 'warning', r.message);
+            } catch (err) {
+              onToast('warning', err instanceof Error ? err.message : '번역에 실패했어요.');
+            } finally {
+              setTranslating(false);
             }
-            onToast(r.success ? 'success' : 'warning', r.message);
           }}
           size="sm"
           variant="secondary"

@@ -2,12 +2,12 @@ import React from 'react';
 import { View, Text, StyleSheet, Platform, type TextStyle } from 'react-native';
 import { RANK_THRESHOLDS, RANK_ORDER } from '@/src/constants';
 import { colors, borderRadius, spacing, typography } from '@/src/theme';
-
-/** 표시용 하한/상한 — 브론즈(0~)와 마스터(~무한)를 보기 좋게 자른 범위 */
-const DISPLAY_MIN = 800;
-const DISPLAY_MAX = 2000;
+import { useI18n } from '@/src/i18n/useI18n';
 
 export function TierDistribution() {
+  const { t } = useI18n();
+  const DISPLAY_MIN = 800;
+  const DISPLAY_MAX = 2000;
   const bands = RANK_ORDER.map((rank, i) => {
     const next = RANK_ORDER[i + 1];
     const start = Math.max(RANK_THRESHOLDS[rank].min, DISPLAY_MIN);
@@ -26,11 +26,8 @@ export function TierDistribution() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>티어 분포</Text>
-      <Text style={styles.subtitle}>
-        Elo 점수 구간별 랭크입니다. 시작 점수는 1000점(실버)이며, 경기 점수 입력 결과에 따라
-        오르내립니다.
-      </Text>
+      <Text style={styles.title}>{t('guide.tierTitle')}</Text>
+      <Text style={styles.subtitle}>{t('guide.tierIntro')}</Text>
 
       <View style={styles.bar}>
         {bands.map((b, i) => (

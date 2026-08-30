@@ -6,6 +6,7 @@ import { RankBadge } from '@/src/components/ui/RankBadge';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 
 interface TeamRoomCardProps {
@@ -20,12 +21,12 @@ interface TeamRoomCardProps {
   hasPendingRequest?: boolean;
 }
 
-const STATUS_LABELS = {
-  open: '모집중',
-  ready: '예약가능',
-  reserved: '예약완료',
-  closed: '종료',
-};
+const STATUS_KEYS = {
+  open: 'lobby.statusOpen',
+  ready: 'lobby.statusReady',
+  reserved: 'lobby.statusReserved',
+  closed: 'lobby.statusClosed',
+} as const;
 
 export function TeamRoomCard({
   room,
@@ -38,6 +39,7 @@ export function TeamRoomCard({
   isHost,
   hasPendingRequest,
 }: TeamRoomCardProps) {
+  const { t } = useI18n();
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
   const canReserve = isHost && room.status === 'ready' && room.members.length >= room.minMembers;
   const joinRequests = room.joinRequests ?? [];
@@ -50,7 +52,7 @@ export function TeamRoomCard({
         </Text>
         {room.hasPassword && (
           <View style={styles.lockBadge}>
-            <Text style={styles.lockText}>비밀방</Text>
+            <Text style={styles.lockText}>{t('common.lockedRoom')}</Text>
           </View>
         )}
         {room.isHot && (
@@ -60,14 +62,14 @@ export function TeamRoomCard({
         )}
       </View>
 
-      <Text style={styles.host}>방장 {room.hostName}</Text>
+      <Text style={styles.host}>{t('common.host', { name: room.hostName })}</Text>
 
       {eloOn ? (
       <View style={styles.rankFilter}>
         {room.minRank && <RankBadge rank={room.minRank} size="sm" />}
         {room.minRank && room.maxRank && <Text style={styles.rankSep}>~</Text>}
         {room.maxRank && <RankBadge rank={room.maxRank} size="sm" />}
-        {!room.minRank && !room.maxRank && <Text style={styles.noFilter}>랭크 제한 없음</Text>}
+        {!room.minRank && !room.maxRank && <Text style={styles.noFilter}>{t('common.rankNone')}</Text>}
       </View>
       ) : null}
 
@@ -82,7 +84,9 @@ export function TeamRoomCard({
 
       {isHost && joinRequests.length > 0 && (
         <View style={styles.requests}>
-          <Text style={styles.requestsTitle}>참가 신청 {joinRequests.length}</Text>
+          <Text style={styles.requestsTitle}>
+            {t('lobby.joinRequests', { count: joinRequests.length })}
+          </Text>
           {joinRequests.map((req) => (
             <View key={req.id} style={styles.requestRow}>
               <Avatar name={req.name} color={req.avatarColor} size={28} />
@@ -90,10 +94,10 @@ export function TeamRoomCard({
               {eloOn ? <RankBadge rank={req.rank} size="sm" /> : null}
               <View style={styles.requestActions}>
                 {onAcceptJoin && (
-                  <Button title="수락" onPress={() => onAcceptJoin(req.id)} size="sm" />
+                  <Button title={t('common.accept')} onPress={() => onAcceptJoin(req.id)} size="sm" />
                 )}
                 {onRejectJoin && (
-                  <Button title="거절" onPress={() => onRejectJoin(req.id)} size="sm" variant="ghost" />
+                  <Button title={t('common.reject')} onPress={() => onRejectJoin(req.id)} size="sm" variant="ghost" />
                 )}
               </View>
             </View>
@@ -104,31 +108,31 @@ export function TeamRoomCard({
       <View style={styles.footer}>
         <View style={styles.statusWrap}>
           <Text style={[styles.status, room.status === 'ready' && styles.readyStatus]}>
-            {STATUS_LABELS[room.status]}
+            {t(STATUS_KEYS[room.status])}
           </Text>
           <Text style={styles.memberCount}>
-            {room.members.length}/{room.maxMembers}명
+            {t('lobby.memberCount', { current: room.members.length, max: room.maxMembers })}
           </Text>
         </View>
 
         <View style={styles.actions}>
           {canReserve && onReserveCourt && (
-            <Button title="코트 예약" onPress={onReserveCourt} size="sm" />
+            <Button title={t('lobby.reserveCourt')} onPress={onReserveCourt} size="sm" />
           )}
           {!isMember && !hasPendingRequest && room.status !== 'reserved' && room.status !== 'closed' && (
-            <Button title="참가 신청" onPress={onJoin} size="sm" />
+            <Button title={t('lobby.requestJoin')} onPress={onJoin} size="sm" />
           )}
           {!isMember && hasPendingRequest && (
-            <Text style={styles.memberLabel}>승인 대기</Text>
+            <Text style={styles.memberLabel}>{t('lobby.pendingApproval')}</Text>
           )}
           {isMember && room.status !== 'reserved' && onLeave && (
-            <Button title="나가기" onPress={onLeave} size="sm" variant="ghost" />
+            <Button title={t('common.leave')} onPress={onLeave} size="sm" variant="ghost" />
           )}
           {isMember && room.status === 'reserved' && (
-            <Text style={styles.memberLabel}>예약됨</Text>
+            <Text style={styles.memberLabel}>{t('lobby.reserved')}</Text>
           )}
           {isMember && room.status !== 'reserved' && !canReserve && (
-            <Text style={styles.memberLabel}>참여중</Text>
+            <Text style={styles.memberLabel}>{t('lobby.participating')}</Text>
           )}
         </View>
       </View>

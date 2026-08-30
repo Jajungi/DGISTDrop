@@ -1,4 +1,5 @@
 import type { ClubEvent, SiteOverlay, SiteOverlaySurface } from '@/src/types';
+import type { AppLocale } from '@/src/i18n/types';
 import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 
 /** 동아리 달력·휴관은 한국 날짜 기준 */
@@ -15,7 +16,12 @@ export function getActiveClubEvents(events: ClubEvent[], dateISO = todayLocalISO
   return events.filter((e) => isClubEventActiveOn(e, dateISO) && e.showBanner !== false);
 }
 
-export function clubEventKindLabel(kind: ClubEvent['kind']): string {
+export function clubEventKindLabel(kind: ClubEvent['kind'], locale: AppLocale = 'ko'): string {
+  if (locale === 'en') {
+    if (kind === 'closure') return 'Closure';
+    if (kind === 'extra') return 'Extra activity day';
+    return 'Banner notice';
+  }
   if (kind === 'closure') return '휴관';
   if (kind === 'extra') return '추가 활동일';
   return '배너 공지';
@@ -71,7 +77,9 @@ export function normalizeOverlays(raw: unknown): SiteOverlay[] {
       return {
         id: String(o.id ?? newOverlayId()),
         title: title || '공지',
+        titleEn: o.titleEn ? String(o.titleEn).trim() : o.title_en ? String(o.title_en).trim() : undefined,
         body,
+        bodyEn: o.bodyEn ? String(o.bodyEn).trim() : o.body_en ? String(o.body_en).trim() : undefined,
         surfaces,
         active: o.active !== false,
         dismissible: o.dismissible !== false,
@@ -124,7 +132,9 @@ export function normalizeClubEvents(raw: unknown): ClubEvent[] {
         id: String(o.id ?? newEventId()),
         kind,
         title,
+        titleEn: o.titleEn ? String(o.titleEn).trim() : o.title_en ? String(o.title_en).trim() : undefined,
         body: o.body ? String(o.body) : undefined,
+        bodyEn: o.bodyEn ? String(o.bodyEn).trim() : o.body_en ? String(o.body_en).trim() : undefined,
         dateStart,
         dateEnd: dateEnd < dateStart ? dateStart : dateEnd,
         active: o.active !== false,

@@ -1,5 +1,8 @@
 import type { AttendanceRecord, User } from '@/src/types';
 import { getEffectiveSchedule } from '@/src/utils/dateFormat';
+import { getT } from '@/src/i18n/useI18n';
+import { useLocaleStore } from '@/src/stores/localeStore';
+import type { AppLocale } from '@/src/i18n/types';
 
 export interface FriendGroups {
   onlineFriends: User[];
@@ -53,10 +56,11 @@ export function buildFriendGroups(
   return { onlineFriends, offlineFriends, othersCheckedIn };
 }
 
-export function formatArrivalLabel(user: User): string | null {
+export function formatArrivalLabel(user: User, locale?: AppLocale): string | null {
   const { start } = getEffectiveSchedule(user);
   if (!start) return null;
-  return `${start} 도착`;
+  const loc = locale ?? useLocaleStore.getState().locale;
+  return getT(loc)('friends.arrivalAt', { time: start });
 }
 
 export function formatScheduleRange(user: User): string | null {
