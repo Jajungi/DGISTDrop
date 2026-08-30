@@ -5,10 +5,12 @@ import { CourtIllustration } from './CourtIllustration';
 import { CourtPlayerProfiles } from './CourtPlayerProfiles';
 import { LightShadowView } from '@/src/components/ui/LightShadowView';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
+import { useI18n } from '@/src/i18n/useI18n';
 import { GameModeBadge } from './GameModeBadge';
 import { CourtGameProgress } from './CourtGameProgress';
 import { getCourtHeight, getCourtColumnLabel } from '@/src/constants/court';
 import { formatCleanupRemaining, formatElapsed } from '@/src/utils/courtTime';
+import { occupancySetupFromStatus } from '@/src/utils/occupancyCourt';
 import { colors } from '@/src/theme';
 
 /** 코트는 직각에 가까운 깔끔한 모서리 (미세 라운드로 계단현상만 방지) */
@@ -41,6 +43,7 @@ export function CourtCard({
   occupancyMode = false,
 }: CourtCardProps) {
   const { isDesktop } = useLayoutMode();
+  const { t } = useI18n();
   const safeWidth = Number.isFinite(courtWidth) && courtWidth > 0 ? courtWidth : 96;
   const courtHeight = getCourtHeight(safeWidth);
   const slotWidth = safeWidth + hPad * 2;
@@ -55,7 +58,9 @@ export function CourtCard({
   const isPlaying = court.status === 'playing';
   const isCooling = !occupancyMode && court.status === 'just_finished';
   const showGameMode = !occupancyMode && court.gameMode && court.status !== 'empty';
-  const isOccupied = occupancyMode && court.status !== 'empty';
+  const setupState = occupancyMode ? occupancySetupFromStatus(court.status) : null;
+  const isOccupied = occupancyMode && setupState === 'active';
+  const isSetupReady = occupancyMode && setupState === 'ready';
   const elapsed = formatElapsed(court.startedAt);
   const cleanupLeft = formatCleanupRemaining(court.finishedAt);
   const colLabel = getCourtColumnLabel(court.id);
@@ -80,7 +85,15 @@ export function CourtCard({
       {isOccupied && (
         <View style={[styles.reservedTagWrap, { pointerEvents: 'none' }]}>
           <View style={styles.occupiedTag}>
-            <Text style={styles.occupiedText}>사용 중</Text>
+            <Text style={styles.occupiedText}>{t('courts.inUse')}</Text>
+          </View>
+        </View>
+      )}
+
+      {isSetupReady && (
+        <View style={[styles.reservedTagWrap, { pointerEvents: 'none' }]}>
+          <View style={styles.readyTag}>
+            <Text style={styles.readyText}>{t('courts.ready')}</Text>
           </View>
         </View>
       )}
@@ -253,6 +266,19 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 13,
+    letterSpacing: 0.2,
+  },
+  readyTag: {
+    backgroundColor: '#7A9858',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    transform: [{ rotate: '-4deg' }],
+  },
+  readyText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12,
     letterSpacing: 0.2,
   },
   coolingTag: {

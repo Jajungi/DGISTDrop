@@ -1295,7 +1295,7 @@
       <section class="release" id="v2.0">
         <h2 class="h2">3.25　v2.0　Google 간편 로그인 정식 배포</h2>
         <table class="meta-table tight">
-          <tr><th>기간</th><td>2026-08-30</td><th>항목 수</th><td>15</td></tr>
+          <tr><th>기간</th><td>2026-08-30</td><th>항목 수</th><td>25</td></tr>
         </table>
         <div class="purpose">
           <div class="purpose-label">이 구간</div>
@@ -1368,6 +1368,46 @@
         <tr>
           <td class="col-no">15</td>
           <td class="col-what">Google 간편 로그인·연동 버튼을 다크 모드 팔레트(surface·테두리·글자)에 맞게 표시.</td>
+        </tr>
+        <tr>
+          <td class="col-no">16</td>
+          <td class="col-what">한국어/영어(KO|EN) 전환. 로그인·회원가입 상단, PC 헤더(지구본 ko|en), 모바일 설정에 언어 선택. 탭·로그인·설정·코트·이용 안내·웹앱 설치·알림 안내 영문 번역.</td>
+        </tr>
+        <tr>
+          <td class="col-no">17</td>
+          <td class="col-what">헤더 데모 스위치를 관리 → 개발자 탭 맨 위 「테스트 모드(데모)」로 이동. 헤더 자리에는 PC에서만 언어 전환.</td>
+        </tr>
+        <tr>
+          <td class="col-no">18</td>
+          <td class="col-what">웹앱 설치 안내 그림을 탭하면 화면에 맞게 확대해 볼 수 있음.</td>
+        </tr>
+        <tr>
+          <td class="col-no">19</td>
+          <td class="col-what">예약 OFF 현황 모드에서 코트를 미설치·설치됨(대기)·사용 중 3단계로 표시. 운영진이 코트 치기/사용/정리 버튼으로 상태 변경. Supabase 048_court_setup_and_lesson_timer.sql 적용.</td>
+        </tr>
+        <tr>
+          <td class="col-no">20</td>
+          <td class="col-what">코칭 화면(코치·운영진)에 레슨 진행 패널 추가 — 다음 사람 호출·레슨 시작·레슨 종료 버튼과 진행 시간 표시.</td>
+        </tr>
+        <tr>
+          <td class="col-no">21</td>
+          <td class="col-what">코치·레슨 알림에 읽음 표시. 탭하면 읽음 처리되고 「읽음」 뱃지가 보임.</td>
+        </tr>
+        <tr>
+          <td class="col-no">22</td>
+          <td class="col-what">예약 OFF 현황 모드에 운영진 수동 표시 안내 문구(한·영) 추가.</td>
+        </tr>
+        <tr>
+          <td class="col-no">23</td>
+          <td class="col-what">알림·레슨 사이렌 등 시스템 알림을 설정 언어(ko/en)로 표시. 언어 변경 시 프로필·푸시 토큰에 저장. Supabase 049_locale_preferences.sql 적용.</td>
+        </tr>
+        <tr>
+          <td class="col-no">24</td>
+          <td class="col-what">예약 OFF여도 친구 탭에서 모집방 초대 가능. 초대 시 「○○님이 초대했어요!」 푸시·인박스 알림. Elo 꺼지면 랭크 조건 무시. Supabase 050_notifications_room_id.sql 적용.</td>
+        </tr>
+        <tr>
+          <td class="col-no">25</td>
+          <td class="col-what">설정 → 받을 알림에 합류·참가 신청, 친구·초대, 운영·참석 토글 추가. 끈 유형은 푸시·알림함·사이렌에 표시되지 않음. Supabase 051_notification_prefs_channels.sql 적용.</td>
         </tr></tbody>
         </table>
       </section>

@@ -1,4 +1,6 @@
 import { GYM_LOCATION } from '@/src/constants';
+import type { AppLocale } from '@/src/i18n/types';
+import { buildEnglishGuideSections } from '@/src/constants/guideContent.en';
 
 export interface GuideItem {
   title: string;
@@ -483,7 +485,11 @@ const ACTIVITY_SCHEDULE_PLACEHOLDER = 'PLACEHOLDER_ACTIVITY_SCHEDULE';
  * 설정에 저장된 정기 활동 시간 문구를 넣은 이용 안내 섹션.
  * @param scheduleLabel 예: "매주 월·수 18:30–21:40"
  */
-export function getGuideSections(scheduleLabel: string): GuideSection[] {
+export function getGuideSections(scheduleLabel: string, locale: AppLocale = 'ko'): GuideSection[] {
+  if (locale === 'en') {
+    return buildEnglishGuideSections(scheduleLabel);
+  }
+
   const scheduleContent =
     `${scheduleLabel}에 ${GYM_NAME}에서 정기 활동이 진행됩니다. ` +
     '정기 활동 시간이 아니면 홈 상단에 안내 배너가 표시됩니다. ' +

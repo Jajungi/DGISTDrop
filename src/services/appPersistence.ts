@@ -32,6 +32,7 @@ export interface AppStateSnapshot {
   pendingMatches: MatchResult[];
   cleaningLeaderboard: CleaningSubmission[];
   inbox: AppNotification[];
+  dismissedLiveAlertIds?: string[];
   lessonApplications: LessonApplication[];
   lessonQueue: LessonQueueEntry[];
   peakResetDate: string | null;

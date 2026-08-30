@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   COURT_FLOOR_COLORS,
   COURT_STATUS_LEGEND,
+  OCCUPANCY_STATUS_LEGEND,
   COURT_LIGHT_LEGEND,
 } from '@/src/constants/court';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
@@ -19,9 +20,10 @@ import { colors, spacing, typography, borderRadius } from '@/src/theme';
 interface CourtStatusInfoModalProps {
   /** 작은 원형 i 버튼 (헤더용) */
   compact?: boolean;
+  occupancyMode?: boolean;
 }
 
-export function CourtStatusInfoModal({ compact }: CourtStatusInfoModalProps) {
+export function CourtStatusInfoModal({ compact, occupancyMode = false }: CourtStatusInfoModalProps) {
   const [visible, setVisible] = useState(false);
 
   return (
@@ -52,9 +54,13 @@ export function CourtStatusInfoModal({ compact }: CourtStatusInfoModalProps) {
 
             <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
               <Text style={styles.sectionTitle}>코트 바닥 색</Text>
-              <Text style={styles.sectionDesc}>카드 안 바닥 색으로 코트 상태를 구분해요.</Text>
+              <Text style={styles.sectionDesc}>
+                {occupancyMode
+                  ? '예약이 꺼진 현황 모드에서 코트 설치·이용 상태를 구분해요.'
+                  : '카드 안 바닥 색으로 코트 상태를 구분해요.'}
+              </Text>
 
-              {COURT_STATUS_LEGEND.map((item) => (
+              {(occupancyMode ? OCCUPANCY_STATUS_LEGEND : COURT_STATUS_LEGEND).map((item) => (
                 <View key={item.status} style={styles.legendRow}>
                   <View
                     style={[styles.swatch, { backgroundColor: COURT_FLOOR_COLORS[item.status] }]}

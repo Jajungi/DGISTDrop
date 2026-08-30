@@ -8,6 +8,8 @@ import { registerPushTokenForUser, unregisterPushToken } from '@/src/services/pu
 import { getWebPushAvailability, registerWebPushForUser, unregisterWebPush } from '@/src/services/webPush';
 import { isPushOptedOut, setPushOptedOut } from '@/src/services/pushPreference';
 import { getPushGuideCopy } from '@/src/utils/clientDevice';
+import { useLocaleStore } from '@/src/stores/localeStore';
+import { useI18n } from '@/src/i18n/useI18n';
 
 interface PushNotificationCardProps {
   userId: string;
@@ -15,11 +17,13 @@ interface PushNotificationCardProps {
 }
 
 export function PushNotificationCard({ userId, onToast }: PushNotificationCardProps) {
+  const locale = useLocaleStore((s) => s.locale);
+  const { t } = useI18n();
   const [enabled, setEnabled] = useState<boolean | null>(null);
-  const [showGuide, setShowGuide] = useState(() => getPushGuideCopy().needsHomeScreen);
+  const [showGuide, setShowGuide] = useState(() => getPushGuideCopy(undefined, locale).needsHomeScreen);
   const [busy, setBusy] = useState(false);
   const isWeb = Platform.OS === 'web';
-  const guide = getPushGuideCopy();
+  const guide = getPushGuideCopy(undefined, locale);
 
   const checkStatus = useCallback(async () => {
     if (await isPushOptedOut(userId)) {
@@ -44,6 +48,10 @@ export function PushNotificationCard({ userId, onToast }: PushNotificationCardPr
     }
   }, [isWeb, userId]);
 
+  useEffect(() => {
+    setShowGuide(getPushGuideCopy(undefined, locale).needsHomeScreen);
+  }, [locale]);
+
   useEffect(() => { void checkStatus(); }, [checkStatus]);
 
   const enablePush = async () => {
@@ -53,17 +61,17 @@ export function PushNotificationCard({ userId, onToast }: PushNotificationCardPr
       if (isWeb) {
         const ok = await registerWebPushForUser(userId);
         if (ok) {
-          onToast('success', '기기 알림이 켜졌어요');
+          onToast('success', t('push.enabledToast'));
           setEnabled(true);
         } else {
           const avail = getWebPushAvailability();
-          onToast('warning', avail.reason ?? '알림 등록에 실패했어요');
+          onToast('warning', avail.reason ?? t('push.registerFailed'));
         }
         return;
       }
       await registerPushTokenForUser(userId);
       await checkStatus();
-      onToast('success', '기기 알림이 켜졌어요');
+      onToast('success', t('push.enabledToast'));
     } finally {
       setBusy(false);
     }
@@ -76,7 +84,7 @@ export function PushNotificationCard({ userId, onToast }: PushNotificationCardPr
       if (isWeb) await unregisterWebPush();
       else await unregisterPushToken();
       setEnabled(false);
-      onToast('info', '기기 알림을 껐어요');
+      onToast('info', t('push.disabledToast'));
     } finally {
       setBusy(false);
     }
@@ -86,10 +94,10 @@ export function PushNotificationCard({ userId, onToast }: PushNotificationCardPr
     <Card style={styles.card}>
       <View style={styles.header}>
         <Ionicons name="notifications-outline" size={20} color={colors.primary} />
-        <Text style={styles.title}>기기 알림</Text>
+        <Text style={styles.title}>{t('push.deviceNotifications')}</Text>
         {enabled === true && (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>ON</Text>
+            <Text style={styles.badgeText}>{t('push.on')}</Text>
           </View>
         )}
       </View>
@@ -99,7 +107,7 @@ export function PushNotificationCard({ userId, onToast }: PushNotificationCardPr
       {guide.canRequestPermission ? (
         enabled === true ? (
           <Button
-            title="알림 끄기"
+            title={t('push.disable')}
             onPress={() => void disablePush()}
             variant="outline"
             fullWidth
@@ -107,7 +115,7 @@ export function PushNotificationCard({ userId, onToast }: PushNotificationCardPr
           />
         ) : (
           <Button
-            title="알림 켜기"
+            title={t('push.enable')}
             onPress={() => void enablePush()}
             variant="secondary"
             fullWidth

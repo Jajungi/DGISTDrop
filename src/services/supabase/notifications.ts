@@ -9,6 +9,7 @@ type DbNotification = {
   message: string;
   kind: string;
   court_id: number | null;
+  room_id: string | null;
   read_at: string | null;
   created_at: string;
 };
@@ -22,6 +23,7 @@ function mapNotificationRow(row: DbNotification): AppNotification {
     read: row.read_at != null,
     createdAt: row.created_at,
     courtId: row.court_id ?? undefined,
+    roomId: row.room_id ?? undefined,
     targetUserId: row.user_id,
   };
 }
@@ -40,6 +42,7 @@ export async function insertNotificationRemote(n: AppNotification): Promise<void
       message: n.message,
       kind: n.type,
       court_id: n.courtId ?? null,
+      room_id: n.roomId ?? null,
     });
     if (error) throw error;
     return;
@@ -51,6 +54,7 @@ export async function insertNotificationRemote(n: AppNotification): Promise<void
     p_message: n.message,
     p_kind: n.type,
     p_court_id: n.courtId ?? null,
+    p_room_id: n.roomId ?? null,
   });
   if (error) throw error;
 }

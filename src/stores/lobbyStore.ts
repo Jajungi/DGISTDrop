@@ -11,6 +11,8 @@ import { useAuthStore } from './authStore';
 import { useNotificationStore } from './notificationStore';
 import { useLobbyExpiryStore } from './lobbyExpiryStore';
 import { isGuestUser } from '@/src/utils/guestAccess';
+import { getT } from '@/src/i18n/useI18n';
+import { resolveUserLocale } from '@/src/i18n/resolveUserLocale';
 
 function remoteRoom(
   roomId: string,
@@ -345,10 +347,15 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
     }
 
     const inviter = useAuthStore.getState().users.find((u) => u.id === hostId);
+    const locale = resolveUserLocale(friendId);
+    const t = getT(locale);
+    const title = t('notifications.lobbyInviteTitle', { name: inviter?.name ?? '친구' });
+    const message = t('notifications.lobbyInviteMessage', { room: room.title });
+
     useNotificationStore.getState().pushInbox({
       type: 'friend',
-      title: '모집방 초대',
-      message: `${inviter?.name ?? '친구'}님이 「${room.title}」에 초대했어요. 알림에서 수락하면 바로 참여해요.`,
+      title,
+      message,
       targetUserId: friendId,
       roomId,
     });
@@ -374,10 +381,15 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
     };
     const result = get().joinRoom(roomId, member);
     if (result.success) {
+      const hostLocale = resolveUserLocale(room.hostId);
+      const t = getT(hostLocale);
       useNotificationStore.getState().pushInbox({
         type: 'friend',
-        title: '초대 수락',
-        message: `${user.name}님이 「${room.title}」 초대를 수락했어요.`,
+        title: t('notifications.lobbyInviteAcceptedTitle'),
+        message: t('notifications.lobbyInviteAcceptedMessage', {
+          name: user.name,
+          room: room.title,
+        }),
         targetUserId: room.hostId,
         roomId,
       });

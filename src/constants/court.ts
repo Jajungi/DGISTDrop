@@ -182,7 +182,7 @@ export const COURT_FLOOR_DARK = {
 
 export type CourtStatusKey = keyof typeof COURT_FLOOR_COLORS;
 
-/** 코트 현황 색상 범례 */
+/** 코트 현황 색상 범례 (예약 ON) */
 export const COURT_STATUS_LEGEND: {
   status: CourtStatusKey;
   label: string;
@@ -192,6 +192,17 @@ export const COURT_STATUS_LEGEND: {
   { status: 'reserved', label: '예약됨', description: '누군가 예약해 둔 상태예요.' },
   { status: 'playing', label: '경기 중', description: '지금 게임이 진행 중이에요.' },
   { status: 'just_finished', label: '방금 종료', description: '게임이 막 끝난 직후예요.' },
+];
+
+/** 예약 OFF 현황 모드 색상 범례 (empty=미설치, reserved=설치·대기, playing=사용 중) */
+export const OCCUPANCY_STATUS_LEGEND: {
+  status: 'empty' | 'reserved' | 'playing';
+  label: string;
+  description: string;
+}[] = [
+  { status: 'empty', label: '미설치', description: '코트를 아직 치지 않은 상태예요.' },
+  { status: 'reserved', label: '설치됨', description: '코트는 쳐졌지만 지금은 사용하지 않아요.' },
+  { status: 'playing', label: '사용 중', description: '지금 코트를 사용하고 있어요.' },
 ];
 
 /** 코트 카드 조명·그림자 설명 */

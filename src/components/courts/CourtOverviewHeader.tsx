@@ -7,6 +7,7 @@ import { GoingPeopleSheet } from '@/src/components/courts/GoingPeopleSheet';
 import { GYM_VENUE } from '@/src/constants/court';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import { isBetweenNotifyAndActivityStart } from '@/src/services/activityTime';
+import { useI18n } from '@/src/i18n/useI18n';
 import { DEFAULT_PUSH_SETTINGS, fetchPushNotifySettings } from '@/src/services/supabase/pushSettings';
 import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 
@@ -29,12 +30,10 @@ interface CourtOverviewHeaderProps {
   isExpanded?: boolean;
 }
 
-function formatDate() {
+function formatDate(t: (key: string, params?: Record<string, string | number>) => string) {
   const [, m, d] = getSeoulTodayKey().split('-');
-  return `${Number(m)}월 ${Number(d)}일`;
+  return t('courts.dateFormat', { month: Number(m), day: Number(d) });
 }
-
-const GOING_HINT = '눌러서 누가 오는지 확인해보세요!';
 
 function useGoingListHintWindow() {
   const [notifyTime, setNotifyTime] = useState(DEFAULT_PUSH_SETTINGS.notify_time);
@@ -75,22 +74,29 @@ export function CourtOverviewHeader({
   isExpanded = false,
 }: CourtOverviewHeaderProps) {
   const { isMobile, scaledTypography, isCompact, isLandscape } = useLayoutMode();
+  const { t } = useI18n();
   const [goingOpen, setGoingOpen] = useState(false);
   const hintWindow = useGoingListHintWindow();
   const showGoingHint = hintWindow && !goingOpen;
-  const emptyCount = courts.filter((c) => c.status === 'empty').length;
+  const unsetCount = courts.filter((c) => c.status === 'empty').length;
+  const readyCount = courts.filter((c) => c.status === 'reserved').length;
+  const activeCount = courts.filter(
+    (c) => c.status === 'playing' || c.status === 'just_finished'
+  ).length;
+  const emptyCount = unsetCount;
   const reservedCount = courts.filter((c) => c.status === 'reserved').length;
   const playingCount = courts.filter((c) => c.status === 'playing').length;
-  const occupiedCount = courts.filter((c) => c.status !== 'empty').length;
   const myCount = courts.filter(
     (c) => c.reservedBy === myUserId || c.players.some((p) => p.userId === myUserId)
   ).length;
 
   const filters: { key: 'all' | 'empty' | 'mine'; label: string; count: number }[] = [
-    { key: 'all', label: '전체', count: courts.length },
-    { key: 'empty', label: '가능', count: emptyCount },
-    { key: 'mine', label: '내꺼', count: myCount },
+    { key: 'all', label: t('courts.filterAll'), count: courts.length },
+    { key: 'empty', label: t('courts.filterEmpty'), count: emptyCount },
+    { key: 'mine', label: t('courts.filterMine'), count: myCount },
   ];
+  const peopleSuffix = t('courts.peopleSuffix');
+  const countLabel = (n: number) => (peopleSuffix ? `${n}${peopleSuffix}` : `${n}`);
 
   return (
     <View style={[styles.wrap, isMobile && styles.wrapMobile, isLandscape && styles.wrapLandscape]}>
@@ -107,7 +113,7 @@ export function CourtOverviewHeader({
                 },
               ]}
             >
-              코트 현황
+              {t('courts.title')}
             </Text>
             {!isExpanded && !isLandscape && (
               <Text
@@ -121,7 +127,7 @@ export function CourtOverviewHeader({
               </Text>
             )}
           </View>
-          <CourtStatusInfoModal compact />
+          <CourtStatusInfoModal compact occupancyMode={occupancyMode} />
         </View>
         <Text
           style={[
@@ -133,7 +139,7 @@ export function CourtOverviewHeader({
             },
           ]}
         >
-          {formatDate()}
+          {formatDate(t)}
         </Text>
       </View>
 
@@ -143,8 +149,8 @@ export function CourtOverviewHeader({
             {goingCount != null && (
               <View style={styles.goingCluster}>
                 <StatusItem
-                  number={`${goingCount}명`}
-                  label="올 사람"
+                  number={countLabel(goingCount)}
+                  label={t('courts.going')}
                   isText
                   compact={isMobile}
                   emphasize
@@ -152,30 +158,33 @@ export function CourtOverviewHeader({
                   onPress={() => setGoingOpen(true)}
                 />
                 {showGoingHint ? (
-                  <GoingListHint compact={isMobile} onPress={() => setGoingOpen(true)} />
+                  <GoingListHint compact={isMobile} hint={t('courts.goingHint')} onPress={() => setGoingOpen(true)} />
                 ) : null}
               </View>
             )}
             {atGymCount != null && (
               <StatusItem
-                number={`${atGymCount}명`}
-                label="온 사람"
+                number={countLabel(atGymCount)}
+                label={t('courts.hereArrived')}
                 isText
                 compact={isMobile}
                 onPress={() => setGoingOpen(true)}
               />
             )}
-            <StatusItem number={emptyCount} label="가능" compact={isMobile} />
+            <StatusItem number={emptyCount} label={occupancyMode ? t('courts.unset') : t('courts.filterEmpty')} compact={isMobile} />
             {occupancyMode ? (
-              <StatusItem number={occupiedCount} label="사용" compact={isMobile} />
+              <>
+                <StatusItem number={readyCount} label={t('courts.ready')} compact={isMobile} />
+                <StatusItem number={activeCount} label={t('courts.inUse')} compact={isMobile} />
+              </>
             ) : (
               <>
-                <StatusItem number={reservedCount} label="예약" compact={isMobile} />
-                <StatusItem number={playingCount} label="경기" compact={isMobile} />
+                <StatusItem number={reservedCount} label={t('courts.reserved')} compact={isMobile} />
+                <StatusItem number={playingCount} label={t('courts.playing')} compact={isMobile} />
               </>
             )}
             {remaining != null && (
-              <StatusItem number={remaining} label="잔여" isText compact={isMobile} />
+              <StatusItem number={remaining} label={t('courts.remaining')} isText compact={isMobile} />
             )}
           </View>
 
@@ -205,6 +214,13 @@ export function CourtOverviewHeader({
           </View>
         </View>
       )}
+
+      {!isExpanded && occupancyMode && (
+        <Text style={[styles.occupancyDisclaimer, isMobile && styles.occupancyDisclaimerMobile]}>
+          {t('courts.occupancyDisclaimer')}
+        </Text>
+      )}
+
       <GoingPeopleSheet
         visible={goingOpen}
         onClose={() => setGoingOpen(false)}
@@ -215,7 +231,15 @@ export function CourtOverviewHeader({
   );
 }
 
-function GoingListHint({ compact, onPress }: { compact?: boolean; onPress: () => void }) {
+function GoingListHint({
+  compact,
+  hint,
+  onPress,
+}: {
+  compact?: boolean;
+  hint: string;
+  onPress: () => void;
+}) {
   const opacity = useRef(new Animated.Value(0.28)).current;
 
   useEffect(() => {
@@ -243,13 +267,13 @@ function GoingListHint({ compact, onPress }: { compact?: boolean; onPress: () =>
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={GOING_HINT}
+      accessibilityLabel={hint}
       style={Platform.select({ web: { cursor: 'pointer' as const } })}
     >
       <Animated.Text
         style={[styles.goingHint, compact && styles.goingHintCompact, { opacity }]}
       >
-        {GOING_HINT}
+        {hint}
       </Animated.Text>
     </Pressable>
   );
@@ -491,5 +515,19 @@ const styles = StyleSheet.create({
   },
   locDotOn: {
     backgroundColor: colors.success,
+  },
+  occupancyDisclaimer: {
+    ...typography.small,
+    color: colors.textMuted,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: -spacing.xs,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  occupancyDisclaimerMobile: {
+    fontSize: 10,
+    lineHeight: 14,
+    marginBottom: spacing.xs,
   },
 });

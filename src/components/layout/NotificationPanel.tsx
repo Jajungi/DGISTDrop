@@ -13,7 +13,7 @@ import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCourtStore } from '@/src/stores/courtStore';
 import { useLobbyStore } from '@/src/stores/lobbyStore';
 import { useAuthStore } from '@/src/stores/authStore';
-import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
+import { useNotificationPrefsStore, isNotificationPrefEnabledForType } from '@/src/stores/notificationPrefsStore';
 import { useAppWindowSize } from '@/src/hooks/useAppWindowSize';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
 import type { AppNotification } from '@/src/types';
@@ -25,15 +25,19 @@ import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { useClubEventStore } from '@/src/stores/clubEventStore';
 import { useSeoulTodayKey } from '@/src/hooks/useSeoulTodayKey';
 import { isGuestUser } from '@/src/utils/guestAccess';
+import { useI18n } from '@/src/i18n/useI18n';
 import { router } from 'expo-router';
 
 const INITIAL_VISIBLE = 5;
 const LIST_COLLAPSED_MAX = 280;
 const LIST_EXPANDED_MAX = 420;
 
-function formatTime(iso: string) {
+function formatTime(iso: string, locale: 'ko' | 'en') {
   const d = new Date(iso);
-  return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString(locale === 'en' ? 'en-US' : 'ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 const TYPE_ICON: Record<AppNotification['type'], keyof typeof Ionicons.glyphMap> = {
@@ -52,7 +56,7 @@ interface NotificationPanelProps {
 function resolveJoinRequestId(item: AppNotification, courts: ReturnType<typeof useCourtStore.getState>['courts']) {
   if (item.joinRequestId) return item.joinRequestId;
   if (item.id.startsWith('join-live-')) return item.id.replace('join-live-', '');
-  if (item.type !== 'join' || item.courtId == null || item.title !== '참가 요청') return undefined;
+  if (item.type !== 'join' || item.courtId == null) return undefined;
   const court = courts.find((c) => c.id === item.courtId);
   if (!court || court.joinRequests.length === 0) return undefined;
   if (court.joinRequests.length === 1) return court.joinRequests[0].id;
@@ -68,8 +72,8 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
   const { width: screenW, height: screenH } = useAppWindowSize();
   const { headerHeight, tabBarHeight } = useLayoutMode();
   const inboxAll = useNotificationStore((s) => s.inbox);
+  const dismissedLiveAlertIds = useNotificationStore((s) => s.dismissedLiveAlertIds);
   const markRead = useNotificationStore((s) => s.markNotificationRead);
-  const markAllRead = useNotificationStore((s) => s.markAllNotificationsRead);
   const showToast = useNotificationStore((s) => s.showToast);
   const courts = useCourtStore((s) => s.courts);
   const acceptJoin = useCourtStore((s) => s.acceptJoin);
@@ -86,20 +90,22 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
   const todayKey = useSeoulTodayKey();
   const lessonQueue = useLessonStore((s) => s.lessonQueue);
   const lessonTurnOn = useNotificationPrefsStore((s) => s.lessonTurn);
+  const joinAlertsOn = useNotificationPrefsStore((s) => s.joinAlerts);
+  const systemAlertsOn = useNotificationPrefsStore((s) => s.systemAlerts);
+  const { t, locale } = useI18n();
   const [expanded, setExpanded] = useState(false);
 
   const inbox = useMemo(
     () =>
       inboxAll.filter((n) => {
         if (n.targetUserId && (!currentUser || n.targetUserId !== currentUser.id)) return false;
-        if (n.type === 'coach' && !lessonTurnOn) return false;
-        return true;
+        return isNotificationPrefEnabledForType(n.type);
       }),
-    [inboxAll, currentUser, lessonTurnOn]
+    [inboxAll, currentUser]
   );
 
   const liveJoin = useMemo(() => {
-    if (!currentUser) return [];
+    if (!currentUser || !joinAlertsOn) return [];
     const items: AppNotification[] = [];
     courts.forEach((court) => {
       const isHost =
@@ -110,8 +116,8 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
         items.push({
           id: `join-live-${req.id}`,
           type: 'join',
-          title: '참가 요청',
-          message: `${req.userName}님이 ${court.id}번 코트 합류를 요청했어요`,
+          title: t('notifications.joinCourtTitle'),
+          message: t('notifications.joinCourtMessage', { name: req.userName, court: court.id }),
           read: false,
           createdAt: req.requestedAt ?? new Date().toISOString(),
           courtId: court.id,
@@ -125,8 +131,8 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
         items.push({
           id: `lobby-join-live-${req.id}`,
           type: 'join',
-          title: '모집방 참가 신청',
-          message: `${req.name}님이 「${room.title}」 참가를 신청했어요`,
+          title: t('notifications.joinLobbyTitle'),
+          message: t('notifications.joinLobbyMessage', { name: req.name, room: room.title }),
           read: false,
           createdAt: req.requestedAt,
           roomId: room.id,
@@ -135,9 +141,10 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
       });
     });
     return items;
-  }, [courts, rooms, currentUser]);
+  }, [courts, rooms, currentUser, joinAlertsOn, t]);
 
   const attendancePrompt = useMemo(() => {
+    if (!systemAlertsOn) return null;
     if (!currentUser || isGuestUser(currentUser) || currentUser.memberStatus !== 'approved') {
       return null;
     }
@@ -146,13 +153,13 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
     return {
       id: 'attendance-today',
       type: 'system' as const,
-      title: '오늘 오시나요?',
-      message: '참석하면 올 사람 수에 바로 들어가요. 언제 올지는 바로 고를 수 있어요.',
+      title: t('notifications.attendanceTitle'),
+      message: t('notifications.attendanceMessage'),
       read: false,
       createdAt: new Date().toISOString(),
       targetUserId: currentUser.id,
     };
-  }, [currentUser, schedule, events, cancelledDate, todayKey]);
+  }, [currentUser, schedule, events, cancelledDate, todayKey, systemAlertsOn, t]);
 
   const coachAlerts = useMemo(() => {
     if (!currentUser || !lessonTurnOn) return [];
@@ -160,26 +167,38 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
       .filter((e) => e.userId === currentUser.id && (e.status === 'next' || e.status === 'active' || e.status === 'waiting'))
       .map((e) => {
         const eta = formatLessonEtaLabel(e, lessonQueue);
+        const alertId = `coach-${e.id}-${e.status}`;
+        const inboxRead = inbox.some(
+          (n) =>
+            n.type === 'coach' &&
+            n.read &&
+            (n.targetUserId === currentUser.id || !n.targetUserId) &&
+            n.message.includes(String(e.position))
+        );
         return {
-          id: `coach-${e.id}`,
+          id: alertId,
           type: 'coach' as const,
-          title: e.status === 'active' ? '코칭 진행 중' : e.status === 'next' ? '코칭 곧 시작' : '레슨 대기',
+          title:
+            e.status === 'active'
+              ? t('notifications.coachActiveTitle')
+              : e.status === 'next'
+                ? t('notifications.coachNextTitle')
+                : t('notifications.coachWaitingTitle'),
           message:
             e.status === 'active'
-              ? '코치 코트로 이동해 주세요.'
-              : eta ?? '다음 레슨 차례를 기다려 주세요.',
-          read: false,
-          createdAt: new Date().toISOString(),
+              ? t('notifications.coachActiveMessage')
+              : eta ?? t('notifications.coachWaitMessage'),
+          read: dismissedLiveAlertIds.includes(alertId) || inboxRead,
+          createdAt: e.joinedAt,
         };
       });
-  }, [currentUser, lessonQueue, lessonTurnOn]);
+  }, [currentUser, lessonQueue, lessonTurnOn, dismissedLiveAlertIds, inbox, t]);
 
   const all = useMemo(() => {
     const liveIds = new Set(liveJoin.map((n) => n.joinRequestId).filter(Boolean));
     const inboxDeduped = inbox.filter((n) => {
-      if (n.type === 'join' && (n.title === '참가 요청' || n.title === '모집방 참가 신청')) {
-        const rid = n.joinRequestId ?? resolveJoinRequestId(n, courts);
-        if (rid && liveIds.has(rid)) return false;
+      if (n.type === 'join' && n.joinRequestId) {
+        if (liveIds.has(n.joinRequestId)) return false;
       }
       return true;
     });
@@ -234,7 +253,7 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
     if (item.courtId == null) return;
     const requestId = resolveJoinRequestId(item, courts);
     if (!requestId) {
-      showToast({ type: 'warning', title: '', message: '이미 처리됐거나 요청을 찾을 수 없어요.' });
+      showToast({ type: 'warning', title: '', message: t('notifications.joinProcessed') });
       return;
     }
     const result = acceptJoin(item.courtId, requestId);
@@ -260,11 +279,11 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
     if (item.courtId == null) return;
     const requestId = resolveJoinRequestId(item, courts);
     if (!requestId) {
-      showToast({ type: 'warning', title: '', message: '이미 처리됐거나 요청을 찾을 수 없어요.' });
+      showToast({ type: 'warning', title: '', message: t('notifications.joinProcessed') });
       return;
     }
     rejectJoin(item.courtId, requestId);
-    showToast({ type: 'info', title: '', message: '합류 요청을 거절했어요.' });
+    showToast({ type: 'info', title: '', message: t('notifications.joinRejected') });
     markRead(item.id);
   };
 
@@ -286,11 +305,14 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
   return (
     <View style={[styles.panel, { width: panelWidth, maxHeight: panelMaxHeight }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>알림</Text>
+        <Text style={styles.title}>{t('notifications.title')}</Text>
         <View style={styles.headerActions}>
           {all.some((n) => !n.read) && (
-            <Pressable onPress={() => markAllRead(currentUser?.id)} hitSlop={8}>
-              <Text style={styles.markAll}>모두 읽음</Text>
+            <Pressable
+              onPress={() => all.filter((n) => !n.read).forEach((n) => markRead(n.id))}
+              hitSlop={8}
+            >
+              <Text style={styles.markAll}>{t('notifications.markAllRead')}</Text>
             </Pressable>
           )}
           <Pressable onPress={onClose} hitSlop={8}>
@@ -305,22 +327,26 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
         nestedScrollEnabled
       >
         {all.length === 0 ? (
-          <Text style={styles.empty}>새 알림이 없어요</Text>
+          <Text style={styles.empty}>{t('notifications.empty')}</Text>
         ) : (
           visible.map((item) => {
             const canActAttendance = item.id === 'attendance-today';
             const canActCourtJoin =
               item.type === 'join' &&
-              item.title === '참가 요청' &&
               item.courtId != null &&
+              !item.roomId &&
               Boolean(resolveJoinRequestId(item, courts));
             const canActLobbyJoin =
-              item.type === 'join' &&
-              item.title === '모집방 참가 신청' &&
-              !!item.roomId &&
-              !!item.joinRequestId;
+              item.type === 'join' && !!item.roomId && !!item.joinRequestId;
+            const inviteRoomId = 'roomId' in item ? item.roomId : undefined;
+            const inviteRoom = inviteRoomId ? rooms.find((r) => r.id === inviteRoomId) : undefined;
             const canActInvite =
-              item.type === 'friend' && item.title === '모집방 초대' && !!item.roomId;
+              item.type === 'friend' &&
+              !!inviteRoomId &&
+              !!inviteRoom &&
+              inviteRoom.status !== 'reserved' &&
+              inviteRoom.status !== 'closed' &&
+              !inviteRoom.members.some((m) => m.userId === currentUser?.id);
 
             return (
               <View
@@ -336,13 +362,16 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
                     <Ionicons name={TYPE_ICON[item.type]} size={18} color={colors.primary} />
                   </View>
                   <View style={styles.body}>
-                    <Text style={styles.rowTitle} numberOfLines={2}>
-                      {item.title}
-                    </Text>
+                    <View style={styles.titleRow}>
+                      <Text style={[styles.rowTitle, !item.read && styles.rowTitleUnread]} numberOfLines={2}>
+                        {item.title}
+                      </Text>
+                      {item.read ? <Text style={styles.readBadge}>{t('notifications.read')}</Text> : null}
+                    </View>
                     <Text style={styles.rowMsg} numberOfLines={3}>
                       {item.message}
                     </Text>
-                    <Text style={styles.rowTime}>{formatTime(item.createdAt)}</Text>
+                    <Text style={styles.rowTime}>{formatTime(item.createdAt, locale)}</Text>
                   </View>
                 </Pressable>
                 {canActAttendance && (
@@ -353,7 +382,7 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
                       accessibilityRole="button"
                       accessibilityLabel="참석"
                     >
-                      <Text style={styles.acceptText}>참석</Text>
+                      <Text style={styles.acceptText}>{t('notifications.going')}</Text>
                     </Pressable>
                     <Pressable
                       onPress={() => handleAttendance('not_going')}
@@ -361,7 +390,7 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
                       accessibilityRole="button"
                       accessibilityLabel="불참"
                     >
-                      <Text style={styles.rejectText}>불참</Text>
+                      <Text style={styles.rejectText}>{t('notifications.notGoing')}</Text>
                     </Pressable>
                   </View>
                 )}
@@ -373,7 +402,7 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
                       accessibilityRole="button"
                       accessibilityLabel="수락"
                     >
-                      <Text style={styles.acceptText}>수락</Text>
+                      <Text style={styles.acceptText}>{t('notifications.accept')}</Text>
                     </Pressable>
                     <Pressable
                       onPress={() => handleReject(item)}
@@ -381,7 +410,7 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
                       accessibilityRole="button"
                       accessibilityLabel="거절"
                     >
-                      <Text style={styles.rejectText}>거절</Text>
+                      <Text style={styles.rejectText}>{t('notifications.reject')}</Text>
                     </Pressable>
                   </View>
                 )}
@@ -393,7 +422,7 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
                       accessibilityRole="button"
                       accessibilityLabel="초대 수락"
                     >
-                      <Text style={styles.acceptText}>수락</Text>
+                      <Text style={styles.acceptText}>{t('notifications.accept')}</Text>
                     </Pressable>
                   </View>
                 )}
@@ -408,9 +437,13 @@ export function NotificationPanel({ onClose, layout = 'dropdown' }: Notification
           onPress={() => setExpanded((v) => !v)}
           style={styles.moreBtn}
           accessibilityRole="button"
-          accessibilityLabel={expanded ? '알림 접기' : '알림 더보기'}
+          accessibilityLabel={expanded ? t('notifications.collapse') : t('notifications.expand')}
         >
-          <Text style={styles.moreText}>{expanded ? '접기' : `더보기 (${all.length - INITIAL_VISIBLE})`}</Text>
+          <Text style={styles.moreText}>
+            {expanded
+              ? t('notifications.collapse')
+              : `${t('notifications.expand')} (${all.length - INITIAL_VISIBLE})`}
+          </Text>
           <Ionicons
             name={expanded ? 'chevron-up' : 'chevron-down'}
             size={16}
@@ -479,7 +512,19 @@ const styles = StyleSheet.create({
   icon_system: { backgroundColor: colors.surfaceAlt },
   icon_friend: { backgroundColor: colors.primaryLight },
   body: { flex: 1, gap: 2, minWidth: 0 },
-  rowTitle: { ...typography.bodyBold, color: colors.text, fontSize: 14, flexShrink: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+  rowTitle: { ...typography.bodyBold, color: colors.text, fontSize: 14, flex: 1 },
+  rowTitleUnread: { color: colors.text },
+  readBadge: {
+    ...typography.small,
+    color: colors.textMuted,
+    fontSize: 10,
+    fontWeight: '600',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.xs,
+    backgroundColor: colors.surfaceAlt,
+  },
   rowMsg: { ...typography.caption, color: colors.textSecondary, flexShrink: 1 },
   rowTime: { ...typography.small, color: colors.textMuted, marginTop: 2 },
   actions: {

@@ -8,15 +8,15 @@ import { useLessonStore } from '@/src/stores/lessonStore';
 import { useCourtStore } from '@/src/stores/courtStore';
 import { useShellStore } from '@/src/stores/shellStore';
 import { useSearchStore } from '@/src/stores/searchStore';
-import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
-import { isStaffUser } from '@/src/utils/staffAccess';
+import { useNotificationPrefsStore, isNotificationPrefEnabledForType } from '@/src/stores/notificationPrefsStore';
 import { Avatar } from '@/src/components/ui/Avatar';
-import { Toggle } from '@/src/components/ui/Toggle';
 import { NotificationPanel } from './NotificationPanel';
 import { DropBrand } from './DropBrand';
 import { HamburgerIcon } from './HamburgerIcon';
 import { ThemeToggleButton } from './ThemeToggleButton';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import { useLayoutMode } from '@/src/hooks/useLayoutMode';
+import { useI18n } from '@/src/i18n/useI18n';
 import { colors, spacing, typography, shadows } from '@/src/theme';
 import { getSeoulTodayKey } from '@/src/utils/dateFormat';
 
@@ -25,8 +25,6 @@ export function AppHeader() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const attendanceRecords = useAuthStore((s) => s.attendanceRecords);
   const checkIn = useAuthStore((s) => s.checkIn);
-  const demoMode = useAppStore((s) => s.demoMode);
-  const setDemoMode = useAppStore((s) => s.setDemoMode);
   const checkGeoFence = useAppStore((s) => s.checkGeoFence);
   useAppStore((s) => s.location);
   const canCheckIn = checkGeoFence();
@@ -34,11 +32,13 @@ export function AppHeader() {
   const inbox = useNotificationStore((s) => s.inbox);
   const lessonQueue = useLessonStore((s) => s.lessonQueue);
   const lessonTurnOn = useNotificationPrefsStore((s) => s.lessonTurn);
+  const joinAlertsOn = useNotificationPrefsStore((s) => s.joinAlerts);
   const courts = useCourtStore((s) => s.courts);
   const sidebarExpanded = useShellStore((s) => s.sidebarExpanded);
   const toggleSidebar = useShellStore((s) => s.toggleSidebar);
   const searchQuery = useSearchStore((s) => s.query);
   const setSearchQuery = useSearchStore((s) => s.setQuery);
+  const { t } = useI18n();
 
   const [searchFocused, setSearchFocused] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -75,15 +75,17 @@ export function AppHeader() {
       (n) =>
         !n.read &&
         (!n.targetUserId || n.targetUserId === currentUser?.id) &&
-        !(n.type === 'coach' && !lessonTurnOn)
+        isNotificationPrefEnabledForType(n.type)
     ).length;
     if (currentUser) {
-      courts.forEach((court) => {
-        const isHost =
-          court.reservedBy === currentUser.id ||
-          court.players[0]?.userId === currentUser.id;
-        if (isHost) count += court.joinRequests.length;
-      });
+      if (joinAlertsOn) {
+        courts.forEach((court) => {
+          const isHost =
+            court.reservedBy === currentUser.id ||
+            court.players[0]?.userId === currentUser.id;
+          if (isHost) count += court.joinRequests.length;
+        });
+      }
       const coach = lessonTurnOn
         ? lessonQueue.filter(
             (e) => e.userId === currentUser.id && (e.status === 'next' || e.status === 'active')
@@ -92,12 +94,12 @@ export function AppHeader() {
       count += coach.length;
     }
     return count;
-  }, [courts, currentUser, inbox, lessonQueue, lessonTurnOn]);
+  }, [courts, currentUser, inbox, joinAlertsOn, lessonQueue, lessonTurnOn]);
 
   const handleCheckIn = () => {
     if (!currentUser) return;
     if (!checkGeoFence()) {
-      showToast({ type: 'warning', title: '', message: 'S1 체육관 근처에서만 출석할 수 있어요.' });
+      showToast({ type: 'warning', title: '', message: t('header.checkInNearGym') });
       return;
     }
     const result = checkIn(currentUser.id);
@@ -116,7 +118,7 @@ export function AppHeader() {
             onPress={toggleSidebar}
             style={styles.menuSlot}
             accessibilityRole="button"
-            accessibilityLabel={sidebarExpanded ? '메뉴 닫기' : '메뉴 열기'}
+            accessibilityLabel={sidebarExpanded ? t('header.menuClose') : t('header.menuOpen')}
             accessibilityState={{ expanded: sidebarExpanded }}
             hitSlop={8}
           >
@@ -139,7 +141,7 @@ export function AppHeader() {
                 isMobile && styles.searchInputMobile,
                 isMobile && { fontSize: scaledTypography.body.fontSize },
               ]}
-              placeholder={isMobile ? '검색' : '인원 검색'}
+              placeholder={isMobile ? t('header.searchShort') : t('header.search')}
               placeholderTextColor={colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -148,7 +150,7 @@ export function AppHeader() {
               onSubmitEditing={handleSearchSubmit}
               returnKeyType="search"
             />
-            <Pressable onPress={handleSearchSubmit} hitSlop={8} accessibilityLabel="검색">
+            <Pressable onPress={handleSearchSubmit} hitSlop={8} accessibilityLabel={t('header.searchShort')}>
               <Ionicons name="search" size={18} color={colors.textMuted} />
             </Pressable>
           </View>
@@ -156,22 +158,12 @@ export function AppHeader() {
       </View>
 
       <View style={[styles.right, isMobile && styles.rightMobile]}>
-        {isStaffUser(currentUser) && (
-          <View style={styles.demoToggle}>
-            <Toggle
-              size="sm"
-              value={demoMode}
-              onValueChange={setDemoMode}
-              accessibilityLabel="데모 모드"
-            />
-            {!isMobile && <Text style={styles.demoLabel}>데모</Text>}
-          </View>
-        )}
+        {!isMobile ? <LanguageSwitcher /> : null}
         <Pressable
           style={[styles.actionBtn, isMobile && styles.actionBtnMobile, todayRecord && styles.actionBtnDone]}
           onPress={handleCheckIn}
           disabled={!!todayRecord || !canCheckIn}
-          accessibilityLabel="출석"
+          accessibilityLabel={t('header.checkIn')}
         >
           <Ionicons
             name={todayRecord ? 'checkmark-circle' : 'location-outline'}
@@ -186,7 +178,7 @@ export function AppHeader() {
                 !canCheckIn && !todayRecord && styles.actionLabelMuted,
               ]}
             >
-              {todayRecord ? '출석완료' : '출석'}
+              {todayRecord ? t('header.checkedIn') : t('header.checkIn')}
             </Text>
           )}
         </Pressable>
@@ -204,7 +196,7 @@ export function AppHeader() {
           <Pressable
             style={styles.iconBtn}
             onPress={() => setNotifOpen((v) => !v)}
-            accessibilityLabel="알림"
+            accessibilityLabel={t('header.notifications')}
             accessibilityState={{ expanded: notifOpen }}
           >
             <Ionicons name="notifications-outline" size={22} color={colors.text} />
@@ -242,7 +234,7 @@ export function AppHeader() {
             style={[styles.profileBtn, isMobile && styles.profileBtnMobile]}
             onPress={() => router.push('/profile')}
             accessibilityRole="button"
-            accessibilityLabel={`${currentUser.name} 프로필`}
+            accessibilityLabel={t('header.profile', { name: currentUser.name })}
           >
             <Avatar name={currentUser.name} color={currentUser.avatarColor} size={isMobile ? Math.round(30 * scale) : 32} imageUri={currentUser.avatarUri} />
             {!isMobile && (
@@ -348,17 +340,6 @@ const styles = StyleSheet.create({
   rightMobile: {
     gap: 4,
     flexShrink: 0,
-  },
-  demoToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    marginRight: 4,
-  },
-  demoLabel: {
-    ...typography.small,
-    fontSize: 10,
-    color: colors.textMuted,
   },
   actionBtn: {
     flexDirection: 'row',

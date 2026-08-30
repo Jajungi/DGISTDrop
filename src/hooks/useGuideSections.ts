@@ -3,6 +3,7 @@ import { getGuideSections } from '@/src/constants/guideContent';
 import { getActivityDayLabel } from '@/src/services/activityTime';
 import { useActivityScheduleStore } from '@/src/stores/activityScheduleStore';
 import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
+import { useLocaleStore } from '@/src/stores/localeStore';
 import { formatActivityScheduleLabel } from '@/src/utils/activitySchedule';
 import { detectClientDevice, getPushGuideCopy } from '@/src/utils/clientDevice';
 
@@ -12,11 +13,12 @@ export function useGuideSections() {
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
   const pointsOn = useFeatureFlagsStore((s) => s.pointsFeaturesEnabled);
   const reservationOn = useFeatureFlagsStore((s) => s.reservationEnabled);
+  const locale = useLocaleStore((s) => s.locale);
   return useMemo(() => {
     const label = formatActivityScheduleLabel(schedule, getActivityDayLabel);
-    const sections = getGuideSections(label);
+    const sections = getGuideSections(label, locale);
     const device = detectClientDevice();
-    const pushCopy = getPushGuideCopy(device);
+    const pushCopy = getPushGuideCopy(device, locale);
     const tailored = sections.map((section) => ({
       ...section,
       items: section.items
@@ -29,7 +31,9 @@ export function useGuideSections() {
           return true;
         })
         .map((item) =>
-          item.title === '활동 알림 (푸시)' ? { ...item, content: pushCopy.guideBody } : item
+          item.title === '활동 알림 (푸시)' || item.title === 'Session notifications (push)'
+            ? { ...item, content: pushCopy.guideBody }
+            : item
         ),
     }));
     return tailored.filter(
@@ -38,7 +42,7 @@ export function useGuideSections() {
         (eloOn || s.id !== 'rank') &&
         (pointsOn || s.id !== 'points')
     );
-  }, [schedule, eloOn, pointsOn, reservationOn]);
+  }, [schedule, eloOn, pointsOn, reservationOn, locale]);
 }
 
 export function useActivityScheduleLabel() {

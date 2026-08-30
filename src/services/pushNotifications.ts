@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { getSupabase, isSupabaseEnabled } from '@/src/lib/supabase';
+import { useLocaleStore } from '@/src/stores/localeStore';
 
 let registeredUserId: string | null = null;
 let cachedToken: string | null = null;
@@ -54,6 +55,7 @@ export async function registerPushTokenForUser(userId: string): Promise<void> {
           user_id: userId,
           token,
           platform: Platform.OS,
+          locale: useLocaleStore.getState().locale,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'token' }

@@ -5,6 +5,11 @@ import { CourtIllustration } from './CourtIllustration';
 import { CourtPlayerProfiles } from './CourtPlayerProfiles';
 import { COURT_FLOOR_COLORS, getCourtHeight, GAME_COUNT_OPTIONS, GAME_MODE_CONFIG, getCourtColumnLabel, GYM_VENUE } from '@/src/constants/court';
 import { formatCleanupRemaining, formatElapsed } from '@/src/utils/courtTime';
+import {
+  occupancySetupFromStatus,
+  OCCUPANCY_SETUP_LABEL,
+  type OccupancySetupState,
+} from '@/src/utils/occupancyCourt';
 import { GameCountPicker } from './GameCountPicker';
 import { GameModePicker } from './GameModePicker';
 import { GameModeBadge } from './GameModeBadge';
@@ -44,6 +49,8 @@ export interface CourtDetailContentProps {
   onDismiss?: () => void;
   occupancyMode?: boolean;
   isStaff?: boolean;
+  onSetSetupState?: (state: OccupancySetupState) => void;
+  /** @deprecated onSetSetupState 사용 */
   onSetOccupancy?: (occupied: boolean) => void;
 }
 
@@ -55,10 +62,10 @@ const STATUS_LABEL: Record<Court['status'], string> = {
 };
 
 const OCCUPANCY_LABEL: Record<Court['status'], string> = {
-  empty: '비어 있음',
-  reserved: '사용 중',
-  playing: '사용 중',
-  just_finished: '사용 중',
+  empty: OCCUPANCY_SETUP_LABEL.unset,
+  reserved: OCCUPANCY_SETUP_LABEL.ready,
+  playing: OCCUPANCY_SETUP_LABEL.active,
+  just_finished: OCCUPANCY_SETUP_LABEL.active,
 };
 
 export function CourtDetailContent({
@@ -85,6 +92,7 @@ export function CourtDetailContent({
   onDismiss,
   occupancyMode = false,
   isStaff = false,
+  onSetSetupState,
   onSetOccupancy,
 }: CourtDetailContentProps) {
   const [gameCount, setGameCount] = useState<number>(GAME_COUNT_OPTIONS[1]);
@@ -156,12 +164,82 @@ export function CourtDetailContent({
     </View>
   ) : null;
 
+  const setupState = occupancySetupFromStatus(court.status);
+  const applySetup =
+    onSetSetupState ??
+    (onSetOccupancy
+      ? (state: OccupancySetupState) => onSetOccupancy(state === 'active')
+      : undefined);
+
   const actionsBlock = occupancyMode ? (
-    isStaff && onSetOccupancy ? (
+    isStaff && applySetup ? (
       <View style={[styles.actions, embedded && styles.actionsEmbedded]}>
-        {court.status === 'empty'
-          ? guard(<Button title="사용 중으로 표시" onPress={() => onSetOccupancy(true)} fullWidth size="lg" />)
-          : guard(<Button title="코트 비우기" onPress={() => onSetOccupancy(false)} fullWidth size="lg" />)}
+        {setupState === 'unset' && (
+          <>
+            {guard(
+              <Button
+                title="코트 치기"
+                onPress={() => applySetup('ready')}
+                fullWidth
+                size="lg"
+              />
+            )}
+            {guard(
+              <Button
+                title="사용 중으로"
+                onPress={() => applySetup('active')}
+                fullWidth
+                size="md"
+                variant="secondary"
+                style={{ marginTop: spacing.sm }}
+              />
+            )}
+          </>
+        )}
+        {setupState === 'ready' && (
+          <>
+            {guard(
+              <Button
+                title="사용 중으로"
+                onPress={() => applySetup('active')}
+                fullWidth
+                size="lg"
+              />
+            )}
+            {guard(
+              <Button
+                title="코트 정리 (미설치)"
+                onPress={() => applySetup('unset')}
+                fullWidth
+                size="md"
+                variant="ghost"
+                style={{ marginTop: spacing.sm }}
+              />
+            )}
+          </>
+        )}
+        {setupState === 'active' && (
+          <>
+            {guard(
+              <Button
+                title="사용 종료"
+                onPress={() => applySetup('ready')}
+                fullWidth
+                size="lg"
+              />
+            )}
+            {guard(
+              <Button
+                title="코트 정리 (미설치)"
+                onPress={() => applySetup('unset')}
+                fullWidth
+                size="md"
+                variant="ghost"
+                style={{ marginTop: spacing.sm }}
+              />
+            )}
+          </>
+        )}
       </View>
     ) : null
   ) : (

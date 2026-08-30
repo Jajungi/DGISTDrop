@@ -34,19 +34,13 @@ export function FriendRow({ user, compact = false }: FriendRowProps) {
   const setArrivalNotify = useFriendPrefsStore((s) => s.setArrivalNotify);
   const showToast = useNotificationStore((s) => s.showToast);
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
-  const reservationOn = useFeatureFlagsStore((s) => s.reservationEnabled);
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const arrival = formatArrivalLabel(user);
   const range = formatScheduleRange(user);
   const rankLabel = RANK_THRESHOLDS[user.rank]?.label ?? user.rank;
   const canInvite =
-    reservationOn &&
-    !!currentUser &&
-    !isGuest &&
-    !compact &&
-    user.id !== currentUser.id &&
-    isFriend;
+    !!currentUser && !isGuest && !compact && user.id !== currentUser.id && isFriend;
   const showActions = isFriend && !compact;
 
   return (

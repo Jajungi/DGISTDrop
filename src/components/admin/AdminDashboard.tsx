@@ -36,6 +36,7 @@ import { GAME_MODE_CONFIG } from '@/src/constants/court';
 import { isAdminUser, isOperatorUser, roleBadgeLabel } from '@/src/utils/staffAccess';
 import { getEffectiveSchedule, getSeoulTodayKey, formatTodayLabel } from '@/src/utils/dateFormat';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
+import { useI18n } from '@/src/i18n/useI18n';
 import type { AdminLogCategory, User, Court, MatchResult } from '@/src/types';
 import type { AdminAlertSection } from '@/src/hooks/useAdminAlerts';
 
@@ -99,6 +100,9 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
   const clearAdminLogs = useAdminLogStore((s) => s.clearAll);
   const infinitePoints = useAppStore((s) => s.infinitePoints);
   const setInfinitePoints = useAppStore((s) => s.setInfinitePoints);
+  const demoMode = useAppStore((s) => s.demoMode);
+  const setDemoMode = useAppStore((s) => s.setDemoMode);
+  const { t } = useI18n();
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
   const setEloFeaturesEnabled = useFeatureFlagsStore((s) => s.setEloFeaturesEnabled);
   const pointsOn = useFeatureFlagsStore((s) => s.pointsFeaturesEnabled);
@@ -188,7 +192,7 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
     { key: 'settings', label: '설정' },
     { key: 'push', label: '알림' },
     { key: 'logs', label: '로그' },
-    ...(isAdminActor ? [{ key: 'developer' as AdminGroup, label: '개발자' }] : []),
+    ...(isAdminActor ? [{ key: 'developer' as AdminGroup, label: t('admin.developer') }] : []),
   ];
 
   return (
@@ -333,7 +337,14 @@ export function AdminDashboard({ adminId }: AdminDashboardProps) {
       {group === 'developer' && isAdminActor && (
         <View style={styles.sectionBody}>
           <Card style={styles.block}>
-            <Text style={styles.blockTitle}>개발자 모드</Text>
+            <Text style={styles.blockTitle}>{t('admin.developerMode')}</Text>
+            <DevToggle
+              label={t('admin.testMode')}
+              hint={t('admin.testModeHint')}
+              value={demoMode}
+              onToggle={() => setDemoMode(!demoMode)}
+            />
+            <View style={styles.devDivider} />
             {pointsOn ? (
               <>
             <DevToggle

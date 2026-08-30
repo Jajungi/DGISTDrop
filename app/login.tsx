@@ -31,7 +31,9 @@ import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/them
 import { SiteOverlayHost } from '@/src/components/site/SiteOverlayHost';
 import { markPostLoginOverlay } from '@/src/components/site/SiteOverlayHost';
 import { PwaInstallCard } from '@/src/components/layout/PwaInstallCard';
+import { LanguageSwitcher } from '@/src/components/layout/LanguageSwitcher';
 import { SocialLoginButtons } from '@/src/components/auth/SocialLoginButtons';
+import { useI18n } from '@/src/i18n/useI18n';
 import { consumeSocialAuthFlash } from '@/src/services/supabase/socialAuthIntent';
 import { fetchRosterSignupPolicy } from '@/src/services/supabase/roster';
 import type { SocialProvider } from '@/src/constants/socialAuth';
@@ -71,6 +73,7 @@ export default function LoginScreen() {
   const register = useAuthStore((s) => s.register);
   const loginWithSocial = useAuthStore((s) => s.loginWithSocial);
   const showToast = useNotificationStore((s) => s.showToast);
+  const { t } = useI18n();
 
   const [mode, setMode] = useState<Mode>('login');
   const [studentId, setStudentId] = useState('');
@@ -261,16 +264,19 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <View style={styles.langRow}>
+            <LanguageSwitcher />
+          </View>
           {!supabaseReady && (
             <View style={styles.setupBanner}>
-              <Text style={styles.setupBannerTitle}>Supabase 연결 필요</Text>
+              <Text style={styles.setupBannerTitle}>{t('login.supabaseTitle')}</Text>
               <Text style={styles.setupBannerText}>{getSupabaseSetupHint()}</Text>
             </View>
           )}
           <View style={styles.brandWrap}>
             <DropBrand />
             <Text style={styles.subtitle}>
-              {SCHOOL_NAME} {CLUB_NAME} · S1 체육관
+              {t('login.subtitle', { school: SCHOOL_NAME, club: CLUB_NAME })}
             </Text>
           </View>
 
@@ -279,19 +285,19 @@ export default function LoginScreen() {
               onPress={() => setMode('login')}
               style={[styles.tab, mode === 'login' && styles.tabActive]}
             >
-              <Text style={[styles.tabText, mode === 'login' && styles.tabTextActive]}>로그인</Text>
+              <Text style={[styles.tabText, mode === 'login' && styles.tabTextActive]}>{t('login.tabLogin')}</Text>
             </Pressable>
             <Pressable
               onPress={() => setMode('register')}
               style={[styles.tab, mode === 'register' && styles.tabActive]}
             >
-              <Text style={[styles.tabText, mode === 'register' && styles.tabTextActive]}>회원가입</Text>
+              <Text style={[styles.tabText, mode === 'register' && styles.tabTextActive]}>{t('login.tabRegister')}</Text>
             </Pressable>
             <Pressable
               onPress={() => setMode('guest')}
               style={[styles.tab, mode === 'guest' && styles.tabActive]}
             >
-              <Text style={[styles.tabText, mode === 'guest' && styles.tabTextActive]}>게스트</Text>
+              <Text style={[styles.tabText, mode === 'guest' && styles.tabTextActive]}>{t('login.tabGuest')}</Text>
             </Pressable>
           </View>
 
@@ -303,31 +309,29 @@ export default function LoginScreen() {
                   <Text style={styles.savedName}>{promptAccount.name}</Text>
                   <Text style={styles.savedId}>
                     {promptAccount.kind === 'guest'
-                      ? '게스트'
+                      ? t('login.savedGuest')
                       : promptAccount.studentId}
                   </Text>
                 </View>
               </View>
               <Text style={styles.savedQuestion}>
                 {promptAccount.kind === 'guest'
-                  ? '기존 게스트로 입장하시겠습니까?'
-                  : '기존 계정으로 로그인하시겠습니까?'}
+                  ? t('login.savedGuestQuestion')
+                  : t('login.savedMemberQuestion')}
               </Text>
               {promptAccount.kind === 'guest' ? (
-                <Text style={styles.savedWarning}>
-                  게스트는 당일 임시입니다. 서울 날짜가 바뀌면 삭제됩니다.
-                </Text>
+                <Text style={styles.savedWarning}>{t('login.savedGuestWarning')}</Text>
               ) : null}
               <View style={styles.savedActions}>
                 <Button
-                  title={promptAccount.kind === 'guest' ? '입장' : '로그인'}
+                  title={promptAccount.kind === 'guest' ? t('login.enter') : t('login.loginButton')}
                   onPress={handleSavedLogin}
                   size="sm"
                   style={styles.savedBtn}
                   loading={busy}
                 />
                 <Button
-                  title="아니요"
+                  title={t('login.no')}
                   onPress={handleUseOtherAccount}
                   size="sm"
                   variant="outline"
@@ -340,28 +344,24 @@ export default function LoginScreen() {
           <View style={styles.form}>
             {mode === 'guest' ? (
               <>
-                <Text style={styles.guestIntro}>
-                  이름만 입력해 임시로 입장해요. 코트 현황·모집방 참여·이용 안내는 볼 수 있지만, 포인트·친구·랭크·기록은 사용할 수 없어요.
-                </Text>
-                <Text style={styles.guestWarning}>
-                  게스트는 당일 임시입니다. 서울 날짜가 바뀌면 자동으로 삭제됩니다. 계속 쓰려면 회원가입을 하세요.
-                </Text>
-                <Text style={styles.label}>이름</Text>
+                <Text style={styles.guestIntro}>{t('login.guestIntro')}</Text>
+                <Text style={styles.guestWarning}>{t('login.guestWarning')}</Text>
+                <Text style={styles.label}>{t('login.name')}</Text>
                 <TextInput
                   style={styles.input}
                   value={guestName}
                   onChangeText={setGuestName}
-                  placeholder="예: 홍길동"
+                  placeholder={t('login.placeholderGuestName')}
                   maxLength={12}
                   autoCapitalize="words"
                 />
                 <RememberCheck
                   checked={rememberMe}
                   onToggle={() => setRememberMe((v) => !v)}
-                  label="이 기기에서 게스트 기억하기"
+                  label={t('login.rememberGuest')}
                 />
                 <Button
-                  title="게스트로 입장"
+                  title={t('login.guestEnter')}
                   onPress={handleGuestLogin}
                   fullWidth
                   size="lg"
@@ -369,37 +369,35 @@ export default function LoginScreen() {
                   style={styles.submit}
                   loading={busy}
                 />
-                <Text style={styles.hint}>
-                  정식 회원이 되면 포인트·전적·친구 기능을 모두 이용할 수 있어요.
-                </Text>
+                <Text style={styles.hint}>{t('login.guestHint')}</Text>
               </>
             ) : (
               <>
-            <Text style={styles.label}>학번</Text>
+            <Text style={styles.label}>{t('login.studentId')}</Text>
             <TextInput
               style={styles.input}
               value={studentId}
               onChangeText={setStudentId}
-              placeholder="예: 202600000"
+              placeholder={t('login.placeholderStudentId')}
               keyboardType="number-pad"
               maxLength={9}
               autoCapitalize="none"
             />
 
-            <Text style={styles.label}>비밀번호</Text>
+            <Text style={styles.label}>{t('login.password')}</Text>
             <View style={styles.passwordRow}>
               <TextInput
                 style={[styles.input, styles.passwordInput]}
                 value={password}
                 onChangeText={setPassword}
-                placeholder={mode === 'login' ? '비밀번호' : '6자 이상'}
+                placeholder={mode === 'login' ? t('login.placeholderPassword') : t('login.placeholderPasswordNew')}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
               />
               <Pressable
                 onPress={() => setShowPassword((v) => !v)}
                 style={styles.eyeBtn}
-                accessibilityLabel={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                accessibilityLabel={showPassword ? t('login.hidePassword') : t('login.showPassword')}
               >
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -413,24 +411,21 @@ export default function LoginScreen() {
               <>
                 {rosterEnforcement ? (
                   <View style={styles.rosterNotice}>
-                    <Text style={styles.rosterNoticeTitle}>동아리 명단과 동일하게 입력</Text>
-                    <Text style={styles.rosterNoticeBody}>
-                      명단 제한이 켜져 있어요. 운영진이 올린 학번·실명을 띄어쓰기까지 같게 적어 주세요.
-                      이름이 다르면 가입되지 않아요.
-                    </Text>
+                    <Text style={styles.rosterNoticeTitle}>{t('login.rosterTitle')}</Text>
+                    <Text style={styles.rosterNoticeBody}>{t('login.rosterBody')}</Text>
                   </View>
                 ) : null}
-                <Text style={styles.label}>비밀번호 확인</Text>
+                <Text style={styles.label}>{t('login.passwordConfirm')}</Text>
                 <TextInput
                   style={styles.input}
                   value={passwordConfirm}
                   onChangeText={setPasswordConfirm}
-                  placeholder="비밀번호 다시 입력"
+                  placeholder={t('login.placeholderPasswordConfirm')}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                 />
-                <Text style={styles.label}>이름</Text>
-                <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="실명" />
+                <Text style={styles.label}>{t('login.name')}</Text>
+                <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={t('login.placeholderName')} />
               </>
             )}
 
@@ -439,10 +434,10 @@ export default function LoginScreen() {
                 <RememberCheck
                   checked={rememberMe}
                   onToggle={() => setRememberMe((v) => !v)}
-                  label="이 기기에서 계정 기억하기"
+                  label={t('login.rememberAccount')}
                 />
                 <Button
-                  title="로그인"
+                  title={t('login.loginButton')}
                   onPress={handleLogin}
                   fullWidth
                   size="lg"
@@ -452,7 +447,7 @@ export default function LoginScreen() {
               </>
             ) : (
               <Button
-                title="회원가입"
+                title={t('login.registerButton')}
                 onPress={handleRegister}
                 fullWidth
                 size="lg"
@@ -464,9 +459,7 @@ export default function LoginScreen() {
 
             {mode === 'register' && (
               <Text style={styles.hint}>
-                {rosterEnforcement
-                  ? '명단에 있는 학번·이름이면 바로 가입돼요. 명단에 없는 학번은 운영진 승인 후 로그인할 수 있어요.'
-                  : '학번당 계정 1개만 만들 수 있어요. 가입 후 바로 로그인할 수 있습니다.'}
+                {rosterEnforcement ? t('login.registerHintRoster') : t('login.registerHintDefault')}
               </Text>
             )}
               </>
@@ -500,6 +493,11 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     width: '100%',
     alignSelf: 'center',
+  },
+  langRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: spacing.sm,
   },
   setupBanner: {
     backgroundColor: '#FFF4E5',

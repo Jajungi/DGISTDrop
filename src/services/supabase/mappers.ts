@@ -40,6 +40,7 @@ type DbProfile = {
   club_fee_verified_by: string | null;
   suspended_reason: string | null;
   suspended_at: string | null;
+  preferred_locale?: string | null;
   created_at: string;
 };
 
@@ -131,6 +132,10 @@ export function mapProfileRow(row: DbProfile): User {
     clubFeeVerifiedBy: row.club_fee_verified_by ?? undefined,
     suspendedReason: row.suspended_reason ?? undefined,
     suspendedAt: row.suspended_at ?? undefined,
+    preferredLocale:
+      row.preferred_locale === 'en' || row.preferred_locale === 'ko'
+        ? row.preferred_locale
+        : undefined,
     createdAt: row.created_at.slice(0, 10),
   };
 }

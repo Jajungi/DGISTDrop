@@ -27,6 +27,7 @@ export function collectAppStateSnapshot(): AppStateSnapshot {
     pendingMatches: notif.pendingMatches,
     cleaningLeaderboard: notif.cleaningLeaderboard,
     inbox: notif.inbox,
+    dismissedLiveAlertIds: notif.dismissedLiveAlertIds,
     lessonApplications: lesson.applications,
     lessonQueue: lesson.lessonQueue,
     peakResetDate: auth.peakResetDate,

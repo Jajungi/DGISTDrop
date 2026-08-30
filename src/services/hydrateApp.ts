@@ -33,6 +33,7 @@ function applyAppState(appState: AppStateSnapshot, options?: { skipCleaningBonus
     matchHistory: appState.matchHistory,
     cleaningLeaderboard: appState.cleaningLeaderboard,
     inbox: appState.inbox,
+    dismissedLiveAlertIds: appState.dismissedLiveAlertIds,
   });
   useLessonStore.getState().hydrate(appState.lessonApplications, appState.lessonQueue);
   useAdminLogStore.getState().hydrate(

@@ -21,6 +21,8 @@ import { COACH_COURT_ID } from '@/src/constants/court';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import { canManageCoachAnnouncement, canPostCoachAnnouncement } from '@/src/utils/coachAccess';
 import { formatLessonEtaLabel } from '@/src/utils/lessonEta';
+import { CoachLessonControls } from '@/src/components/coaching/CoachLessonControls';
+import { occupancySetupFromStatus, OCCUPANCY_SETUP_LABEL } from '@/src/utils/occupancyCourt';
 
 const QUEUE_STATUS: Record<string, string> = {
   waiting: '대기 중',
@@ -165,6 +167,13 @@ export function CoachingScreenContent({ embedded = false }: { embedded?: boolean
           <Text style={styles.blockTitle}>레슨 · {COACH_COURT_ID}번 코트</Text>
         </View>
 
+        {canPost && (
+          <View style={styles.coachPanel}>
+            <Text style={styles.coachPanelTitle}>코치 레슨 진행</Text>
+            <CoachLessonControls />
+          </View>
+        )}
+
         {lessonStatus === 'none' || lessonStatus === 'rejected' ? (
           <View style={styles.gateBox}>
             <Text style={styles.gateText}>
@@ -299,13 +308,7 @@ export function CoachingScreenContent({ embedded = false }: { embedded?: boolean
               <View style={styles.courtHint}>
                 <Text style={styles.courtHintLabel}>코치 코트 현황</Text>
                 <Text style={styles.courtHintText}>
-                  {coachCourt.status === 'empty'
-                    ? '비어 있음'
-                    : coachCourt.status === 'reserved'
-                      ? '예약됨'
-                      : coachCourt.status === 'playing'
-                        ? '경기 중'
-                        : '방금 종료'}
+                  {OCCUPANCY_SETUP_LABEL[occupancySetupFromStatus(coachCourt.status)]}
                   {coachCourt.players.length > 0 && ` · ${coachCourt.players.length}명`}
                 </Text>
                 <Button title="코트 현황에서 보기" onPress={goToCoachCourt} size="sm" variant="outline" />
@@ -421,4 +424,12 @@ const styles = StyleSheet.create({
   },
   courtHintLabel: { ...typography.small, color: colors.primary, fontWeight: '700' },
   courtHintText: { ...typography.caption, color: colors.textSecondary },
+  coachPanel: {
+    gap: spacing.sm,
+    padding: spacing.md,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+  },
+  coachPanelTitle: { ...typography.bodyBold, color: colors.text },
 });

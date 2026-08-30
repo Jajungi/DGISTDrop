@@ -63,14 +63,21 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
     const kind = rec.kind ?? 'system';
 
-    if (kind === 'coach') {
+    const prefColumnByKind: Record<string, string> = {
+      coach: 'lesson_turn',
+      join: 'join_alerts',
+      friend: 'friend_alerts',
+      system: 'system_alerts',
+    };
+    const prefColumn = prefColumnByKind[kind];
+    if (prefColumn) {
       const { data: pref } = await supabase
         .from('user_notification_prefs')
-        .select('lesson_turn')
+        .select(prefColumn)
         .eq('user_id', userId)
         .maybeSingle();
-      if (pref && (pref as { lesson_turn?: boolean }).lesson_turn === false) {
-        return new Response(JSON.stringify({ sent: 0, skipped: 'lesson_turn_off' }), {
+      if (pref && (pref as Record<string, boolean | undefined>)[prefColumn] === false) {
+        return new Response(JSON.stringify({ sent: 0, skipped: `${prefColumn}_off` }), {
           status: 200,
         });
       }

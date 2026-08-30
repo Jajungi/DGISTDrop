@@ -4,12 +4,18 @@ export interface UserNotificationPrefs {
   activityEvening: boolean;
   lessonTurn: boolean;
   coachNotice: boolean;
+  joinAlerts: boolean;
+  friendAlerts: boolean;
+  systemAlerts: boolean;
 }
 
 export const DEFAULT_NOTIFICATION_PREFS: UserNotificationPrefs = {
   activityEvening: true,
   lessonTurn: true,
   coachNotice: true,
+  joinAlerts: true,
+  friendAlerts: true,
+  systemAlerts: true,
 };
 
 function isMissingRelation(message: string | undefined): boolean {
@@ -27,7 +33,7 @@ export async function fetchNotificationPrefs(userId: string): Promise<UserNotifi
   if (!isSupabaseEnabled()) return DEFAULT_NOTIFICATION_PREFS;
   const { data, error } = await getSupabase()
     .from('user_notification_prefs')
-    .select('activity_evening, lesson_turn, coach_notice')
+    .select('activity_evening, lesson_turn, coach_notice, join_alerts, friend_alerts, system_alerts')
     .eq('user_id', userId)
     .maybeSingle();
   if (error) {
@@ -41,11 +47,17 @@ export async function fetchNotificationPrefs(userId: string): Promise<UserNotifi
     activity_evening?: boolean;
     lesson_turn?: boolean;
     coach_notice?: boolean;
+    join_alerts?: boolean;
+    friend_alerts?: boolean;
+    system_alerts?: boolean;
   };
   return {
     activityEvening: row.activity_evening ?? true,
     lessonTurn: row.lesson_turn ?? true,
     coachNotice: row.coach_notice ?? true,
+    joinAlerts: row.join_alerts ?? true,
+    friendAlerts: row.friend_alerts ?? true,
+    systemAlerts: row.system_alerts ?? true,
   };
 }
 
@@ -60,6 +72,9 @@ export async function saveNotificationPrefs(
       activity_evening: prefs.activityEvening,
       lesson_turn: prefs.lessonTurn,
       coach_notice: prefs.coachNotice,
+      join_alerts: prefs.joinAlerts,
+      friend_alerts: prefs.friendAlerts,
+      system_alerts: prefs.systemAlerts,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'user_id' }

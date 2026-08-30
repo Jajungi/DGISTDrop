@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import {
   Image,
+  Modal,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -9,8 +11,11 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { PwaInstallGuide } from '@/src/constants/pwaInstallGuide';
-import { colors, borderRadius, spacing, typography } from '@/src/theme';
+import { useI18n } from '@/src/i18n/useI18n';
+import { useAppTheme } from '@/src/theme/ThemeProvider';
+import { borderRadius, spacing, typography } from '@/src/theme';
 
 interface PwaInstallStepsProps {
   guide: PwaInstallGuide;
@@ -32,18 +37,21 @@ function PosterImage({
   src,
   alt,
   maxHeight,
+  onPress,
 }: {
   src: string;
   alt: string;
   maxHeight: number;
+  onPress: () => void;
 }) {
   const [failed, setFailed] = useState(false);
+  const { colors: theme } = useAppTheme();
   const uri = resolvePublicUrl(src);
 
   if (!uri || failed) return null;
 
-  if (Platform.OS === 'web') {
-    return (
+  const content =
+    Platform.OS === 'web' ? (
       <img
         src={uri}
         alt={alt}
@@ -54,19 +62,28 @@ function PosterImage({
           objectFit: 'contain',
           display: 'block',
           borderRadius: 8,
+          cursor: 'zoom-in',
         }}
       />
+    ) : (
+      <Image
+        source={{ uri }}
+        style={{ width: '100%', maxHeight }}
+        accessibilityLabel={alt}
+        resizeMode="contain"
+        onError={() => setFailed(true)}
+      />
     );
-  }
 
   return (
-    <Image
-      source={{ uri }}
-      style={{ width: '100%', maxHeight }}
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="imagebutton"
       accessibilityLabel={alt}
-      resizeMode="contain"
-      onError={() => setFailed(true)}
-    />
+      style={({ pressed }) => [pressed && styles.posterPressed]}
+    >
+      {content}
+    </Pressable>
   );
 }
 
@@ -75,24 +92,34 @@ export function PwaInstallSteps({
   compact = false,
   imageSize = 'card',
 }: PwaInstallStepsProps) {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const { t } = useI18n();
+  const { colors: theme } = useAppTheme();
+  const [zoomOpen, setZoomOpen] = useState(false);
   const stepCount = guide.steps.length;
-  /** 2단계 이상이면 항상 2열(4단계 → 2×2). 좁은 화면에서도 1×N으로 떨어지지 않게 함 */
   const twoColumns = stepCount >= 2;
   const tight = compact || width < 360;
 
   const posterMaxHeight = compact ? 200 : imageSize === 'guide' ? 520 : 400;
+  const zoomMaxHeight = Math.round(Math.min(height * 0.82, width * 0.92));
+  const uri = resolvePublicUrl(guide.posterSrc);
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.guideTitle}>{guide.title}</Text>
-      <Text style={styles.intro}>{guide.intro}</Text>
+      <Text style={[styles.guideTitle, { color: theme.text }]}>{guide.title}</Text>
+      <Text style={[styles.intro, { color: theme.textSecondary }]}>{guide.intro}</Text>
 
-      <View style={styles.posterWrap}>
-        <PosterImage src={guide.posterSrc} alt={guide.posterAlt} maxHeight={posterMaxHeight} />
+      <View style={[styles.posterWrap, { borderColor: theme.border, backgroundColor: theme.surfaceAlt }]}>
+        <PosterImage
+          src={guide.posterSrc}
+          alt={guide.posterAlt}
+          maxHeight={posterMaxHeight}
+          onPress={() => setZoomOpen(true)}
+        />
+        <Text style={[styles.tapHint, { color: theme.textMuted }]}>{t('pwa.tapToEnlarge')}</Text>
       </View>
 
-      <Text style={styles.stepsHeading}>순서</Text>
+      <Text style={[styles.stepsHeading, { color: theme.textMuted }]}>{t('pwa.stepsHeading')}</Text>
       <View
         style={[
           styles.grid,
@@ -106,6 +133,7 @@ export function PwaInstallSteps({
             key={`${step.title}-${index}`}
             style={[
               styles.gridItem,
+              { backgroundColor: theme.surfaceAlt, borderColor: theme.border },
               tight && styles.gridItemTight,
               twoColumns
                 ? Platform.OS === 'web'
@@ -114,39 +142,77 @@ export function PwaInstallSteps({
                 : styles.gridItemFull,
             ]}
           >
-            <View style={[styles.stepBadge, tight && styles.stepBadgeTight]}>
+            <View style={[styles.stepBadge, { backgroundColor: theme.primary }, tight && styles.stepBadgeTight]}>
               <Text style={styles.stepBadgeText}>{index + 1}</Text>
             </View>
-            <Text style={[styles.stepTitle, tight && styles.stepTitleTight]}>{step.title}</Text>
-            <Text style={[styles.stepBody, tight && styles.stepBodyTight]}>{step.description}</Text>
+            <Text style={[styles.stepTitle, { color: theme.text }, tight && styles.stepTitleTight]}>
+              {step.title}
+            </Text>
+            <Text
+              style={[styles.stepBody, { color: theme.textSecondary }, tight && styles.stepBodyTight]}
+            >
+              {step.description}
+            </Text>
           </View>
         ))}
       </View>
 
-      <Text style={styles.hint}>{guide.hint}</Text>
+      <Text style={[styles.hint, { color: theme.textMuted }]}>{guide.hint}</Text>
+
+      <Modal visible={zoomOpen} transparent animationType="fade" onRequestClose={() => setZoomOpen(false)}>
+        <Pressable style={styles.zoomBackdrop} onPress={() => setZoomOpen(false)}>
+          <Pressable style={styles.zoomPanel} onPress={(e) => e.stopPropagation()}>
+            <Pressable
+              style={styles.zoomClose}
+              onPress={() => setZoomOpen(false)}
+              accessibilityRole="button"
+              accessibilityLabel={t('pwa.closeImage')}
+            >
+              <Ionicons name="close" size={24} color="#FFF" />
+            </Pressable>
+            {Platform.OS === 'web' ? (
+              <img
+                src={uri}
+                alt={guide.posterAlt}
+                style={{
+                  width: '100%',
+                  maxWidth: Math.min(width * 0.94, 720),
+                  maxHeight: zoomMaxHeight,
+                  objectFit: 'contain',
+                  display: 'block',
+                  borderRadius: 12,
+                }}
+              />
+            ) : (
+              <Image
+                source={{ uri }}
+                style={{ width: '100%', maxHeight: zoomMaxHeight }}
+                resizeMode="contain"
+                accessibilityLabel={guide.posterAlt}
+              />
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.sm } as ViewStyle,
-  guideTitle: { ...typography.bodyBold, color: colors.text, fontSize: 14 } as TextStyle,
-  intro: { ...typography.caption, color: colors.textSecondary, lineHeight: 20 } as TextStyle,
+  guideTitle: { ...typography.bodyBold, fontSize: 14 } as TextStyle,
+  intro: { ...typography.caption, lineHeight: 20 } as TextStyle,
   posterWrap: {
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceAlt,
     overflow: 'hidden',
     padding: spacing.xs,
     marginTop: spacing.xs,
+    gap: 4,
   } as ViewStyle,
-  stepsHeading: {
-    ...typography.small,
-    color: colors.textMuted,
-    fontWeight: '700',
-    marginTop: spacing.xs,
-  } as TextStyle,
+  posterPressed: { opacity: 0.92 },
+  tapHint: { ...typography.caption, fontSize: 10, textAlign: 'center' } as TextStyle,
+  stepsHeading: { ...typography.small, fontWeight: '700', marginTop: spacing.xs } as TextStyle,
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -156,48 +222,49 @@ const styles = StyleSheet.create({
     width: '100%',
   } as ViewStyle,
   gridItem: {
-    backgroundColor: colors.surfaceAlt,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.border,
     padding: spacing.sm,
     gap: 4,
     minWidth: 0,
   } as ViewStyle,
-  gridItemTight: {
-    padding: spacing.xs,
-    gap: 2,
-  } as ViewStyle,
-  gridItemTwoCol: {
-    width: '49%',
-    flexGrow: 0,
-    flexShrink: 1,
-    maxWidth: '49%',
-  } as ViewStyle,
-  gridItemWebCol: {
-    width: 'auto',
-  } as ViewStyle,
-  gridItemFull: {
-    width: '100%',
-  } as ViewStyle,
+  gridItemTight: { padding: spacing.xs, gap: 2 } as ViewStyle,
+  gridItemTwoCol: { width: '49%', flexGrow: 0, flexShrink: 1, maxWidth: '49%' } as ViewStyle,
+  gridItemWebCol: { width: 'auto' } as ViewStyle,
+  gridItemFull: { width: '100%' } as ViewStyle,
   stepBadge: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   } as ViewStyle,
   stepBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '800' } as TextStyle,
   stepBadgeTight: { width: 20, height: 20, borderRadius: 10 } as ViewStyle,
-  stepTitle: { ...typography.bodyBold, color: colors.text, fontSize: 12 } as TextStyle,
+  stepTitle: { ...typography.bodyBold, fontSize: 12 } as TextStyle,
   stepTitleTight: { fontSize: 11 } as TextStyle,
-  stepBody: { ...typography.caption, color: colors.textSecondary, lineHeight: 17, fontSize: 11 } as TextStyle,
+  stepBody: { ...typography.caption, lineHeight: 17, fontSize: 11 } as TextStyle,
   stepBodyTight: { fontSize: 10, lineHeight: 15 } as TextStyle,
-  hint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    lineHeight: 18,
-    marginTop: spacing.xs,
-  } as TextStyle,
+  hint: { ...typography.caption, lineHeight: 18, marginTop: spacing.xs } as TextStyle,
+  zoomBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.88)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.md,
+  } as ViewStyle,
+  zoomPanel: {
+    width: '100%',
+    maxWidth: 760,
+    alignItems: 'center',
+    justifyContent: 'center',
+  } as ViewStyle,
+  zoomClose: {
+    position: 'absolute',
+    top: -4,
+    right: 0,
+    zIndex: 2,
+    padding: 8,
+    ...Platform.select({ web: { cursor: 'pointer' as const } }),
+  } as ViewStyle,
 });

@@ -1,5 +1,10 @@
+import type { AppLocale } from '@/src/i18n/types';
 import type { PwaInstallContext } from '@/src/utils/clientDevice';
 import { getPwaInstallContextLabel } from '@/src/utils/clientDevice';
+import {
+  getPwaInstallGuidesEn,
+  getPwaInstallVisibilityEn,
+} from '@/src/constants/pwaInstallGuide.en';
 
 export interface PwaInstallStepText {
   title: string;
@@ -25,7 +30,14 @@ export interface PwaInstallVisibilityInfo {
   note?: string;
 }
 
-export function getPwaInstallVisibility(ctx: PwaInstallContext | null): PwaInstallVisibilityInfo {
+export function getPwaInstallVisibility(
+  ctx: PwaInstallContext | null,
+  locale: AppLocale = 'ko'
+): PwaInstallVisibilityInfo {
+  if (locale === 'en') {
+    return getPwaInstallVisibilityEn(ctx, ctx ? getPwaInstallContextLabel(ctx) : '');
+  }
+
   const guideWhere = '이용 안내 → 앱 이용 방법 → 웹앱 설치';
 
   if (!ctx) {
@@ -196,7 +208,11 @@ const GUIDES: Record<PwaInstallContext, PwaInstallGuide> = {
   'desktop-other': DESKTOP_OTHER,
 };
 
-export function getPwaInstallGuide(ctx: PwaInstallContext | null): PwaInstallGuide | null {
+export function getPwaInstallGuide(
+  ctx: PwaInstallContext | null,
+  locale: AppLocale = 'ko'
+): PwaInstallGuide | null {
   if (!ctx) return null;
+  if (locale === 'en') return getPwaInstallGuidesEn()[ctx] ?? null;
   return GUIDES[ctx] ?? null;
 }

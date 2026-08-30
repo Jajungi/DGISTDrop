@@ -14,6 +14,7 @@ import { ACTIVE_SOCIAL_PROVIDERS, SOCIAL_PROVIDER_LABELS, type SocialProvider } 
 import { isSocialAuthAvailable } from '@/src/services/supabase/socialAuth';
 import { GoogleBrandIcon } from '@/src/components/auth/SocialBrandIcons';
 import { googleAuthButtonStyles } from '@/src/components/auth/googleButtonStyles';
+import { useI18n } from '@/src/i18n/useI18n';
 
 interface SocialLoginButtonsProps {
   onPress: (provider: SocialProvider) => void;
@@ -35,6 +36,7 @@ export function SocialLoginButtons({
   busyProvider = null,
 }: SocialLoginButtonsProps) {
   const { colors: theme } = useAppTheme();
+  const { t } = useI18n();
   const googleStyles = googleAuthButtonStyles(theme);
   const { width: windowWidth } = useWindowDimensions();
   const wideLayout = windowWidth >= WIDE_LAYOUT_MIN_WIDTH;
@@ -59,14 +61,14 @@ export function SocialLoginButtons({
     <View style={styles.wrap}>
       <View style={styles.dividerRow}>
         <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-        <Text style={[styles.dividerText, { color: theme.textMuted }]}>간편 로그인</Text>
+        <Text style={[styles.dividerText, { color: theme.textMuted }]}>{t('login.socialDivider')}</Text>
         <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
       </View>
 
       <View style={[styles.iconRow, wideLayout && styles.iconRowWide]}>
         {providers.map((provider) => {
           const loading = busy && busyProvider === provider;
-          const label = `${SOCIAL_PROVIDER_LABELS[provider]}로 로그인`;
+          const label = t('login.googleLogin');
 
           if (wideLayout) {
             return (

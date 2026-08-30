@@ -7,9 +7,13 @@ import { isPushOptedOut, setPushOptedOut } from '@/src/services/pushPreference';
 import { getWebPushAvailability, registerWebPushForUser } from '@/src/services/webPush';
 import { registerPushTokenForUser } from '@/src/services/pushNotifications';
 import { getPushGuideCopy } from '@/src/utils/clientDevice';
+import { useLocaleStore } from '@/src/stores/localeStore';
+import { useI18n } from '@/src/i18n/useI18n';
 import { useTabTourStore } from '@/src/stores/tabTourStore';
 
 export function PushPermissionGate() {
+  const locale = useLocaleStore((s) => s.locale);
+  const { t } = useI18n();
   const userId = useAuthStore((s) => s.currentUser?.id ?? null);
   const isGuest = useAuthStore((s) => s.isGuestSession);
   const tourOpen = useTabTourStore((s) => s.activeIndex !== null);
@@ -42,7 +46,7 @@ export function PushPermissionGate() {
       if (cancelled || silent) return;
 
       if (Platform.OS === 'web') {
-        const guide = getPushGuideCopy();
+        const guide = getPushGuideCopy(undefined, locale);
         if (!guide.canRequestPermission && !guide.needsHomeScreen) return;
         if (
           guide.canRequestPermission &&
@@ -58,7 +62,7 @@ export function PushPermissionGate() {
     return () => {
       cancelled = true;
     };
-  }, [userId, isGuest, tourOpen, trySilentRegister]);
+  }, [userId, isGuest, tourOpen, trySilentRegister, locale]);
 
   const allow = async () => {
     if (!userId) return;
@@ -80,7 +84,7 @@ export function PushPermissionGate() {
     setVisible(false);
   };
 
-  const guide = getPushGuideCopy();
+  const guide = getPushGuideCopy(undefined, locale);
 
   if (tourOpen) return null;
 
@@ -93,13 +97,13 @@ export function PushPermissionGate() {
           {guide.canRequestPermission ? (
             <>
               <Button
-                title={busy ? '설정 중...' : '알림 허용'}
+                title={busy ? t('push.settingUp') : t('push.allow')}
                 onPress={() => void allow()}
                 disabled={busy}
                 fullWidth
               />
               <View style={styles.gap} />
-              <Button title="나중에" onPress={later} variant="outline" fullWidth disabled={busy} />
+              <Button title={t('push.later')} onPress={later} variant="outline" fullWidth disabled={busy} />
             </>
           ) : (
             <>
@@ -109,7 +113,7 @@ export function PushPermissionGate() {
                 </Text>
               ))}
               <View style={styles.gap} />
-              <Button title="확인" onPress={later} variant="secondary" fullWidth />
+              <Button title={t('push.confirm')} onPress={later} variant="secondary" fullWidth />
             </>
           )}
         </View>

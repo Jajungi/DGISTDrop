@@ -40,6 +40,7 @@ import { PushPermissionGate } from '@/src/components/profile/PushPermissionGate'
 import { AttendanceIntentGate } from '@/src/components/profile/AttendanceIntentGate';
 import { TabTourHost } from '@/src/components/layout/TabTourHost';
 import { ensurePwaServiceWorker } from '@/src/services/pwaInstall';
+import { useLocaleStore } from '@/src/stores/localeStore';
 import * as WebBrowser from 'expo-web-browser';
 
 export { ErrorBoundary } from 'expo-router';
@@ -86,6 +87,7 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
+    void useLocaleStore.getState().hydrate();
     initCrossTabSync();
     void (async () => {
       if (isSupabaseEnabled()) {

@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { getSupabase, isSupabaseEnabled } from '@/src/lib/supabase';
+import { useLocaleStore } from '@/src/stores/localeStore';
 import {
   currentWebPushPlatform,
   detectClientDevice,
@@ -74,6 +75,7 @@ export async function registerWebPushForUser(userId: string): Promise<boolean> {
           user_id: userId,
           token,
           platform,
+          locale: useLocaleStore.getState().locale,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'token' }

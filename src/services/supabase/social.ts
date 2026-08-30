@@ -229,6 +229,7 @@ type DbLessonQueue = {
   position: number;
   status: LessonQueueEntry['status'];
   joined_at: string;
+  active_since?: string | null;
 };
 
 function mapQueueEntry(r: DbLessonQueue): LessonQueueEntry {
@@ -239,6 +240,7 @@ function mapQueueEntry(r: DbLessonQueue): LessonQueueEntry {
     position: r.position,
     status: r.status,
     joinedAt: r.joined_at,
+    activeSince: r.active_since ?? undefined,
   };
 }
 
@@ -269,9 +271,13 @@ export async function insertLessonQueueRemote(entry: LessonQueueEntry): Promise<
 
 export async function updateLessonQueueRemote(
   id: string,
-  patch: Partial<Pick<LessonQueueEntry, 'position' | 'status'>>
+  patch: Partial<Pick<LessonQueueEntry, 'position' | 'status' | 'activeSince'>>
 ): Promise<void> {
-  const { error } = await getSupabase().from('lesson_queue').update(patch).eq('id', id);
+  const row: Record<string, unknown> = {};
+  if (patch.position != null) row.position = patch.position;
+  if (patch.status != null) row.status = patch.status;
+  if (patch.activeSince !== undefined) row.active_since = patch.activeSince;
+  const { error } = await getSupabase().from('lesson_queue').update(row).eq('id', id);
   if (error) throw error;
 }
 

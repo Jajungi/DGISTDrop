@@ -18,7 +18,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { useCourtStore } from '@/src/stores/courtStore';
 import { useAdminAlertCount } from '@/src/hooks/useAdminAlerts';
 import { isStaffUser } from '@/src/utils/staffAccess';
-import { NAV_ITEMS, ADMIN_NAV_ITEM } from '@/src/constants/nav';
+import { useNavItems, useAdminNavItem } from '@/src/hooks/useNavItems';
 import { TAB_TOUR_STEPS } from '@/src/constants/tabTour';
 import { useTabTourStore } from '@/src/stores/tabTourStore';
 import { TourAnchor } from '@/src/utils/tourAnchors';
@@ -65,7 +65,7 @@ function TabIcon({ name, focused, size }: { name: IconName; focused: boolean; si
 
 function AdminTabIcon({ focused, size }: { focused: boolean; size: number }) {
   const alerts = useAdminAlertCount();
-  const name = ADMIN_NAV_ITEM.icon;
+  const name = useAdminNavItem().icon;
   return (
     <View style={styles.adminIconWrap}>
       <Ionicons
@@ -82,21 +82,21 @@ function AdminTabIcon({ focused, size }: { focused: boolean; size: number }) {
   );
 }
 
-const TAB_SCREENS = [
-  { name: 'index' as const, item: NAV_ITEMS[0] },
-  { name: 'friends' as const, item: NAV_ITEMS[1] },
-  { name: 'lobby' as const, item: NAV_ITEMS[2] },
-  { name: 'profile' as const, item: NAV_ITEMS[3] },
-  { name: 'guide' as const, item: NAV_ITEMS[4] },
-];
+const TAB_SCREEN_NAMES = ['index', 'friends', 'lobby', 'profile', 'guide'] as const;
 
 export default function TabLayout() {
   const { isDesktop, scale, isCompact, isLandscape, isNarrow } = useLayoutMode();
+  const navItems = useNavItems();
+  const adminNavItem = useAdminNavItem();
+  const tabScreens = TAB_SCREEN_NAMES.map((name, index) => ({
+    name,
+    item: navItems[index]!,
+  }));
   const { width, height } = useAppWindowSize();
   const insets = useEffectiveSafeAreaInsets();
   const isStaff = isStaffUser(useAuthStore((s) => s.currentUser));
   const isGuest = useAuthStore((s) => s.isGuestSession);
-  const tabCount = TAB_SCREENS.length + (isStaff ? 1 : 0) - (isGuest ? 1 : 0);
+  const tabCount = tabScreens.length + (isStaff ? 1 : 0) - (isGuest ? 1 : 0);
   const showTabLabels = shouldShowTabBarLabels({
     isLandscape,
     isCompact,
@@ -140,7 +140,7 @@ export default function TabLayout() {
         animation: Platform.OS === 'ios' ? 'shift' : 'fade',
       }}
     >
-      {TAB_SCREENS.map(({ name, item }) => {
+      {tabScreens.map(({ name, item }) => {
         const hidden = isGuest && name === 'friends';
         return (
         <Tabs.Screen
@@ -180,13 +180,13 @@ export default function TabLayout() {
       <Tabs.Screen
         name="admin"
         options={{
-          title: ADMIN_NAV_ITEM.tabLabel,
+          title: adminNavItem.tabLabel,
           tabBarIcon: ({ focused }) => <AdminTabIcon focused={focused} size={tabIconSize} />,
-          tabBarAccessibilityLabel: ADMIN_NAV_ITEM.label,
+          tabBarAccessibilityLabel: adminNavItem.label,
           ...(isStaff
             ? {
                 tabBarButton: (props) => (
-                  <TourAnchor href={ADMIN_NAV_ITEM.href} style={{ flex: 1 }}>
+                  <TourAnchor href={adminNavItem.href} style={{ flex: 1 }}>
                     <SpaTabButton {...props} />
                   </TourAnchor>
                 ),

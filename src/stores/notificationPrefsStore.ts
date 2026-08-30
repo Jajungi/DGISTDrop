@@ -5,10 +5,33 @@ import {
   DEFAULT_NOTIFICATION_PREFS,
   type UserNotificationPrefs,
 } from '@/src/services/supabase/notificationPrefs';
+import { getT } from '@/src/i18n/useI18n';
+import { useLocaleStore } from '@/src/stores/localeStore';
+import type { AppNotification } from '@/src/types';
 
 function localKey(userId: string) {
   return `@badmin/notif-prefs:${userId}`;
 }
+
+function mergePrefs(parsed: Partial<UserNotificationPrefs>): UserNotificationPrefs {
+  return {
+    activityEvening: parsed.activityEvening ?? true,
+    lessonTurn: parsed.lessonTurn ?? true,
+    coachNotice: parsed.coachNotice ?? true,
+    joinAlerts: parsed.joinAlerts ?? true,
+    friendAlerts: parsed.friendAlerts ?? true,
+    systemAlerts: parsed.systemAlerts ?? true,
+  };
+}
+
+const PREF_LABEL_KEYS: Record<keyof UserNotificationPrefs, string> = {
+  activityEvening: 'settings.activityEvening',
+  lessonTurn: 'settings.lessonTurn',
+  coachNotice: 'settings.coachNotice',
+  joinAlerts: 'settings.joinAlerts',
+  friendAlerts: 'settings.friendAlerts',
+  systemAlerts: 'settings.systemAlerts',
+};
 
 interface NotificationPrefsState extends UserNotificationPrefs {
   userId: string | null;
@@ -30,12 +53,7 @@ export const useNotificationPrefsStore = create<NotificationPrefsState>((set, ge
     try {
       const raw = await AsyncStorage.getItem(localKey(userId));
       if (raw) {
-        const parsed = JSON.parse(raw) as Partial<UserNotificationPrefs>;
-        next = {
-          activityEvening: parsed.activityEvening ?? true,
-          lessonTurn: parsed.lessonTurn ?? true,
-          coachNotice: parsed.coachNotice ?? true,
-        };
+        next = mergePrefs(JSON.parse(raw) as Partial<UserNotificationPrefs>);
       }
     } catch {
       /* keep defaults */
@@ -60,6 +78,9 @@ export const useNotificationPrefsStore = create<NotificationPrefsState>((set, ge
       activityEvening: get().activityEvening,
       lessonTurn: get().lessonTurn,
       coachNotice: get().coachNotice,
+      joinAlerts: get().joinAlerts,
+      friendAlerts: get().friendAlerts,
+      systemAlerts: get().systemAlerts,
     };
     const next = { ...prev, [key]: value };
     set(next);
@@ -70,6 +91,7 @@ export const useNotificationPrefsStore = create<NotificationPrefsState>((set, ge
         /* ignore */
       }
     }
+    const t = getT(useLocaleStore.getState().locale);
     if (userId && isSupabaseEnabled()) {
       try {
         const { saveNotificationPrefs } = await import(
@@ -81,18 +103,16 @@ export const useNotificationPrefsStore = create<NotificationPrefsState>((set, ge
         return {
           success: false,
           message:
-            err instanceof Error ? err.message : '알림 설정을 저장하지 못했어요. SQL 031을 실행했는지 확인하세요.',
+            err instanceof Error ? err.message : t('settings.notifPrefSaveFailed'),
         };
       }
     }
-    const labels: Record<keyof UserNotificationPrefs, string> = {
-      activityEvening: '활동일 저녁 알림',
-      lessonTurn: '레슨 차례 알림',
-      coachNotice: '코치 공지 알림',
-    };
+    const label = t(PREF_LABEL_KEYS[key]);
     return {
       success: true,
-      message: value ? `${labels[key]}을 켰어요.` : `${labels[key]}을 껐어요.`,
+      message: value
+        ? t('settings.notifPrefOn', { label })
+        : t('settings.notifPrefOff', { label }),
     };
   },
 }));
@@ -103,4 +123,32 @@ export function isLessonTurnEnabled(): boolean {
 
 export function isCoachNoticeEnabled(): boolean {
   return useNotificationPrefsStore.getState().coachNotice;
+}
+
+export function isJoinAlertsEnabled(): boolean {
+  return useNotificationPrefsStore.getState().joinAlerts;
+}
+
+export function isFriendAlertsEnabled(): boolean {
+  return useNotificationPrefsStore.getState().friendAlerts;
+}
+
+export function isSystemAlertsEnabled(): boolean {
+  return useNotificationPrefsStore.getState().systemAlerts;
+}
+
+export function isNotificationPrefEnabledForType(type: AppNotification['type']): boolean {
+  const s = useNotificationPrefsStore.getState();
+  switch (type) {
+    case 'join':
+      return s.joinAlerts;
+    case 'friend':
+      return s.friendAlerts;
+    case 'system':
+      return s.systemAlerts;
+    case 'coach':
+      return s.lessonTurn;
+    default:
+      return true;
+  }
 }

@@ -2,7 +2,13 @@ import { create } from 'zustand';
 import type { Court, CourtPlayer, GameMode, NantaHalf } from '@/src/types';
 import { GAME_COUNT_OPTIONS, COACH_COURT_ID } from '@/src/constants/court';
 import { MIN_PLAYERS_FOR_GAME } from '@/src/constants';
-import { createEmptyCourts, userToCourtPlayer, userHasActiveCourt, canJoinWaitQueue } from '@/src/services/courtService';
+import { courtStatusForSetup, type OccupancySetupState } from '@/src/utils/occupancyCourt';
+import {
+  createEmptyCourts,
+  userToCourtPlayer,
+  userHasActiveCourt,
+  canJoinWaitQueue,
+} from '@/src/services/courtService';
 import { createMockCourts } from '@/src/services/mockData';
 import { getReservationCost, isPeakTime, canReserve, isCenterCourtId } from '@/src/services/points';
 import { isReservationEnabled, isPointsFeaturesEnabled } from '@/src/stores/featureFlagsStore';
@@ -64,6 +70,10 @@ interface CourtState {
   refreshCourts: () => void;
   hydrateCourts: (courts: Court[]) => void;
   setCourtOccupancy: (courtId: number, occupied: boolean) => { success: boolean; message: string };
+  setCourtSetupState: (
+    courtId: number,
+    state: OccupancySetupState
+  ) => { success: boolean; message: string };
 }
 
 function persistCourts(courts: Court[]) {
@@ -95,25 +105,44 @@ export const useCourtStore = create<CourtState>((set, get) => ({
     set({ courts: normalized, lastUpdated: new Date().toISOString() });
   },
 
-  setCourtOccupancy: (courtId, occupied) => {
+  setCourtSetupState: (courtId, state) => {
     const court = get().courts.find((c) => c.id === courtId);
     if (!court) return { success: false, message: '코트를 찾을 수 없어요.' };
-    if (occupied && court.status !== 'empty') {
-      return { success: false, message: '이 코트는 이미 사용 중이에요.' };
-    }
-    if (!occupied && court.status === 'empty') {
-      return { success: false, message: '이미 비어 있어요.' };
+
+    const targetStatus = courtStatusForSetup(state);
+    if (court.status === targetStatus) {
+      const labels = { unset: '미설치', ready: '설치됨', active: '사용 중' } as const;
+      return { success: false, message: `이미 ${labels[state]} 상태예요.` };
     }
 
+    const now = new Date().toISOString();
     const nextCourts = get().courts.map((c) => {
       if (c.id !== courtId) return c;
-      if (occupied) {
+      if (state === 'unset') {
         return {
           ...c,
-          status: 'playing' as const,
+          status: 'empty' as const,
           reservedBy: undefined,
-          reservedAt: new Date().toISOString(),
-          startedAt: new Date().toISOString(),
+          reservedAt: undefined,
+          startedAt: undefined,
+          finishedAt: undefined,
+          players: [],
+          joinRequests: [],
+          waitQueue: [],
+          gamesCompleted: 0,
+          maxGames: 0,
+          gameMode: undefined,
+          nantaHalf: undefined,
+        };
+      }
+      if (state === 'ready') {
+        return {
+          ...c,
+          status: 'reserved' as const,
+          reservedBy: undefined,
+          reservedAt: now,
+          startedAt: undefined,
+          finishedAt: undefined,
           players: [],
           joinRequests: [],
           waitQueue: [],
@@ -125,10 +154,10 @@ export const useCourtStore = create<CourtState>((set, get) => ({
       }
       return {
         ...c,
-        status: 'empty' as const,
+        status: 'playing' as const,
         reservedBy: undefined,
-        reservedAt: undefined,
-        startedAt: undefined,
+        reservedAt: c.reservedAt ?? now,
+        startedAt: c.startedAt ?? now,
         finishedAt: undefined,
         players: [],
         joinRequests: [],
@@ -141,11 +170,17 @@ export const useCourtStore = create<CourtState>((set, get) => ({
     });
     set({ courts: nextCourts, lastUpdated: new Date().toISOString() });
 
+    const messages = {
+      unset: `${court.name}을 미설치로 표시했어요.`,
+      ready: `${court.name}을 설치됨(대기)으로 표시했어요.`,
+      active: `${court.name}을 사용 중으로 표시했어요.`,
+    } as const;
+
     if (isSupabaseEnabled()) {
       import('@/src/services/supabase/courts')
-        .then(async ({ setCourtOccupancyRemote, mapCourtRpcError, fetchCourts }) => {
+        .then(async ({ setCourtSetupStateRemote, mapCourtRpcError, fetchCourts }) => {
           try {
-            await setCourtOccupancyRemote(courtId, occupied);
+            await setCourtSetupStateRemote(courtId, state);
             const fresh = await fetchCourts();
             if (fresh.length) get().hydrateCourts(fresh);
           } catch (err) {
@@ -167,10 +202,11 @@ export const useCourtStore = create<CourtState>((set, get) => ({
       persistCourts(nextCourts);
     }
 
-    return {
-      success: true,
-      message: occupied ? `${court.name}을 사용 중으로 표시했어요.` : `${court.name}을 비웠어요.`,
-    };
+    return { success: true, message: messages[state] };
+  },
+
+  setCourtOccupancy: (courtId, occupied) => {
+    return get().setCourtSetupState(courtId, occupied ? 'active' : 'unset');
   },
 
   reserveCourt: (courtId, userId, gameCount, gameMode = 'casual', nantaHalf = 'near', teamPlayers) => {

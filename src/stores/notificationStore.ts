@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { Platform } from 'react-native';
 import type { ToastMessage, SirenAlert, MatchResult, CleaningSubmission, AppNotification, GameMode } from '@/src/types';
 import {
   MOCK_MATCH_RESULTS,
@@ -19,6 +20,8 @@ import { runtime } from '@/src/stores/runtimeAccess';
 import { recordAdminLogAsActor } from '@/src/services/adminLog';
 import { pushLocalNotification } from '@/src/services/localNotifications';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
+import { useAuthStore } from '@/src/stores/authStore';
+import { isNotificationPrefEnabledForType } from '@/src/stores/notificationPrefsStore';
 import { runWhenRemoteId } from '@/src/utils/localId';
 
 type NotificationGet = () => NotificationState;
@@ -229,11 +232,14 @@ interface NotificationState {
   matchHistory: MatchResult[];
   cleaningLeaderboard: CleaningSubmission[];
   inbox: AppNotification[];
+  /** 알림 패널에서 합성(live) 알림 읽음 처리 */
+  dismissedLiveAlertIds: string[];
   hydrate: (data: {
     pendingMatches: MatchResult[];
     matchHistory: MatchResult[];
     cleaningLeaderboard: CleaningSubmission[];
     inbox: AppNotification[];
+    dismissedLiveAlertIds?: string[];
   }) => void;
   showToast: (toast: Omit<ToastMessage, 'id'>) => void;
   dismissToast: (id: string) => void;
@@ -314,6 +320,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
     },
   ] as AppNotification[],
+  dismissedLiveAlertIds: [],
 
   hydrate: (data) =>
     set({
@@ -321,6 +328,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       matchHistory: data.matchHistory,
       cleaningLeaderboard: data.cleaningLeaderboard,
       inbox: data.inbox,
+      dismissedLiveAlertIds: data.dismissedLiveAlertIds ?? [],
     }),
 
   showToast: (toast) => {
@@ -688,6 +696,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   markNotificationRead: (id) => {
     set((state) => ({
       inbox: state.inbox.map((n) => (n.id === id ? { ...n, read: true } : n)),
+      dismissedLiveAlertIds: state.dismissedLiveAlertIds.includes(id)
+        ? state.dismissedLiveAlertIds
+        : [...state.dismissedLiveAlertIds, id],
     }));
     if (isSupabaseEnabled()) {
       import('@/src/services/supabase/notifications')
@@ -714,6 +725,10 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   },
 
   pushInbox: (n) => {
+    const currentUserId = useAuthStore.getState().currentUser?.id;
+    const isForMe = !n.targetUserId || n.targetUserId === currentUserId;
+    if (isForMe && !isNotificationPrefEnabledForType(n.type)) return;
+
     const item: AppNotification = {
       id: n.id ?? `n-${Date.now()}`,
       type: n.type,
@@ -721,16 +736,23 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       message: n.message,
       courtId: n.courtId,
       joinRequestId: n.joinRequestId,
+      roomId: n.roomId,
       targetUserId: n.targetUserId,
       read: false,
       createdAt: new Date().toISOString(),
     };
-    set((state) => ({ inbox: [item, ...state.inbox] }));
-    if (isSupabaseEnabled()) {
+    if (isForMe) {
+      set((state) => ({ inbox: [item, ...state.inbox] }));
+    }
+    if (isSupabaseEnabled() && n.targetUserId) {
       import('@/src/services/supabase/notifications')
         .then(({ insertNotificationRemote }) => insertNotificationRemote(item))
         .catch((err) => console.warn('[notif] insert failed', err));
+    } else if (isForMe && Platform.OS !== 'web') {
+      void pushLocalNotification(item.title, item.message, 'default');
     }
-    persistAppState();
+    if (isForMe) {
+      persistAppState();
+    }
   },
 }));

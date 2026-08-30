@@ -16,9 +16,15 @@ import { useNotificationStore } from '@/src/stores/notificationStore';
 import { colors, spacing, typography, borderRadius } from '@/src/theme';
 import { useAppTheme, type ThemePreference } from '@/src/theme/ThemeProvider';
 import type { UserNotificationPrefs } from '@/src/services/supabase/notificationPrefs';
+import { useLocaleStore } from '@/src/stores/localeStore';
+import { useLayoutMode } from '@/src/hooks/useLayoutMode';
+import { LanguageSwitcher } from '@/src/components/layout/LanguageSwitcher';
+import { useI18n } from '@/src/i18n/useI18n';
 import { consumeSocialAuthFlash } from '@/src/services/supabase/socialAuthIntent';
 
 export default function SettingsScreen() {
+  const { t } = useI18n();
+  const { isMobile } = useLayoutMode();
   const currentUser = useAuthStore((s) => s.currentUser);
   const users = useAuthStore((s) => s.users);
   const friendships = useFriendStore((s) => s.friendships);
@@ -28,6 +34,9 @@ export default function SettingsScreen() {
   const activityEvening = useNotificationPrefsStore((s) => s.activityEvening);
   const lessonTurn = useNotificationPrefsStore((s) => s.lessonTurn);
   const coachNotice = useNotificationPrefsStore((s) => s.coachNotice);
+  const joinAlerts = useNotificationPrefsStore((s) => s.joinAlerts);
+  const friendAlerts = useNotificationPrefsStore((s) => s.friendAlerts);
+  const systemAlerts = useNotificationPrefsStore((s) => s.systemAlerts);
   const hydratePrefs = useNotificationPrefsStore((s) => s.hydrate);
   const setChannel = useNotificationPrefsStore((s) => s.setChannel);
   const showToast = useNotificationStore((s) => s.showToast);
@@ -67,9 +76,9 @@ export default function SettingsScreen() {
   if (!currentUser) {
     return (
       <>
-        <Stack.Screen options={{ title: '설정', headerShown: true }} />
+        <Stack.Screen options={{ title: t('settings.title'), headerShown: true }} />
         <View style={styles.center}>
-          <Text style={styles.empty}>로그인이 필요합니다</Text>
+          <Text style={styles.empty}>{t('settings.loginRequired')}</Text>
         </View>
       </>
     );
@@ -77,9 +86,17 @@ export default function SettingsScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: '설정', headerShown: true }} />
+      <Stack.Screen options={{ title: t('settings.title'), headerShown: true }} />
       <PageContainer>
         <ScrollView contentContainerStyle={styles.content}>
+          {isMobile ? (
+            <Card style={styles.card}>
+              <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
+              <Text style={styles.hint}>{t('settings.languageHint')}</Text>
+              <LanguageSwitcher />
+            </Card>
+          ) : null}
+
           <PwaInstallCard
             placement="settings"
             onToast={(type, message) => showToast({ type, title: '', message })}
@@ -91,14 +108,14 @@ export default function SettingsScreen() {
           />
 
           <Card style={styles.card}>
-            <Text style={styles.sectionTitle}>화면</Text>
-            <Text style={styles.hint}>라이트, 다크, 또는 기기 설정을 따릅니다.</Text>
+            <Text style={styles.sectionTitle}>{t('settings.display')}</Text>
+            <Text style={styles.hint}>{t('settings.displayHint')}</Text>
             <View style={styles.themeChoices}>
               {(
                 [
-                  { id: 'light', label: '라이트' },
-                  { id: 'dark', label: '다크' },
-                  { id: 'system', label: '시스템' },
+                  { id: 'light', label: t('settings.themeLight') },
+                  { id: 'dark', label: t('settings.themeDark') },
+                  { id: 'system', label: t('settings.themeSystem') },
                 ] as { id: ThemePreference; label: string }[]
               ).map((opt) => {
                 const on = preference === opt.id;
@@ -109,7 +126,7 @@ export default function SettingsScreen() {
                     style={[styles.themeChoice, on && styles.themeChoiceOn]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: on }}
-                    accessibilityLabel={`${opt.label} 모드`}
+                    accessibilityLabel={t('settings.themeMode', { label: opt.label })}
                   >
                     <Text style={[styles.themeChoiceText, on && styles.themeChoiceTextOn]}>
                       {opt.label}
@@ -127,38 +144,52 @@ export default function SettingsScreen() {
           ) : null}
 
           <Card style={styles.card}>
-            <Text style={styles.sectionTitle}>받을 알림</Text>
-            <Text style={styles.hint}>
-              기기 알림이 켜져 있을 때만 푸시가 갑니다. 끈 항목은 알림함·사이렌에도 뜨지 않습니다.
-            </Text>
+            <Text style={styles.sectionTitle}>{t('settings.notificationsReceive')}</Text>
+            <Text style={styles.hint}>{t('settings.notificationsReceiveHint')}</Text>
             <PrefRow
-              title="활동일 저녁"
-              hint="관리자가 정한 시간에 오늘 활동 안내 (지금 스케줄 푸시)"
+              title={t('settings.activityEvening')}
+              hint={t('settings.activityEveningHint')}
               value={activityEvening}
               onChange={(v) => toggleChannel('activityEvening', v)}
             />
             <PrefRow
-              title="레슨 차례"
-              hint="내가 다음일 때 사이렌·푸시"
+              title={t('settings.lessonTurn')}
+              hint={t('settings.lessonTurnHint')}
               value={lessonTurn}
               onChange={(v) => toggleChannel('lessonTurn', v)}
             />
             <PrefRow
-              title="코치 공지"
-              hint="코칭 화면에 올라오는 공지 푸시"
+              title={t('settings.coachNotice')}
+              hint={t('settings.coachNoticeHint')}
               value={coachNotice}
               onChange={(v) => toggleChannel('coachNotice', v)}
+            />
+            <PrefRow
+              title={t('settings.joinAlerts')}
+              hint={t('settings.joinAlertsHint')}
+              value={joinAlerts}
+              onChange={(v) => toggleChannel('joinAlerts', v)}
+            />
+            <PrefRow
+              title={t('settings.friendAlerts')}
+              hint={t('settings.friendAlertsHint')}
+              value={friendAlerts}
+              onChange={(v) => toggleChannel('friendAlerts', v)}
+            />
+            <PrefRow
+              title={t('settings.systemAlerts')}
+              hint={t('settings.systemAlertsHint')}
+              value={systemAlerts}
+              onChange={(v) => toggleChannel('systemAlerts', v)}
               last
             />
           </Card>
 
           <Card style={styles.card}>
-            <Text style={styles.sectionTitle}>친구 도착</Text>
-            <Text style={styles.hint}>
-              켠 친구가 체육관에 도착하면 푸시로 알려 줍니다. 친구 목록의 스위치와 같습니다.
-            </Text>
+            <Text style={styles.sectionTitle}>{t('settings.friendArrival')}</Text>
+            <Text style={styles.hint}>{t('settings.friendArrivalHint')}</Text>
             {friends.length === 0 ? (
-              <Text style={styles.empty}>아직 친구가 없어요. 친구 탭에서 추가해 주세요.</Text>
+              <Text style={styles.empty}>{t('settings.noFriends')}</Text>
             ) : (
               friends.map((u, i) => {
                 const on = watched.has(u.id);
@@ -182,15 +213,15 @@ export default function SettingsScreen() {
                     </Pressable>
                     <Toggle
                       value={on}
-                      accessibilityLabel={`${u.name} 도착 알림`}
+                      accessibilityLabel={t('settings.arrivalNotifyLabel', { name: u.name })}
                       onValueChange={(next) => {
                         void setArrivalNotify(currentUser.id, u.id, next);
                         showToast({
                           type: 'info',
                           title: '',
                           message: next
-                            ? `${u.name}님 도착 시 알려드릴게요.`
-                            : `${u.name}님 도착 알림을 껐어요.`,
+                            ? t('settings.arrivalNotifyOn', { name: u.name })
+                            : t('settings.arrivalNotifyOff', { name: u.name }),
                         });
                       }}
                     />

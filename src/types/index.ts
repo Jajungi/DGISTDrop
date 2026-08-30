@@ -47,6 +47,8 @@ export interface User {
   lessonRequestedAt?: string;
   /** 코치 공지 작성 권한 (운영진이 부여) */
   isCoach?: boolean;
+  /** 알림·UI 표시 언어 선호 */
+  preferredLocale?: 'ko' | 'en';
   /** 운영자 — 일상 운영 권한 (관리자만 개발자/관리자 승격) */
   isOperator?: boolean;
   avatarColor: string;
@@ -263,6 +265,8 @@ export interface LessonQueueEntry {
   position: number;
   status: 'waiting' | 'next' | 'active' | 'done';
   joinedAt: string;
+  /** 레슨 시작 시각 (active 상태 타이머용) */
+  activeSince?: string;
 }
 
 /** 레슨 참여 권한 신청 (입금 확인 후 관리자 승인) */

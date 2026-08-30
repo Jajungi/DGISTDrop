@@ -38,6 +38,19 @@ export async function setCourtOccupancyRemote(courtId: number, occupied: boolean
   if (error) throw error;
 }
 
+export type CourtSetupState = 'unset' | 'ready' | 'active';
+
+export async function setCourtSetupStateRemote(
+  courtId: number,
+  state: CourtSetupState
+): Promise<void> {
+  const { error } = await getSupabase().rpc('rpc_set_court_setup_state', {
+    p_court_id: courtId,
+    p_state: state,
+  });
+  if (error) throw error;
+}
+
 export function mapCourtRpcError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
   const m = raw.toLowerCase();

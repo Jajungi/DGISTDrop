@@ -9,7 +9,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { useCourtStore } from '@/src/stores/courtStore';
 import { useAdminAlertCount } from '@/src/hooks/useAdminAlerts';
 import { isStaffUser } from '@/src/utils/staffAccess';
-import { NAV_ITEMS, ADMIN_NAV_ITEM } from '@/src/constants/nav';
+import { useNavItems, useAdminNavItem } from '@/src/hooks/useNavItems';
 import { TAB_TOUR_STEPS } from '@/src/constants/tabTour';
 import { useTabTourStore } from '@/src/stores/tabTourStore';
 import { TourAnchor } from '@/src/utils/tourAnchors';
@@ -84,10 +84,12 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
   );
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const hoverCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navItems = useNavItems();
+  const adminNavItem = useAdminNavItem();
 
   const sidebarExpanded = sidebarPinned || hoverExpanded;
   const sidebarWidth = sidebarExpanded ? SIDEBAR_EXPANDED : SIDEBAR_COLLAPSED;
-  const navItems = (isStaff ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS).filter(
+  const items = (isStaff ? [...navItems, adminNavItem] : navItems).filter(
     (item) => !isGuest || item.href !== '/friends'
   );
 
@@ -145,7 +147,7 @@ export function WebShell({ children }: { children?: React.ReactNode }) {
               }
             : {})}
         >
-          {navItems.map((item) => {
+          {items.map((item) => {
             const active =
               item.href === '/'
                 ? pathname === '/' || pathname === '/(tabs)' || pathname === '/(tabs)/'

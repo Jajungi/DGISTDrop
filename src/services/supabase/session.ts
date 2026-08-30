@@ -1,3 +1,4 @@
+import { useLocaleStore } from '@/src/stores/localeStore';
 import { bindAfterSupabaseAuth } from '@/src/services/supabase/authBridge';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import {
@@ -11,6 +12,7 @@ import type { User } from '@/src/types';
 export async function afterSupabaseAuth(user: User | null): Promise<void> {
   if (!isSupabaseEnabled()) return;
   if (user) {
+    useLocaleStore.getState().applyLocaleFromProfile(user.preferredLocale);
     await bindSupabaseSession(user.id, user.membershipTier === 'admin' || !!user.isAdmin || !!user.isOperator);
     return;
   }

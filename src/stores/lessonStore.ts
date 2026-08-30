@@ -6,6 +6,9 @@ import { useAuthStore } from './authStore';
 import { persistAppState } from '@/src/services/persistGate';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 import { runWhenRemoteId } from '@/src/utils/localId';
+import { COACH_COURT_ID } from '@/src/constants/court';
+import { getT } from '@/src/i18n/useI18n';
+import { resolveUserLocale } from '@/src/i18n/resolveUserLocale';
 import { isLessonTurnEnabled } from '@/src/stores/notificationPrefsStore';
 
 function persistLessonQueue() {
@@ -33,7 +36,11 @@ function syncQueueRemote(entries: LessonQueueEntry[]) {
   if (!isSupabaseEnabled()) return;
   entries.forEach((e) => {
     remoteQueueEntry(e.id, (id, m) =>
-      m.updateLessonQueueRemote(id, { position: e.position, status: e.status })
+      m.updateLessonQueueRemote(id, {
+        position: e.position,
+        status: e.status,
+        activeSince: e.activeSince,
+      })
     );
   });
 }
@@ -257,8 +264,11 @@ export const useLessonStore = create<LessonState>((set, get) => ({
     const target = get().lessonQueue.find((e) => e.id === entryId);
     if (!target) return;
 
+    const startedAt = new Date().toISOString();
     const nextQueue = get().lessonQueue.map((e) => {
-      if (e.id === entryId) return { ...e, status: 'active' as const };
+      if (e.id === entryId) {
+        return { ...e, status: 'active' as const, activeSince: startedAt };
+      }
       if (e.status === 'next' && e.id !== entryId) return { ...e, status: 'waiting' as const };
       return e;
     });
@@ -273,7 +283,7 @@ export const useLessonStore = create<LessonState>((set, get) => ({
     if (!target) return;
 
     let nextQueue = get().lessonQueue.map((e) =>
-      e.id === entryId ? { ...e, status: 'done' as const } : e
+      e.id === entryId ? { ...e, status: 'done' as const, activeSince: undefined } : e
     );
 
     const firstWaiting = nextQueue.find((e) => e.status === 'waiting');
@@ -333,12 +343,17 @@ export const useLessonStore = create<LessonState>((set, get) => ({
     if (!entry) return;
     if (!isLessonTurnEnabled()) return;
 
+    const locale = resolveUserLocale(userId);
+    const t = getT(locale);
     const notify = useNotificationStore.getState();
-    notify.showSiren('다음 레슨 차례입니다', '코치 코트로 이동해 셔틀콕을 준비해 주세요.');
+    notify.showSiren(t('notifications.lessonSirenTitle'), t('notifications.lessonSirenMessage'));
     notify.pushInbox({
       type: 'coach',
-      title: '사이렌 오더',
-      message: `${entry.position}번 — 다음 레슨 차례입니다. 코치 코트(3번)로 이동해 주세요.`,
+      title: t('notifications.lessonInboxTitle'),
+      message: t('notifications.lessonInboxMessage', {
+        position: entry.position,
+        court: COACH_COURT_ID,
+      }),
       targetUserId: userId,
     });
   },

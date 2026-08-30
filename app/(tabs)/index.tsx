@@ -46,7 +46,7 @@ export default function CourtsScreen() {
   const leaveWaitQueue = useCourtStore((s) => s.leaveWaitQueue);
   const removeWaitEntry = useCourtStore((s) => s.removeWaitEntry);
   const refreshCourts = useCourtStore((s) => s.refreshCourts);
-  const setCourtOccupancy = useCourtStore((s) => s.setCourtOccupancy);
+  const setCourtSetupState = useCourtStore((s) => s.setCourtSetupState);
 
   const currentUser = useAuthStore((s) => s.currentUser);
   const users = useAuthStore((s) => s.users);
@@ -201,9 +201,9 @@ export default function CourtsScreen() {
     canPerformActions: occupancyMode ? isStaff : checkGeoFence(),
     occupancyMode,
     isStaff,
-    onSetOccupancy: (occupied: boolean) => {
+    onSetSetupState: (state: 'unset' | 'ready' | 'active') => {
       if (!selectedCourt) return;
-      const result = setCourtOccupancy(selectedCourt.id, occupied);
+      const result = setCourtSetupState(selectedCourt.id, state);
       showToast({ type: result.success ? 'success' : 'warning', title: '', message: result.message });
       if (result.success) handleClose();
     },

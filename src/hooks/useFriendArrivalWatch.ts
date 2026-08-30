@@ -3,7 +3,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { useFriendStore } from '@/src/stores/friendStore';
 import { useFriendPrefsStore } from '@/src/stores/friendPrefsStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
-import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
+import { isFriendAlertsEnabled, useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
 import { getTodayKey } from '@/src/utils/dateFormat';
 import { isSupabaseEnabled } from '@/src/lib/supabase';
 
@@ -71,6 +71,7 @@ export function useFriendArrivalWatch() {
       if (was === false && now === true) {
         const key = `${today}:${u.id}`;
         if (notifiedToday.current.has(key)) continue;
+        if (!isFriendAlertsEnabled()) continue;
         notifiedToday.current.add(key);
         if (isSupabaseEnabled()) continue;
         useNotificationStore.getState().pushInbox({
