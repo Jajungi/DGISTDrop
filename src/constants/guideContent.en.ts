@@ -60,12 +60,12 @@ export function buildEnglishGuideSections(scheduleLabel: string): GuideSection[]
         {
           title: 'Location (geofence)',
           when: 'occupancy',
-          content: `Check-in and creating lobby rooms only work within about 500 m of ${GYM_NAME}.`,
+          content: `Check-in only works within about 500 m of ${GYM_NAME}.`,
         },
         {
           title: 'Location (geofence)',
           when: 'reservation',
-          content: `Reserving courts, creating lobby rooms, and join requests only work within about 500 m of ${GYM_NAME}.`,
+          content: `Reserving courts and court join requests only work within about 500 m of ${GYM_NAME}.`,
         },
         {
           title: 'Session notifications (push)',

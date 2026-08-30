@@ -28,7 +28,7 @@ export async function uploadAvatar(userId: string, localUri: string): Promise<st
     .upload(path, blob, {
       upsert: true,
       contentType: 'image/jpeg',
-      cacheControl: '3600',
+      cacheControl: '120',
     });
 
   if (uploadError) throw uploadError;

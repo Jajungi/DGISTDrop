@@ -47,6 +47,9 @@ function pickAvatarColor(index: number): string {
   return AVATAR_COLORS[index % AVATAR_COLORS.length];
 }
 
+/** 연속 프로필 사진 변경 시 이전 업로드가 나중에 덮어쓰지 않도록 */
+let avatarUploadGeneration = 0;
+
 /** 관리자 회원 관리 변경분을 Supabase 프로필에 반영 */
 async function syncAdminProfileRemote(user: User | undefined): Promise<{ ok: boolean; message?: string }> {
   if (!user || !isSupabaseEnabled()) return { ok: true };
@@ -1257,20 +1260,67 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   updateUserProfile: async (userId, patch) => {
     if (isSupabaseEnabled() && 'avatarUri' in patch) {
+      const generation = ++avatarUploadGeneration;
+      const isRemoval = patch.avatarUri === null;
+      const localUri =
+        patch.avatarUri && !patch.avatarUri.startsWith('http') ? patch.avatarUri : null;
+
+      if (localUri || isRemoval) {
+        set((state) => {
+          const users = state.users.map((u) => {
+            if (u.id !== userId) return u;
+            const next = { ...u };
+            if (isRemoval) delete next.avatarUri;
+            else if (localUri) next.avatarUri = localUri;
+            return next;
+          });
+          const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
+          return { users, currentUser };
+        });
+      }
+
       try {
-        if (patch.avatarUri && !patch.avatarUri.startsWith('http')) {
-          await uploadAvatar(userId, patch.avatarUri);
-        } else if (patch.avatarUri === null) {
+        let nextUri: string | undefined;
+        if (localUri) {
+          nextUri = await uploadAvatar(userId, localUri);
+        } else if (isRemoval) {
           await removeAvatar(userId);
+          nextUri = undefined;
+        } else if (patch.avatarUri) {
+          nextUri = patch.avatarUri;
         }
-        const users = await fetchAllProfiles();
-        const currentUser = syncCurrentUser(users, get().currentUser?.id ?? null);
-        set({ users, currentUser });
+
+        if (generation !== avatarUploadGeneration) {
+          return { success: true, message: '프로필 사진이 저장되었어요.' };
+        }
+
+        set((state) => {
+          const users = state.users.map((u) => {
+            if (u.id !== userId) return u;
+            const next = { ...u };
+            if (nextUri) next.avatarUri = nextUri;
+            else delete next.avatarUri;
+            return next;
+          });
+          const currentUser = syncCurrentUser(users, state.currentUser?.id ?? null);
+          return { users, currentUser };
+        });
+        persistAppState();
+
         return {
           success: true,
-          message: patch.avatarUri ? '프로필 사진이 저장되었어요.' : '프로필 사진을 삭제했어요.',
+          message: isRemoval ? '프로필 사진을 삭제했어요.' : '프로필 사진이 저장되었어요.',
         };
       } catch (e) {
+        if (generation === avatarUploadGeneration) {
+          try {
+            const users = await fetchAllProfiles();
+            const currentUser = syncCurrentUser(users, get().currentUser?.id ?? null);
+            set({ users, currentUser });
+          } catch {
+            /* ignore */
+          }
+        }
         const msg = e instanceof Error ? e.message : '프로필 사진 저장에 실패했어요.';
         return { success: false, message: msg };
       }

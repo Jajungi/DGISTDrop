@@ -35,6 +35,7 @@ type DbProfile = {
   attendance_intent_date?: string | null;
   avatar_color: string;
   avatar_path: string | null;
+  updated_at?: string | null;
   admin_note: string | null;
   club_fee_verified_at: string | null;
   club_fee_verified_by: string | null;
@@ -90,11 +91,16 @@ type DbMatch = {
   game_mode: MatchResult['gameMode'] | null;
 };
 
-function publicAvatarUrl(path: string | null | undefined): string | undefined {
+function publicAvatarUrl(
+  path: string | null | undefined,
+  version?: string | null
+): string | undefined {
   if (!path) return undefined;
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  const { data } = getSupabase().storage.from(AVATAR_LIMITS.storageBucket).getPublicUrl(path);
-  return data.publicUrl;
+  const base = path.startsWith('http://') || path.startsWith('https://')
+    ? path.split('?')[0]!
+    : getSupabase().storage.from(AVATAR_LIMITS.storageBucket).getPublicUrl(path).data.publicUrl;
+  if (!version) return base;
+  return `${base}?v=${encodeURIComponent(version)}`;
 }
 
 export function mapProfileRow(row: DbProfile): User {
@@ -126,7 +132,7 @@ export function mapProfileRow(row: DbProfile): User {
     attendanceIntent: row.attendance_intent ?? null,
     attendanceIntentDate: row.attendance_intent_date ?? undefined,
     avatarColor: row.avatar_color,
-    avatarUri: publicAvatarUrl(row.avatar_path),
+    avatarUri: publicAvatarUrl(row.avatar_path, row.updated_at),
     adminNote: row.admin_note ?? undefined,
     clubFeeVerifiedAt: row.club_fee_verified_at ?? undefined,
     clubFeeVerifiedBy: row.club_fee_verified_by ?? undefined,

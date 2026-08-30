@@ -12,9 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLobbyStore } from '@/src/stores/lobbyStore';
-import { useAuthStore, useAppStore } from '@/src/stores/authStore';
+import { useAuthStore } from '@/src/stores/authStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
-import { useGeoLocation } from '@/src/hooks/useGeoLocation';
 import { TeamRoomCard } from '@/src/components/lobby/TeamRoomCard';
 import { TeamCourtReserveModal } from '@/src/components/lobby/TeamCourtReserveModal';
 import { useCourtStore } from '@/src/stores/courtStore';
@@ -33,7 +32,6 @@ import { colors, spacing, typography, borderRadius, glass } from '@/src/theme';
 import { useI18n } from '@/src/i18n/useI18n';
 
 export default function LobbyScreen() {
-  useGeoLocation();
   const { t } = useI18n();
 
   const rooms = useLobbyStore((s) => s.rooms);
@@ -48,7 +46,6 @@ export default function LobbyScreen() {
   const reserveCourtForTeam = useCourtStore((s) => s.reserveCourtForTeam);
   const currentUser = useAuthStore((s) => s.currentUser);
   const isGuest = useAuthStore((s) => s.isGuestSession);
-  const checkGeoFence = useAppStore((s) => s.checkGeoFence);
   const showToast = useNotificationStore((s) => s.showToast);
   const eloOn = useFeatureFlagsStore((s) => s.eloFeaturesEnabled);
 
@@ -83,10 +80,6 @@ export default function LobbyScreen() {
 
   const attemptJoin = (roomId: string, password?: string) => {
     if (!currentUser) return;
-    if (!checkGeoFence()) {
-      showToast({ type: 'warning', title: '', message: t('lobby.needAtGym') });
-      return;
-    }
     void (async () => {
       const result = await requestJoinRoom(
         roomId,

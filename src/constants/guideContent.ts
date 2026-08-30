@@ -82,12 +82,12 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       {
         title: '위치 인증 (지오펜스)',
         when: 'occupancy',
-        content: `${GYM_NAME} 반경 약 500m 안에서만 출석·모집방 생성이 가능합니다.`,
+        content: `${GYM_NAME} 반경 약 500m 안에서만 출석이 가능합니다.`,
       },
       {
         title: '위치 인증 (지오펜스)',
         when: 'reservation',
-        content: `${GYM_NAME} 반경 약 500m 안에서만 코트 예약·모집방 생성·합류 신청이 가능합니다.`,
+        content: `${GYM_NAME} 반경 약 500m 안에서만 코트 예약·합류 신청이 가능합니다.`,
       },
       {
         title: '활동 알림 (푸시)',
@@ -427,12 +427,12 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       {
         title: '위치 기반 인증 (Geo-fencing)',
         when: 'occupancy',
-        content: `${GYM_NAME} 반경 약 500m 이내에서만 출석·모집방 생성이 가능합니다.`,
+        content: `${GYM_NAME} 반경 약 500m 이내에서만 출석이 가능합니다.`,
       },
       {
         title: '위치 기반 인증 (Geo-fencing)',
         when: 'reservation',
-        content: `${GYM_NAME} 반경 약 500m 이내에서만 코트 예약·모집방 생성·합류 신청이 가능합니다.`,
+        content: `${GYM_NAME} 반경 약 500m 이내에서만 코트 예약·합류 신청이 가능합니다.`,
       },
       {
         title: '게임 수 준수 및 즉시 반납',

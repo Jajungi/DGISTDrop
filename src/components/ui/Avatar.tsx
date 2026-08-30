@@ -17,6 +17,7 @@ export function Avatar({ name, color, size = 36, showOnline, imageUri }: AvatarP
     <View style={{ position: 'relative' }}>
       {imageUri ? (
         <Image
+          key={imageUri}
           source={{ uri: imageUri }}
           style={[
             styles.image,
