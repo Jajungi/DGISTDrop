@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { DropBrand } from '@/src/components/layout/DropBrand';
@@ -31,6 +31,10 @@ import { colors, spacing, typography, borderRadius, withAlpha } from '@/src/them
 import { SiteOverlayHost } from '@/src/components/site/SiteOverlayHost';
 import { markPostLoginOverlay } from '@/src/components/site/SiteOverlayHost';
 import { PwaInstallCard } from '@/src/components/layout/PwaInstallCard';
+import { SocialLoginButtons } from '@/src/components/auth/SocialLoginButtons';
+import { consumeSocialAuthFlash } from '@/src/services/supabase/socialAuthIntent';
+import type { SocialProvider } from '@/src/constants/socialAuth';
+import type { SocialAuthIntent } from '@/src/services/supabase/socialAuthIntent';
 
 type Mode = 'login' | 'register' | 'guest';
 
@@ -59,11 +63,13 @@ function RememberCheck({
 }
 
 export default function LoginScreen() {
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
   const login = useAuthStore((s) => s.login);
   const loginAsGuest = useAuthStore((s) => s.loginAsGuest);
   const restoreSavedLogin = useAuthStore((s) => s.restoreSavedLogin);
   const dismissSavedLogin = useAuthStore((s) => s.dismissSavedLogin);
   const register = useAuthStore((s) => s.register);
+  const loginWithSocial = useAuthStore((s) => s.loginWithSocial);
   const showToast = useNotificationStore((s) => s.showToast);
 
   const [mode, setMode] = useState<Mode>('login');
@@ -72,12 +78,12 @@ export default function LoginScreen() {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [name, setName] = useState('');
   const [guestName, setGuestName] = useState('');
-  const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [savedAccount, setSavedAccount] = useState<SavedLoginAccount | null>(null);
   const [showSavedPrompt, setShowSavedPrompt] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [socialBusy, setSocialBusy] = useState<SocialProvider | null>(null);
 
   const refreshSavedLogin = useCallback(async () => {
     const account = await loadSavedLogin();
@@ -101,6 +107,18 @@ export default function LoginScreen() {
   useEffect(() => {
     void refreshSavedLogin();
   }, [refreshSavedLogin]);
+
+  useEffect(() => {
+    if (tab === 'register') setMode('register');
+  }, [tab]);
+
+  useEffect(() => {
+    void consumeSocialAuthFlash().then((message) => {
+      if (message) {
+        showToast({ type: 'warning', title: '', message });
+      }
+    });
+  }, [showToast]);
 
   const finishAuth = (ok: boolean, message: string) => {
     if (ok) {
@@ -172,7 +190,6 @@ export default function LoginScreen() {
       const result = await register({
         studentId: idCheck.normalized,
         name,
-        email,
         password,
       });
       setBusy(false);
@@ -188,6 +205,25 @@ export default function LoginScreen() {
         setPasswordConfirm('');
         setShowSavedPrompt(false);
       }
+    })();
+  };
+
+  const handleSocialAuth = (provider: SocialProvider, intent: SocialAuthIntent) => {
+    setBusy(true);
+    setSocialBusy(provider);
+    void (async () => {
+      const result = await loginWithSocial(provider, intent);
+      setBusy(false);
+      setSocialBusy(null);
+      if (!result.success) {
+        showToast({ type: 'warning', title: '', message: result.message });
+        return;
+      }
+      if (result.needsSignup) {
+        setMode('register');
+        return;
+      }
+      finishAuth(true, result.message);
     })();
   };
 
@@ -328,6 +364,23 @@ export default function LoginScreen() {
               </>
             ) : (
               <>
+            {mode === 'register' && !promptAccount ? (
+              <SocialLoginButtons
+                mode="signup"
+                busy={busy}
+                busyProvider={socialBusy}
+                onPress={(provider) => handleSocialAuth(provider, 'signup')}
+              />
+            ) : null}
+
+            {mode === 'register' ? (
+              <View style={styles.sectionDivider}>
+                <View style={styles.sectionDividerLine} />
+                <Text style={styles.sectionDividerText}>학번·비밀번호 가입</Text>
+                <View style={styles.sectionDividerLine} />
+              </View>
+            ) : null}
+
             <Text style={styles.label}>학번</Text>
             <TextInput
               style={styles.input}
@@ -375,15 +428,6 @@ export default function LoginScreen() {
                 />
                 <Text style={styles.label}>이름</Text>
                 <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="실명" />
-                <Text style={styles.label}>이메일 (선택)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="name@dgist.ac.kr"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
               </>
             )}
 
@@ -426,6 +470,14 @@ export default function LoginScreen() {
           )}
 
           <PwaInstallCard placement="login" compact />
+
+          {mode === 'login' && !promptAccount ? (
+            <SocialLoginButtons
+              busy={busy}
+              busyProvider={socialBusy}
+              onPress={(provider) => handleSocialAuth(provider, 'login')}
+            />
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
       <SiteOverlayHost surface="login" />
@@ -586,5 +638,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.md,
     lineHeight: 20,
+  },
+  sectionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  sectionDividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  },
+  sectionDividerText: {
+    ...typography.caption,
+    color: colors.textMuted,
   },
 });

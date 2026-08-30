@@ -95,6 +95,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
 | 설정 | 값 |
 |------|-----|
 | Auth → Email Confirm | OFF (학번 로그인) |
+| Auth → Google / Custom OIDC (`naver`) | 간편 로그인 — [SOCIAL_AUTH_SETUP.md](./SOCIAL_AUTH_SETUP.md) |
 | `service_role` | 서버·SQL 트리거 전용. 앱·Git·Expo Extra에 두지 않음 |
 | `EXPO_PUBLIC_SYNC_URL` | Supabase 사용 시 불필요 |
 

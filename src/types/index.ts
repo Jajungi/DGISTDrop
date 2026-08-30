@@ -22,7 +22,7 @@ export interface User {
   studentId: string;
   name: string;
   nickname: string;
-  email: string;
+  signupComplete?: boolean;
   membershipTier: MembershipTier;
   memberStatus: MemberStatus;
   /** 관리자 역할. 정회원/준회원과 별개 */

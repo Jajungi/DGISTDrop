@@ -22,7 +22,8 @@ export default function PrivacyScreen() {
 
           <Text style={styles.h2}>1. 수집 항목</Text>
           <Text style={styles.p}>
-            • 회원: 학번, 이름, 비밀번호(해시), (선택) 연락 이메일{'\n'}
+            • 회원: 학번, 이름, 비밀번호(해시){'\n'}
+            • 간편 로그인: Google·네이버 연동 시 제공자가 전달하는 식별 정보{'\n'}
             • 게스트: 표시용 이름{'\n'}
             • 선택: 프로필 사진, 오늘 일정{'\n'}
             • 활동: 출석·코트 예약·경기·포인트·Elo·봉사·레슨 기록{'\n'}

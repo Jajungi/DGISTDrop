@@ -6,6 +6,7 @@ import {
 } from '@/src/lib/supabase';
 import { fetchAllProfiles, fetchProfileById } from '@/src/services/supabase/profiles';
 import { validateStudentId } from '@/src/utils/studentId';
+import { isIncompleteSocialSignup } from '@/src/utils/socialSignup';
 
 export type AuthResult = { success: boolean; message: string };
 
@@ -111,7 +112,6 @@ export async function supabaseLogin(
 export async function supabaseRegister(input: {
   studentId: string;
   name: string;
-  email: string;
   password: string;
 }): Promise<AuthResult> {
   if (!isSupabaseEnabled()) {
@@ -140,7 +140,6 @@ export async function supabaseRegister(input: {
       data: {
         student_id: normalizedId,
         name: trimmedName,
-        contact_email: input.email.trim() || `${normalizedId}@dgist.ac.kr`,
       },
     },
   });
@@ -306,4 +305,109 @@ export async function supabaseRestoreSession(): Promise<string | null> {
 export async function loadSupabaseAuthBundle(userId: string | null) {
   const users = await fetchAllProfiles();
   return { users, sessionUserId: userId };
+}
+
+export type SessionResolveResult = AuthResult & {
+  userId?: string;
+  needsSignup?: boolean;
+};
+
+/** OAuth·연동 후 현재 세션으로 프로필을 맞춤 */
+export async function supabaseResolveSession(): Promise<SessionResolveResult> {
+  if (!isSupabaseEnabled()) {
+    return { success: false, message: 'Supabase가 설정되지 않았어요.' };
+  }
+
+  const { data, error } = await getSupabase().auth.getSession();
+  if (error || !data.session?.user) {
+    return { success: false, message: '로그인 세션이 없어요.' };
+  }
+
+  const profile = await fetchProfileById(data.session.user.id);
+  if (!profile) {
+    return { success: false, message: '프로필을 불러오지 못했어요.' };
+  }
+
+  if (isIncompleteSocialSignup(profile)) {
+    return {
+      success: true,
+      userId: profile.id,
+      needsSignup: true,
+      message: '학번·비밀번호를 입력해 주세요.',
+    };
+  }
+
+  const blocked = memberStatusMessage(profile.memberStatus, profile.suspendedReason);
+  if (blocked) {
+    await getSupabase().auth.signOut();
+    return { success: false, message: blocked };
+  }
+
+  return {
+    success: true,
+    userId: profile.id,
+    needsSignup: false,
+    message: `${profile.name}님, 환영합니다!`,
+  };
+}
+
+export async function supabaseCompleteSocialSignup(
+  studentId: string,
+  name: string,
+  password: string
+): Promise<AuthResult> {
+  if (!isSupabaseEnabled()) {
+    return { success: false, message: 'Supabase가 설정되지 않았어요.' };
+  }
+
+  const idCheck = validateStudentId(studentId);
+  if (!idCheck.ok) {
+    return { success: false, message: idCheck.message };
+  }
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    return { success: false, message: '이름을 입력해 주세요.' };
+  }
+  if (password.trim().length < 6) {
+    return { success: false, message: '비밀번호는 6자 이상이어야 해요.' };
+  }
+
+  const { error } = await getSupabase().rpc('rpc_complete_social_signup', {
+    p_student_id: idCheck.normalized,
+    p_name: trimmedName,
+  });
+
+  if (error) {
+    const msg = (error.message ?? '').toLowerCase();
+    if (msg.includes('student id already taken')) {
+      return { success: false, message: '이미 등록된 학번이에요. 학번 로그인 후 설정에서 연동해 주세요.' };
+    }
+    if (msg.includes('invalid student id')) {
+      return { success: false, message: '학번 형식이 올바르지 않아요.' };
+    }
+    return { success: false, message: error.message || '가입 완료에 실패했어요.' };
+  }
+
+  const { error: credError } = await getSupabase().auth.updateUser({
+    email: studentIdToAuthEmail(idCheck.normalized),
+    password,
+    data: {
+      student_id: idCheck.normalized,
+      name: trimmedName,
+    },
+  });
+
+  if (credError) {
+    return { success: false, message: formatAuthError(credError) };
+  }
+
+  const profile = await fetchProfileById((await getSupabase().auth.getSession()).data.session?.user?.id ?? '');
+  if (profile?.memberStatus === 'pending') {
+    return {
+      success: true,
+      message: '가입이 접수됐어요. 운영진 승인 후 이용할 수 있어요.',
+    };
+  }
+
+  return { success: true, message: '가입이 완료됐어요.' };
 }

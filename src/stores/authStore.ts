@@ -18,7 +18,14 @@ import {
   supabaseGuestLogin,
   supabaseDeleteAccount,
   supabaseResumeRememberedSession,
+  supabaseResolveSession,
+  supabaseCompleteSocialSignup,
 } from '@/src/services/supabase/auth';
+import { signInWithSocialProvider } from '@/src/services/supabase/socialAuth';
+import { consumeSocialAuthIntent, clearSocialSignupInProgress, setSocialSignupInProgress } from '@/src/services/supabase/socialAuthIntent';
+import type { SocialAuthIntent } from '@/src/services/supabase/socialAuthIntent';
+import { isIncompleteSocialSignup, isAppReadyMember } from '@/src/utils/socialSignup';
+import type { SocialProvider } from '@/src/constants/socialAuth';
 import { fetchAllProfiles, uploadAvatar, removeAvatar } from '@/src/services/supabase/profiles';
 import { clearSavedLogin, loadSavedLogin, saveSavedLogin } from '@/src/services/quickLogin';
 import { isActivityDay, isActivityTime } from '@/src/services/activityTime';
@@ -80,9 +87,18 @@ interface AuthState {
   register: (input: {
     studentId: string;
     name: string;
-    email: string;
     password: string;
   }) => Promise<{ success: boolean; message: string }>;
+  loginWithSocial: (
+    provider: SocialProvider,
+    intent?: SocialAuthIntent
+  ) => Promise<{ success: boolean; message: string; needsSignup?: boolean }>;
+  applySocialSession: () => Promise<{ success: boolean; message: string; needsSignup?: boolean }>;
+  completeSocialSignup: (
+    studentId: string,
+    name: string,
+    password: string
+  ) => Promise<{ success: boolean; message: string }>;
   hydrateAuth: (
     users: User[],
     attendanceRecords: AttendanceRecord[],
@@ -458,6 +474,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
+    await clearSocialSignupInProgress();
     const saved = await loadSavedLogin();
     const keepRemembered = Boolean(saved);
     if (keepRemembered) {
@@ -476,7 +493,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!isSupabaseEnabled()) persistAppState();
   },
 
-  register: async ({ studentId, name, email, password }) => {
+  register: async ({ studentId, name, password }) => {
     const idCheck = validateStudentId(studentId);
     if (!idCheck.ok) {
       return { success: false, message: idCheck.message };
@@ -494,7 +511,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return supabaseRegister({
         studentId: normalizedId,
         name: trimmedName,
-        email,
         password,
       });
     }
@@ -509,7 +525,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       studentId: normalizedId,
       name: trimmedName,
       nickname: trimmedName,
-      email: email.trim() || `${normalizedId}@dgist.ac.kr`,
+      signupComplete: true,
       membershipTier: 'associate',
       memberStatus: openRegistration ? 'approved' : 'pending',
       rank: 'bronze',
@@ -540,6 +556,121 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         ? '회원가입이 완료됐어요. 바로 로그인할 수 있어요.'
         : '회원가입이 접수됐어요. 운영진 승인 후 로그인할 수 있어요.',
     };
+  },
+
+  applySocialSession: async () => {
+    if (!isSupabaseEnabled()) {
+      return { success: false, message: 'Supabase가 설정되지 않았어요.' };
+    }
+    const intent = await consumeSocialAuthIntent();
+    const result = await supabaseResolveSession();
+    if (!result.success || !result.userId) {
+      return { success: false, message: result.message };
+    }
+
+    if (result.needsSignup) {
+      if (intent === 'signup') {
+        await setSocialSignupInProgress();
+        const users = await fetchAllProfiles();
+        const user = users.find((u) => u.id === result.userId) ?? null;
+        await clearGuestSession();
+        set({
+          users,
+          currentUser: user,
+          isAuthenticated: Boolean(user),
+          isGuestSession: false,
+          credentials: {},
+        });
+        return {
+          success: true,
+          message: result.message,
+          needsSignup: true,
+        };
+      }
+
+      await clearSocialSignupInProgress();
+      await supabaseLogout();
+      set({
+        currentUser: null,
+        isAuthenticated: false,
+        isGuestSession: false,
+        credentials: {},
+      });
+      return {
+        success: false,
+        message:
+          'Google·네이버 연동이 되어 있지 않아요. 설정에서 연동하거나 회원가입 탭에서 간편 회원가입을 이용하세요.',
+      };
+    }
+
+    const users = await fetchAllProfiles();
+    const user = users.find((u) => u.id === result.userId) ?? null;
+
+    if (!isAppReadyMember(user)) {
+      await clearSocialSignupInProgress();
+      await supabaseLogout();
+      set({
+        currentUser: null,
+        isAuthenticated: false,
+        isGuestSession: false,
+        credentials: {},
+      });
+      return {
+        success: false,
+        message:
+          'Google·네이버 연동이 되어 있지 않아요. 설정에서 연동하거나 회원가입 탭에서 간편 회원가입을 이용하세요.',
+      };
+    }
+
+    await clearGuestSession();
+    set({
+      users,
+      currentUser: user,
+      isAuthenticated: Boolean(user),
+      isGuestSession: false,
+      credentials: {},
+    });
+    await afterSupabaseAuth(user);
+    get().resetPeakReservationsIfNewDay();
+    return {
+      success: true,
+      message: result.message,
+      needsSignup: false,
+    };
+  },
+
+  loginWithSocial: async (provider, intent = 'login') => {
+    if (!isSupabaseEnabled()) {
+      return { success: false, message: 'Supabase가 설정되지 않았어요.' };
+    }
+    const oauth = await signInWithSocialProvider(provider, intent);
+    if (!oauth.success) return oauth;
+    return get().applySocialSession();
+  },
+
+  completeSocialSignup: async (studentId, name, password) => {
+    if (!isSupabaseEnabled()) {
+      return { success: false, message: 'Supabase가 설정되지 않았어요.' };
+    }
+    const result = await supabaseCompleteSocialSignup(studentId, name, password);
+    if (!result.success) return result;
+
+    await clearSocialSignupInProgress();
+
+    const userId = get().currentUser?.id;
+    const users = await fetchAllProfiles();
+    const user = userId ? users.find((u) => u.id === userId) ?? null : null;
+    set({ users, currentUser: user, isAuthenticated: Boolean(user), isGuestSession: false });
+    await afterSupabaseAuth(user);
+    get().resetPeakReservationsIfNewDay();
+
+    if (user?.memberStatus === 'pending') {
+      await supabaseLogout();
+      set({ currentUser: null, isAuthenticated: false });
+      return result;
+    }
+
+    return result;
   },
 
   approveMember: (userId) => {

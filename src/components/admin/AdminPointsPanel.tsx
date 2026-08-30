@@ -75,8 +75,7 @@ export function AdminPointsPanel({ adminId, onToast }: AdminPointsPanelProps) {
       .filter(
         (u) =>
           u.name.toLowerCase().includes(q) ||
-          u.studentId.includes(q) ||
-          u.email.toLowerCase().includes(q)
+          u.studentId.includes(q)
       )
       .slice(0, 12);
   }, [approvedMembers, userQuery]);

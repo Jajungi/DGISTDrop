@@ -6,7 +6,7 @@
   "classification": "내부용",
   "audience": "동아리 운영진",
   "repo": "https://github.com/Jajungi/DGISTDrop",
-  "updated": "2026-08-28",
+  "updated": "2026-08-30",
   "intro": "본 문서는 Drop 웹·앱의 Git 이력을 근거로 배포 단위별 변경 사항을 정리한 내부 이력서임. 동일 목적의 연속 커밋은 하나의 항목으로 통합함. 기능·정책 변경 시 본 문서를 개정함.",
   "releases": [
     {
@@ -603,6 +603,9 @@
         },
         {
           "what": "활동 로그 전체 삭제가 RPC 미적용 DB에서도 동작하도록 폴백 추가. 웹 푸시·PWA 설치가 같은 service worker URL을 쓰도록 통일."
+        },
+        {
+          "what": "pending- 임시 학번을 미완료 가입으로 인식해 간편 로그인(미연동) 시 앱 진입·회원 목록 노출 차단. 회원가입 탭 간편 가입 중에만 가입 화면 유지."
         }
       ]
     }

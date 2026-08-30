@@ -1,5 +1,5 @@
 import { isSupabaseEnabled } from '@/src/lib/supabase';
-import { loadSupabaseAuthBundle, supabaseRestoreSession } from '@/src/services/supabase/auth';
+import { loadSupabaseAuthBundle, supabaseLogout, supabaseRestoreSession } from '@/src/services/supabase/auth';
 import { loadSavedLogin } from '@/src/services/quickLogin';
 import { fetchCourts, subscribeCourts, subscribeProfiles } from '@/src/services/supabase/courts';
 import { fetchAllProfiles } from '@/src/services/supabase/profiles';
@@ -24,6 +24,8 @@ import { useFeatureFlagsStore } from '@/src/stores/featureFlagsStore';
 import { useNotificationPrefsStore } from '@/src/stores/notificationPrefsStore';
 import { useFriendPrefsStore } from '@/src/stores/friendPrefsStore';
 import { afterSupabaseAuth } from '@/src/services/supabase/authBridge';
+import { isAppReadyMember, isIncompleteSocialSignup } from '@/src/utils/socialSignup';
+import { isSocialSignupInProgress } from '@/src/services/supabase/socialAuthIntent';
 
 let courtsUnsub: (() => void) | null = null;
 let profilesUnsub: (() => void) | null = null;
@@ -146,23 +148,36 @@ export async function initSupabaseApp(): Promise<boolean> {
   const waitForConfirm = Boolean(saved?.pendingConfirm && sessionUserId);
   const bundle = await loadSupabaseAuthBundle(sessionUserId);
 
-  const currentUser =
+  let currentUser =
     sessionUserId && !waitForConfirm
       ? bundle.users.find((u) => u.id === sessionUserId) ?? null
       : null;
 
+  let signupInProgress = false;
+  if (currentUser && isIncompleteSocialSignup(currentUser)) {
+    signupInProgress = await isSocialSignupInProgress();
+    if (!signupInProgress) {
+      await supabaseLogout();
+      currentUser = null;
+    }
+  }
+
+  const isAuthenticated = Boolean(
+    currentUser && (isAppReadyMember(currentUser) || signupInProgress)
+  );
+
   useAuthStore.getState().hydrateAuth(
     bundle.users,
     [],
-    currentUser?.id ?? null,
+    isAuthenticated ? currentUser?.id ?? null : null,
     null,
     {},
     null
   );
 
   useAuthStore.setState({
-    currentUser,
-    isAuthenticated: Boolean(currentUser),
+    currentUser: isAuthenticated ? currentUser : null,
+    isAuthenticated,
     isGuestSession: currentUser?.membershipTier === 'guest',
     credentials: {},
   });
@@ -174,7 +189,7 @@ export async function initSupabaseApp(): Promise<boolean> {
   // 서버 코트 로드 후에만 원격 upsert 허용 (mock 오염 방지)
   setRemoteCourtWriteEnabled(true);
 
-  if (currentUser) {
+  if (currentUser && isAppReadyMember(currentUser)) {
     await bindSupabaseSession(
       currentUser.id,
       currentUser.membershipTier === 'admin' || !!currentUser.isAdmin || !!currentUser.isOperator

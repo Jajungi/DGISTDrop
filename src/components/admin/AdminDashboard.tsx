@@ -1068,7 +1068,6 @@ function MemberCard({
       </View>
       {expanded && (
         <View style={styles.detailBox}>
-          <DetailRow label="이메일" value={user.email} />
           <DetailRow label="등급" value={roleBadgeLabel(user)} />
           {isEloFeaturesEnabled() ? <DetailRow label="Elo" value={String(user.elo)} /> : null}
           {pointsOn ? <DetailRow label="포인트" value={`${user.points}P`} /> : null}

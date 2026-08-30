@@ -130,7 +130,6 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
         (u) =>
           u.name.toLowerCase().includes(q) ||
           u.studentId.includes(q) ||
-          u.email.toLowerCase().includes(q) ||
           (u.adminNote?.toLowerCase().includes(q) ?? false)
       );
     }
@@ -262,7 +261,7 @@ export function MemberAdminPanel({ adminId, onToast }: MemberAdminPanelProps) {
                   <Text style={styles.profileName}>{selected.name}</Text>
                   <RankBadge rank={selected.rank} size="sm" />
                 </View>
-                <Text style={styles.profileSub}>{selected.studentId} · {selected.email}</Text>
+                <Text style={styles.profileSub}>{selected.studentId}</Text>
                 <View style={styles.badgeRow}>
                   <StatusPill status={selected.memberStatus} />
                   <TierPill label={roleBadgeLabel(selected)} />

@@ -46,7 +46,7 @@ export function createLocalGuestUser(name: string, colorIndex: number): User {
     studentId: `GUEST-${shortId}`,
     name: trimmed,
     nickname: trimmed,
-    email: '',
+    signupComplete: true,
     membershipTier: 'guest',
     memberStatus: 'approved',
     rank: 'bronze',

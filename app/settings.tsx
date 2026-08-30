@@ -6,6 +6,7 @@ import { Card } from '@/src/components/ui/Card';
 import { Avatar } from '@/src/components/ui/Avatar';
 import { Toggle } from '@/src/components/ui/Toggle';
 import { PushNotificationCard } from '@/src/components/profile/PushNotificationCard';
+import { AccountLinkCard } from '@/src/components/profile/AccountLinkCard';
 import { PwaInstallCard } from '@/src/components/layout/PwaInstallCard';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useFriendStore } from '@/src/stores/friendStore';
@@ -76,6 +77,12 @@ export default function SettingsScreen() {
             userId={currentUser.id}
             onToast={(type, message) => showToast({ type, title: '', message })}
           />
+
+          {currentUser.membershipTier !== 'guest' && currentUser.signupComplete !== false ? (
+            <AccountLinkCard
+              onToast={(type, message) => showToast({ type, title: '', message })}
+            />
+          ) : null}
 
           <Card style={styles.card}>
             <Text style={styles.sectionTitle}>화면</Text>

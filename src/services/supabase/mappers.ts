@@ -4,13 +4,14 @@ import { COACH_COURT_ID } from '@/src/constants/court';
 import { CENTER_COURTS } from '@/src/constants';
 import { getSupabase } from '@/src/lib/supabase';
 import { normalizeHHMM } from '@/src/utils/dateFormat';
+import { isPendingSocialStudentId } from '@/src/utils/socialSignup';
 
 type DbProfile = {
   id: string;
   student_id: string;
   name: string;
   nickname: string;
-  email: string;
+  signup_complete?: boolean;
   membership_tier: User['membershipTier'];
   member_status: User['memberStatus'];
   rank: User['rank'];
@@ -101,7 +102,7 @@ export function mapProfileRow(row: DbProfile): User {
     studentId: row.student_id,
     name: row.name,
     nickname: row.nickname || row.name,
-    email: row.email,
+    signupComplete: !isPendingSocialStudentId(row.student_id) && row.signup_complete !== false,
     membershipTier: row.membership_tier,
     memberStatus: row.member_status,
     rank: row.rank,
